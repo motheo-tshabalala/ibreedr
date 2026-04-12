@@ -1,0 +1,15 @@
+/* App specific styles - keep minimal */
+.App {
+  min-height: 100vh;
+}
+
+/* Loading animation */
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.animate-spin {
+  animation: spin 1s linear infinite;
+}
