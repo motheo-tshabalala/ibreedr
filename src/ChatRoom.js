@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Send, User } from 'lucide-react';
+import { ArrowLeft, Send } from 'lucide-react';
 import { supabase } from './supabaseClient';
 
 export default function ChatRoom() {
@@ -13,7 +13,7 @@ export default function ChatRoom() {
   const [newMessage, setNewMessage] = useState('');
   const [livestock, setLivestock] = useState(null);
   const [otherPerson, setOtherPerson] = useState(null);
-  const [isTyping, setIsTyping] = useState(false);
+  const [, setIsTyping] = useState(false);
   const [otherIsTyping, setOtherIsTyping] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const messagesEndRef = useRef(null);
@@ -29,14 +29,12 @@ export default function ChatRoom() {
     getUser();
   }, []);
 
-  // Load conversation and messages
   useEffect(() => {
     if (!user || !conversationId) return;
 
     const loadData = async () => {
       setIsLoading(true);
 
-      // Get conversation details
       const { data: convo, error: convoError } = await supabase
         .from('conversations')
         .select(`
@@ -56,11 +54,9 @@ export default function ChatRoom() {
 
       setLivestock(convo.livestock);
 
-      // Get other person info
       const other = convo.buyer_id === user.id ? convo.seller : convo.buyer;
       setOtherPerson(other);
 
-      // Load messages
       const { data: messagesData, error: msgError } = await supabase
         .from('messages')
         .select('*')
@@ -71,7 +67,6 @@ export default function ChatRoom() {
         setMessages(messagesData || []);
       }
 
-      // Mark unread messages as read
       await supabase
         .from('messages')
         .update({ is_read: true })
@@ -84,7 +79,6 @@ export default function ChatRoom() {
     loadData();
   }, [user, conversationId, navigate]);
 
-  // Real-time subscription for new messages
   useEffect(() => {
     if (!conversationId) return;
 
@@ -96,7 +90,6 @@ export default function ChatRoom() {
           const newMsg = payload.new;
           setMessages(prev => [...prev, newMsg]);
 
-          // Mark as read if current user is not sender
           if (newMsg.sender_id !== user?.id) {
             supabase
               .from('messages')
@@ -110,12 +103,10 @@ export default function ChatRoom() {
     return () => subscription.unsubscribe();
   }, [conversationId, user]);
 
-  // Auto-scroll to bottom when new messages arrive
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
-  // Typing indicator
   useEffect(() => {
     if (!conversationId || !user) return;
 
@@ -166,7 +157,6 @@ export default function ChatRoom() {
       }]);
 
     if (!error) {
-      // Update last message in conversation
       await supabase
         .from('conversations')
         .update({
@@ -190,7 +180,6 @@ export default function ChatRoom() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-amber-50 to-stone-100 flex flex-col">
-      {/* Header */}
       <div className="bg-white border-b sticky top-0 z-30">
         <div className="max-w-2xl mx-auto px-4 py-4 flex items-center gap-3">
           <Link to="/ChatList">
@@ -206,7 +195,6 @@ export default function ChatRoom() {
         </div>
       </div>
 
-      {/* Messages */}
       <div className="flex-1 max-w-2xl mx-auto w-full px-4 py-4 overflow-y-auto">
         <div className="space-y-3">
           {messages.map((msg) => (
@@ -236,7 +224,6 @@ export default function ChatRoom() {
         </div>
       </div>
 
-      {/* Input */}
       <div className="bg-white border-t sticky bottom-0">
         <div className="max-w-2xl mx-auto px-4 py-3 flex gap-2">
           <input

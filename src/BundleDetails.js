@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ArrowLeft, MapPin, Heart, Star, Eye, Users, Package, Hash, Bookmark } from 'lucide-react';
+import { ArrowLeft, MapPin, Heart, Eye, Package, Hash, Bookmark } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { supabase } from './supabaseClient';
 
@@ -234,7 +234,7 @@ export default function BundleDetails() {
 
         <div className="bg-white rounded-2xl p-6 shadow-lg">
           <h3 className="text-xl font-bold text-stone-800 mb-4">Contact Seller</h3>
-          <Link to={`/Chat?bundle=${bundle.id}`}>
+          <Link to={`/ChatRoom?conversation=${bundle.id}&livestock=${bundle.id}`}>
             <button className="w-full bg-amber-500 hover:bg-amber-600 text-white rounded-full h-12 font-semibold">
               Message Seller
             </button>

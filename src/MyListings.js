@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { ArrowLeft, Plus, Trash2, Eye, Heart, Star } from 'lucide-react';
+import { ArrowLeft, Plus, Trash2, Eye, Heart } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { supabase } from './supabaseClient';
 
 export default function MyListings() {
-  const [user, setUser] = useState(null);
+  const [, setUser] = useState(null);
   const [myListings, setMyListings] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -99,7 +99,6 @@ export default function MyListings() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-amber-50 via-white to-stone-50">
-      {/* Header */}
       <div className="bg-white/80 backdrop-blur-md border-b border-stone-200 sticky top-0 z-30">
         <div className="max-w-6xl mx-auto px-4 py-4 flex items-center justify-between">
           <div className="flex items-center gap-4">
@@ -142,7 +141,6 @@ export default function MyListings() {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {myListings.map(livestock => (
               <div key={livestock.id} className="bg-white rounded-2xl shadow-lg overflow-hidden hover:shadow-xl transition-shadow">
-                {/* Image */}
                 <div className="h-48 bg-gradient-to-br from-amber-50 to-stone-100 relative overflow-hidden">
                   {livestock.images && livestock.images.length > 0 ? (
                     <img
@@ -162,7 +160,6 @@ export default function MyListings() {
                   </div>
                 </div>
 
-                {/* Info */}
                 <div className="p-5 space-y-4">
                   <div>
                     <h3 className="text-xl font-bold text-stone-800 mb-1">{livestock.name}</h3>
@@ -171,7 +168,6 @@ export default function MyListings() {
                     </p>
                   </div>
 
-                  {/* Stats */}
                   <div className="flex gap-3">
                     <div className="flex items-center gap-1 text-sm">
                       <Heart className="w-4 h-4 text-rose-500 fill-rose-500" />
@@ -185,7 +181,6 @@ export default function MyListings() {
                     </div>
                   )}
 
-                  {/* Actions */}
                   <div className="flex gap-2 pt-2 border-t border-stone-200">
                     <Link to={`/BreedDetails?id=${livestock.id}`} className="flex-1">
                       <button className="w-full rounded-full px-3 py-2 border-2 border-stone-300 hover:bg-stone-100 flex items-center justify-center gap-2">
