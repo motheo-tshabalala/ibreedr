@@ -308,7 +308,7 @@ export default function Browse() {
 
   const allItems = useMemo(() => [...realListings, ...realBundles], [realListings, realBundles]);
 
-  const getFilteredItems = () => {
+  const displayItems = useMemo(() => {
     let items = [...allItems];
 
     if (searchQuery) {
@@ -346,9 +346,7 @@ export default function Browse() {
     else if (viewMode === 'bundles') items = items.filter(item => item.listing_type === 'bundle');
 
     return items;
-  };
-
-  const displayItems = useMemo(() => getFilteredItems(), [allItems, searchQuery, filters, viewMode]);
+  }, [allItems, searchQuery, filters, viewMode]);
 
   useEffect(() => {
     if (displayItems.length > 0 && currentIndex < displayItems.length) {
@@ -404,7 +402,6 @@ export default function Browse() {
               <h1 className="text-2xl font-bold text-amber-600">iBreedr</h1>
             </Link>
             <div className="flex gap-2">
-              {/* Chat Button */}
               <Link to="/ChatList">
                 <button className="rounded-full p-2 border-2 border-amber-500 text-amber-500">
                   <MessageCircle className="w-4 h-4" />

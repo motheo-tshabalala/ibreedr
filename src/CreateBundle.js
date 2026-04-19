@@ -1,7 +1,18 @@
 import React, { useState, useEffect } from 'react';
-import { ArrowLeft, Plus, X, Package, Percent, MapPin, Truck } from 'lucide-react';
+import { ArrowLeft, X, Package, Percent, Truck } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { supabase } from './supabaseClient';
+
+const ANIMAL_TYPES = [
+  { value: 'cattle', label: 'Cattle' },
+  { value: 'goats', label: 'Goats' },
+  { value: 'sheep', label: 'Sheep' },
+  { value: 'pigs', label: 'Pigs' },
+  { value: 'chickens', label: 'Chickens' },
+  { value: 'horses', label: 'Horses' },
+  { value: 'donkeys', label: 'Donkeys' },
+  { value: 'rabbits', label: 'Rabbits' }
+];
 
 export default function CreateBundle() {
   const [user, setUser] = useState(null);
@@ -16,7 +27,6 @@ export default function CreateBundle() {
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Get current user and their active listings
   useEffect(() => {
     const getUser = async () => {
       const { data: { user } } = await supabase.auth.getUser();
@@ -81,7 +91,6 @@ export default function CreateBundle() {
       .map(id => myListings.find(l => l.id === id)?.images?.[0])
       .filter(Boolean);
 
-    // Create bundle
     const { error: bundleError } = await supabase
       .from('bundles')
       .insert([{
@@ -106,7 +115,6 @@ export default function CreateBundle() {
       return;
     }
 
-    // Mark livestock as reserved
     for (const id of selectedLivestock) {
       await supabase
         .from('livestock')
