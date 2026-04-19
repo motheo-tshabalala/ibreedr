@@ -12,6 +12,9 @@ import BundleDetails from './BundleDetails';
 import BreedDetails from './BreedDetails';
 import Auth from './Auth';
 import Logout from './Logout';
+import ChatList from './ChatList';
+import ChatRoom from './ChatRoom';
+
 
 function App() {
   return (
@@ -28,6 +31,9 @@ function App() {
         <Route path="/BreedDetails" element={<BreedDetails />} />
         <Route path="/login" element={<Auth />} />
         <Route path="/logout" element={<Logout />} />
+        <Route path="/ChatList" element={<ChatList />} />
+        <Route path="/ChatRoom" element={<ChatRoom />} />
+
       </Routes>
     </Router>
   );

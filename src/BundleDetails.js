@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ArrowLeft, Package, MapPin, Percent, CreditCard } from 'lucide-react';
+import { ArrowLeft, MapPin, Heart, Star, Eye, Users, Package, Hash, Bookmark } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { supabase } from './supabaseClient';
 
@@ -7,12 +7,12 @@ export default function BundleDetails() {
   const urlParams = new URLSearchParams(window.location.search);
   const bundleId = urlParams.get('id');
 
-  const [bundle, setBundle] = useState(null);
-  const [bundleLivestock, setBundleLivestock] = useState([]);
   const [user, setUser] = useState(null);
+  const [bundle, setBundle] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [hasLiked, setHasLiked] = useState(false);
+  const [isInWishlist, setIsInWishlist] = useState(false);
 
-  // Get current user
   useEffect(() => {
     const getUser = async () => {
       const { data: { user } } = await supabase.auth.getUser();
@@ -21,49 +21,75 @@ export default function BundleDetails() {
     getUser();
   }, []);
 
-  // Load bundle details
   useEffect(() => {
     const loadBundle = async () => {
-      if (!bundleId) {
-        setIsLoading(false);
-        return;
-      }
+      if (!bundleId) return;
 
       setIsLoading(true);
 
-      // Get bundle
-      const { data: bundleData, error: bundleError } = await supabase
+      const { data, error } = await supabase
         .from('bundles')
         .select('*')
         .eq('id', bundleId)
         .single();
 
-      if (bundleError) {
-        console.error('Error loading bundle:', bundleError);
-        setIsLoading(false);
-        return;
-      }
+      if (error) {
+        console.error('Error loading bundle:', error);
+      } else {
+        setBundle(data);
 
-      setBundle(bundleData);
-
-      // Get livestock in bundle
-      if (bundleData.livestock_ids && bundleData.livestock_ids.length > 0) {
-        const { data: livestockData } = await supabase
-          .from('livestock')
-          .select('*')
-          .in('id', bundleData.livestock_ids);
-
-        setBundleLivestock(livestockData || []);
+        if (user) {
+          const { data: wishlistData } = await supabase
+            .from('wishlist')
+            .select('*')
+            .eq('livestock_id', bundleId)
+            .eq('user_id', user.id)
+            .maybeSingle();
+          setIsInWishlist(!!wishlistData);
+        }
       }
 
       setIsLoading(false);
     };
 
     loadBundle();
-  }, [bundleId]);
+  }, [bundleId, user]);
 
-  const individualTotal = bundleLivestock.reduce((sum, l) => sum + (Number(l.price) || 0), 0);
-  const discount = bundle ? bundle.discount_percentage || Math.round(((individualTotal - bundle.bundle_price) / individualTotal) * 100) : 0;
+  const toggleWishlist = async () => {
+    if (!user) {
+      alert('Please login to save to wishlist');
+      window.location.href = '/login';
+      return;
+    }
+
+    if (isInWishlist) {
+      await supabase
+        .from('wishlist')
+        .delete()
+        .eq('livestock_id', bundleId)
+        .eq('user_id', user.id);
+      setIsInWishlist(false);
+      alert('Removed from wishlist');
+    } else {
+      await supabase
+        .from('wishlist')
+        .insert([{
+          livestock_id: bundleId,
+          user_id: user.id,
+          livestock_name: bundle.bundle_name,
+          original_price: bundle.bundle_price
+        }]);
+      setIsInWishlist(true);
+      alert('Added to wishlist');
+    }
+  };
+
+  const toggleLike = () => {
+    setHasLiked(!hasLiked);
+  };
+
+  const totalPrice = bundle?.bundle_price || (bundle?.price_per_head * bundle?.quantity);
+  const pricePerHead = bundle?.price_per_head || (totalPrice / bundle?.quantity);
 
   if (isLoading) {
     return (
@@ -102,105 +128,118 @@ export default function BundleDetails() {
       </div>
 
       <div className="max-w-4xl mx-auto px-4 py-8 space-y-6">
-        {/* Images */}
         <div className="bg-white rounded-2xl overflow-hidden shadow-lg">
-          {bundle.images && bundle.images[0] ? (
-            <img src={bundle.images[0]} alt={bundle.bundle_name} className="w-full h-80 object-cover" />
+          {bundle.video_url ? (
+            <video
+              src={bundle.video_url}
+              className="w-full h-96 object-cover"
+              controls
+              poster={bundle.images?.[0]}
+            />
+          ) : bundle.images && bundle.images[0] ? (
+            <img src={bundle.images[0]} alt={bundle.bundle_name} className="w-full h-96 object-cover" />
           ) : (
-            <div className="w-full h-80 bg-gradient-to-br from-purple-200 to-purple-400 flex items-center justify-center">
+            <div className="h-96 bg-gradient-to-br from-green-200 to-green-400 flex items-center justify-center">
               <Package className="w-24 h-24 text-white" />
             </div>
           )}
         </div>
 
-        {/* Main Info */}
         <div className="bg-white rounded-2xl p-6 shadow-lg space-y-4">
           <div className="flex items-start justify-between">
             <div>
               <div className="flex items-center gap-2 mb-2">
-                <Package className="w-6 h-6 text-purple-600" />
-                <span className="text-sm font-medium text-purple-600">Bundle Deal</span>
+                <Hash className="w-4 h-4 text-stone-400" />
+                <span className="text-sm text-stone-500">Ref: #{bundle.id}</span>
               </div>
               <h2 className="text-3xl font-bold text-stone-800 mb-2">{bundle.bundle_name}</h2>
               <div className="flex items-center gap-2 text-stone-600">
                 <MapPin className="w-4 h-4" />
-                <span>{bundle.location || 'Location not specified'}</span>
+                <span>{bundle.location}</span>
               </div>
             </div>
-            {discount > 0 && (
-              <div className="bg-green-100 text-green-800 rounded-full px-4 py-2 flex items-center gap-2">
-                <Percent className="w-5 h-5" />
-                <span className="font-bold">{discount}% OFF</span>
-              </div>
-            )}
+            <div className="flex gap-2">
+              <button onClick={toggleWishlist} className="p-3 hover:bg-stone-100 rounded-full">
+                <Bookmark className={`w-7 h-7 ${isInWishlist ? 'text-amber-500 fill-amber-500' : 'text-stone-400'}`} />
+              </button>
+              <button onClick={toggleLike} className="p-3 hover:bg-stone-100 rounded-full">
+                <Heart className={`w-7 h-7 ${hasLiked ? 'text-rose-500 fill-rose-500' : 'text-stone-400'}`} />
+              </button>
+            </div>
           </div>
 
-          {bundle.bundle_description && (
-            <p className="text-stone-700 leading-relaxed">{bundle.bundle_description}</p>
-          )}
+          <div className="flex flex-wrap gap-4 pt-4 border-t border-stone-200">
+            <div className="flex items-center gap-2 bg-blue-100 rounded-full px-4 py-2">
+              <Eye className="w-5 h-5 text-blue-600" />
+              <span className="font-semibold text-blue-900">0 views</span>
+            </div>
+            <div className="flex items-center gap-2 bg-purple-100 rounded-full px-4 py-2">
+              <Package className="w-5 h-5 text-purple-600" />
+              <span className="font-semibold text-purple-900">{bundle.quantity || 1} animals</span>
+            </div>
+          </div>
 
           <div className="pt-4 border-t border-stone-200">
             <div className="flex items-baseline gap-3">
-              <p className="text-4xl font-bold text-purple-600">
-                R {Number(bundle.bundle_price).toLocaleString()}
-              </p>
-              {individualTotal > bundle.bundle_price && (
-                <p className="text-lg text-stone-400 line-through">
-                  R {individualTotal.toLocaleString()}
-                </p>
+              <span className="text-3xl font-bold text-green-600">R {Math.round(pricePerHead).toLocaleString()}<span className="text-base">/head</span></span>
+            </div>
+            <p className="text-sm text-stone-500 mt-1">Total: R {Math.round(totalPrice).toLocaleString()} for {bundle.quantity} animals</p>
+          </div>
+        </div>
+
+        {bundle.breed_type && (
+          <div className="bg-white rounded-2xl p-6 shadow-lg">
+            <h3 className="text-xl font-bold text-stone-800 mb-4">Specifications</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {bundle.breed_type && (
+                <div className="p-3 bg-stone-50 rounded-xl">
+                  <p className="text-xs text-stone-500">Breed</p>
+                  <p className="font-semibold text-stone-800">{bundle.breed_type}</p>
+                </div>
+              )}
+              {bundle.pure_cross && (
+                <div className="p-3 bg-stone-50 rounded-xl">
+                  <p className="text-xs text-stone-500">Pure / Cross</p>
+                  <p className="font-semibold text-stone-800 capitalize">{bundle.pure_cross}</p>
+                </div>
+              )}
+              {bundle.age_display && (
+                <div className="p-3 bg-stone-50 rounded-xl">
+                  <p className="text-xs text-stone-500">Age</p>
+                  <p className="font-semibold text-stone-800">{bundle.age_display}</p>
+                </div>
+              )}
+              {bundle.weight_display && (
+                <div className="p-3 bg-stone-50 rounded-xl">
+                  <p className="text-xs text-stone-500">Weight</p>
+                  <p className="font-semibold text-stone-800">{bundle.weight_display}</p>
+                </div>
+              )}
+              {bundle.pregnancy_status && bundle.pregnancy_status !== 'n/a' && (
+                <div className="p-3 bg-pink-50 rounded-xl">
+                  <p className="text-xs text-stone-500">Pregnancy Status</p>
+                  <p className="font-semibold text-pink-700 capitalize">{bundle.pregnancy_status}</p>
+                </div>
               )}
             </div>
-            {individualTotal > bundle.bundle_price && (
-              <p className="text-sm text-stone-600 mt-1">
-                Save R {(individualTotal - bundle.bundle_price).toLocaleString()} compared to individual prices
-              </p>
-            )}
-          </div>
-        </div>
-
-        {/* Livestock in Bundle */}
-        <div className="bg-white rounded-2xl p-6 shadow-lg">
-          <h3 className="text-xl font-bold text-stone-800 mb-4">Included in Bundle ({bundleLivestock.length})</h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {bundleLivestock.map(animal => (
-              <Link key={animal.id} to={`/BreedDetails?id=${animal.id}`}>
-                <div className="flex gap-3 p-3 bg-stone-50 rounded-xl hover:bg-stone-100 transition cursor-pointer">
-                  {animal.images && animal.images[0] ? (
-                    <img src={animal.images[0]} alt={animal.name} className="w-20 h-20 rounded-lg object-cover" />
-                  ) : (
-                    <div className="w-20 h-20 rounded-lg bg-stone-200 flex items-center justify-center text-3xl">🐄</div>
-                  )}
-                  <div className="flex-1">
-                    <p className="font-semibold text-stone-800">{animal.name}</p>
-                    <p className="text-sm text-stone-600">{animal.breed_type}</p>
-                    <p className="text-sm font-medium text-stone-800">R {Number(animal.price).toLocaleString()}</p>
-                  </div>
-                </div>
-              </Link>
-            ))}
-          </div>
-        </div>
-
-        {/* Transport Info */}
-        {bundle.seller_transport_available && (
-          <div className="bg-white rounded-2xl p-6 shadow-lg">
-            <h3 className="text-xl font-bold text-stone-800 mb-4">Delivery Available</h3>
-            <div className="space-y-2">
-              <p className="text-stone-600">Rate: R {bundle.seller_transport_rate_per_km} per km</p>
-              <p className="text-stone-600">Max radius: {bundle.seller_max_delivery_radius_km} km</p>
-            </div>
           </div>
         )}
 
-        {/* Buy Button */}
-        {user && bundle.user_id !== user.id && (
-          <Link to={`/Payment?bundle=${bundle.id}`}>
-            <button className="w-full bg-purple-600 hover:bg-purple-700 text-white rounded-full h-14 text-lg font-semibold">
-              <CreditCard className="w-5 h-5 inline mr-2" />
-              Buy Bundle - R {Number(bundle.bundle_price).toLocaleString()}
+        {bundle.bundle_description && (
+          <div className="bg-white rounded-2xl p-6 shadow-lg">
+            <h3 className="text-xl font-bold text-stone-800 mb-3">Description</h3>
+            <p className="text-stone-700 leading-relaxed">{bundle.bundle_description}</p>
+          </div>
+        )}
+
+        <div className="bg-white rounded-2xl p-6 shadow-lg">
+          <h3 className="text-xl font-bold text-stone-800 mb-4">Contact Seller</h3>
+          <Link to={`/Chat?bundle=${bundle.id}`}>
+            <button className="w-full bg-amber-500 hover:bg-amber-600 text-white rounded-full h-12 font-semibold">
+              Message Seller
             </button>
           </Link>
-        )}
+        </div>
       </div>
     </div>
   );

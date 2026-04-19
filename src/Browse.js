@@ -1,11 +1,24 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Search, SlidersHorizontal, X, Heart, Bookmark } from 'lucide-react';
+import { Search, SlidersHorizontal, X, Heart, Bookmark, Eye, MessageCircle } from 'lucide-react';
 import { motion, useMotionValue, useTransform, AnimatePresence } from 'framer-motion';
 import { Link } from 'react-router-dom';
 import { supabase } from './supabaseClient';
 
-// Livestock Card with Wishlist Button
+// Livestock Card
 function LivestockCard({ livestock, onWishlist, isInWishlist }) {
+  const [isVideo, setIsVideo] = useState(false);
+  const [mediaUrl, setMediaUrl] = useState('');
+
+  useEffect(() => {
+    if (livestock?.video_url) {
+      setIsVideo(true);
+      setMediaUrl(livestock.video_url);
+    } else if (livestock?.images && livestock.images[0]) {
+      setIsVideo(false);
+      setMediaUrl(livestock.images[0]);
+    }
+  }, [livestock]);
+
   if (!livestock) {
     return (
       <div className="bg-white rounded-2xl shadow-xl overflow-hidden">
@@ -16,17 +29,48 @@ function LivestockCard({ livestock, onWishlist, isInWishlist }) {
     );
   }
 
+  const getWeightDisplay = () => {
+    if (livestock.weight_min && livestock.weight_max) {
+      return `${livestock.weight_min} - ${livestock.weight_max} KG`;
+    } else if (livestock.weight_min) {
+      return `${livestock.weight_min} KG`;
+    } else if (livestock.weight_max) {
+      return `Up to ${livestock.weight_max} KG`;
+    }
+    return null;
+  };
+
+  const getAgeDisplay = () => {
+    if (livestock.teeth_age) return livestock.teeth_age;
+    const years = livestock.age_years || 0;
+    const months = livestock.age_months || 0;
+    if (years > 0 && months > 0) return `${years}y ${months}m`;
+    if (years > 0) return `${years} year${years > 1 ? 's' : ''}`;
+    if (months > 0) return `${months} month${months > 1 ? 's' : ''}`;
+    return null;
+  };
+
+  const weightDisplay = getWeightDisplay();
+  const ageDisplay = getAgeDisplay();
+
   return (
     <div className="bg-white rounded-2xl shadow-xl overflow-hidden cursor-pointer relative">
-      <div className="h-96 bg-gradient-to-br from-amber-200 to-amber-400 flex items-center justify-center">
-        {livestock.images && livestock.images[0] ? (
-          <img src={livestock.images[0]} alt={livestock.name} className="w-full h-full object-cover" />
+      <div className="h-96 bg-gradient-to-br from-amber-200 to-amber-400 flex items-center justify-center relative">
+        {isVideo ? (
+          <video
+            src={mediaUrl}
+            className="w-full h-full object-cover"
+            poster={livestock.images?.[0]}
+            controls
+            onClick={(e) => e.stopPropagation()}
+          />
+        ) : mediaUrl ? (
+          <img src={mediaUrl} alt={livestock.name} className="w-full h-full object-cover" />
         ) : (
           <span className="text-6xl">🐄</span>
         )}
       </div>
 
-      {/* Wishlist Button on Card */}
       <button
         onClick={(e) => {
           e.stopPropagation();
@@ -38,10 +82,41 @@ function LivestockCard({ livestock, onWishlist, isInWishlist }) {
       </button>
 
       <div className="p-4">
-        <h2 className="text-xl font-bold">{livestock.name || 'Unnamed'}</h2>
-        <p className="text-amber-600 font-semibold">R{livestock.price ? Number(livestock.price).toLocaleString() : '0'}</p>
-        <p className="text-stone-600">{livestock.animal_type || 'Unknown'} • {livestock.breed_type || 'Unknown'}</p>
-        <p className="text-stone-500 text-sm">{livestock.location || 'No location'}</p>
+        <div className="flex justify-between items-start">
+          <div>
+            <h2 className="text-xl font-bold text-stone-800">{livestock.name || 'Unnamed'}</h2>
+            <p className="text-xs text-stone-400">Ref: {livestock.reference_number || 'N/A'}</p>
+          </div>
+          <p className="text-amber-600 font-bold text-lg">R{livestock.price ? Number(livestock.price).toLocaleString() : '0'}</p>
+        </div>
+
+        <div className="mt-2 space-y-1">
+          <p className="text-stone-600">{livestock.breed_type} • {livestock.animal_type}</p>
+          <p className="text-stone-500 text-sm">{livestock.location}</p>
+
+          <div className="flex flex-wrap gap-2 mt-2">
+            {livestock.pure_cross && (
+              <span className="text-xs bg-stone-100 px-2 py-1 rounded-full">
+                {livestock.pure_cross === 'pure' ? 'Pure Breed' : 'Cross Breed'}
+              </span>
+            )}
+            {ageDisplay && (
+              <span className="text-xs bg-stone-100 px-2 py-1 rounded-full">
+                {ageDisplay}
+              </span>
+            )}
+            {weightDisplay && (
+              <span className="text-xs bg-stone-100 px-2 py-1 rounded-full">
+                {weightDisplay}
+              </span>
+            )}
+            {livestock.pregnancy_status && livestock.pregnancy_status !== 'n/a' && (
+              <span className="text-xs bg-pink-100 text-pink-700 px-2 py-1 rounded-full">
+                {livestock.pregnancy_status === 'pregnant' ? '🤰 Pregnant' : livestock.pregnancy_status}
+              </span>
+            )}
+          </div>
+        </div>
       </div>
     </div>
   );
@@ -60,14 +135,27 @@ function BundleCard({ bundle }) {
 
   return (
     <div className="bg-white rounded-2xl shadow-xl overflow-hidden cursor-pointer">
-      <div className="h-96 bg-gradient-to-br from-green-200 to-green-400 flex items-center justify-center">
-        <span className="text-6xl">📦</span>
+      <div className="h-96 bg-gradient-to-br from-green-200 to-green-400 flex items-center justify-center relative">
+        {bundle.video_url ? (
+          <video
+            src={bundle.video_url}
+            className="w-full h-full object-cover"
+            controls
+            onClick={(e) => e.stopPropagation()}
+          />
+        ) : bundle.images && bundle.images[0] ? (
+          <img src={bundle.images[0]} alt={bundle.bundle_name} className="w-full h-full object-cover" />
+        ) : (
+          <span className="text-6xl">📦</span>
+        )}
       </div>
       <div className="p-4">
         <h2 className="text-xl font-bold">{bundle.bundle_name || 'Bundle'}</h2>
         <p className="text-amber-600 font-semibold">R{bundle.bundle_price ? Number(bundle.bundle_price).toLocaleString() : '0'}</p>
-        <p className="text-stone-600">{bundle.animal_count || 0} animals</p>
         <p className="text-stone-500 text-sm">{bundle.location || 'No location'}</p>
+        {bundle.bundle_description && (
+          <p className="text-stone-600 text-sm mt-2 line-clamp-2">{bundle.bundle_description}</p>
+        )}
       </div>
     </div>
   );
@@ -148,7 +236,6 @@ export default function Browse() {
   const rotate = useTransform(x, [-200, 200], [-25, 25]);
   const opacity = useTransform(x, [-200, -100, 0, 100, 200], [0, 1, 1, 1, 0]);
 
-  // Check if user is logged in
   useEffect(() => {
     const getUser = async () => {
       const { data: { user } } = await supabase.auth.getUser();
@@ -157,73 +244,43 @@ export default function Browse() {
     getUser();
   }, []);
 
-  // Load wishlist IDs for current user
   useEffect(() => {
     const loadWishlist = async () => {
       if (!user) return;
-
-      const { data } = await supabase
-        .from('wishlist')
-        .select('livestock_id')
-        .eq('user_id', user.id);
-
-      if (data) {
-        setWishlistIds(data.map(item => item.livestock_id));
-      }
+      const { data } = await supabase.from('wishlist').select('livestock_id').eq('user_id', user.id);
+      if (data) setWishlistIds(data.map(item => item.livestock_id));
     };
-
     loadWishlist();
   }, [user]);
 
-  // Load real listings from Supabase
   useEffect(() => {
     const loadListings = async () => {
       setIsLoading(true);
 
-      const { data: livestockData, error: livestockError } = await supabase
+      const { data: livestockData } = await supabase
         .from('livestock')
         .select('*')
         .eq('status', 'active')
         .order('created_at', { ascending: false });
 
-      if (livestockError) {
-        console.error('Error loading listings:', livestockError);
-      } else {
-        setRealListings(livestockData || []);
-      }
+      const itemsWithType = (livestockData || []).map(item => ({ ...item, listing_type: 'individual', isBundle: false }));
+      setRealListings(itemsWithType);
 
-      const { data: bundlesData, error: bundlesError } = await supabase
+      const { data: bundlesData } = await supabase
         .from('bundles')
         .select('*')
         .eq('status', 'active')
         .order('created_at', { ascending: false });
 
-      if (bundlesError) {
-        console.error('Error loading bundles:', bundlesError);
-      } else {
-        setRealBundles(bundlesData || []);
-      }
+      const bundlesWithType = (bundlesData || []).map(item => ({ ...item, listing_type: 'bundle', isBundle: true }));
+      setRealBundles(bundlesWithType);
 
       setIsLoading(false);
     };
 
     loadListings();
-
-    const subscription = supabase
-      .channel('public:livestock')
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'livestock' }, (payload) => {
-        if (payload.new.status === 'active') {
-          setRealListings(prev => [payload.new, ...prev]);
-        }
-      })
-      .subscribe();
-
-    return () => {
-      subscription.unsubscribe();
-    };
   }, []);
 
-  // Add to wishlist
   const addToWishlist = async (livestock) => {
     if (!user) {
       alert('Please login to save to wishlist');
@@ -234,40 +291,22 @@ export default function Browse() {
     const isInWishlist = wishlistIds.includes(livestock.id);
 
     if (isInWishlist) {
-      // Remove
-      const { error } = await supabase
-        .from('wishlist')
-        .delete()
-        .eq('user_id', user.id)
-        .eq('livestock_id', livestock.id);
-
-      if (!error) {
-        setWishlistIds(wishlistIds.filter(id => id !== livestock.id));
-        alert('Removed from wishlist');
-      }
+      await supabase.from('wishlist').delete().eq('user_id', user.id).eq('livestock_id', livestock.id);
+      setWishlistIds(wishlistIds.filter(id => id !== livestock.id));
+      alert('Removed from wishlist');
     } else {
-      // Add
-      const { error } = await supabase
-        .from('wishlist')
-        .insert([{
-          user_id: user.id,
-          livestock_id: livestock.id,
-          livestock_name: livestock.name,
-          original_price: livestock.price
-        }]);
-
-      if (!error) {
-        setWishlistIds([...wishlistIds, livestock.id]);
-        alert('Added to wishlist');
-      }
+      await supabase.from('wishlist').insert([{
+        user_id: user.id,
+        livestock_id: livestock.id,
+        livestock_name: livestock.name || livestock.bundle_name,
+        original_price: livestock.price || livestock.bundle_price
+      }]);
+      setWishlistIds([...wishlistIds, livestock.id]);
+      alert('Added to wishlist');
     }
   };
 
-  const allItems = useMemo(() => {
-    const realItems = realListings.map(item => ({ ...item, isReal: true }));
-    const bundleItems = realBundles.map(item => ({ ...item, isBundle: true, isReal: true }));
-    return [...realItems, ...bundleItems];
-  }, [realListings, realBundles]);
+  const allItems = useMemo(() => [...realListings, ...realBundles], [realListings, realBundles]);
 
   const getFilteredItems = () => {
     let items = [...allItems];
@@ -277,10 +316,7 @@ export default function Browse() {
       items = items.filter(item => {
         const name = item.name || item.bundle_name || '';
         const breed = item.breed_type || '';
-        const type = item.animal_type || '';
-        return name.toLowerCase().includes(query) ||
-          breed.toLowerCase().includes(query) ||
-          type.toLowerCase().includes(query);
+        return name.toLowerCase().includes(query) || breed.toLowerCase().includes(query);
       });
     }
 
@@ -306,11 +342,8 @@ export default function Browse() {
       });
     }
 
-    if (viewMode === 'individual') {
-      items = items.filter(item => !item.isBundle);
-    } else if (viewMode === 'bundles') {
-      items = items.filter(item => item.isBundle);
-    }
+    if (viewMode === 'individual') items = items.filter(item => item.listing_type === 'individual');
+    else if (viewMode === 'bundles') items = items.filter(item => item.listing_type === 'bundle');
 
     return items;
   };
@@ -334,25 +367,17 @@ export default function Browse() {
     x.set(0);
   };
 
-  const handleSwipeRight = () => {
-    nextCard();
-  };
-
-  const handleSwipeLeft = () => {
-    nextCard();
-  };
+  const handleSwipeRight = () => nextCard();
+  const handleSwipeLeft = () => nextCard();
 
   const nextCard = () => {
-    if (currentIndex < displayItems.length - 1) {
-      setCurrentIndex(prev => prev + 1);
-    } else {
-      setCurrentIndex(displayItems.length);
-    }
+    if (currentIndex < displayItems.length - 1) setCurrentIndex(prev => prev + 1);
+    else setCurrentIndex(displayItems.length);
   };
 
   const handleCardClick = () => {
     if (currentItem) {
-      if (currentItem.isBundle) {
+      if (currentItem.listing_type === 'bundle') {
         window.location.href = `/BundleDetails?id=${currentItem.id}`;
       } else {
         window.location.href = `/BreedDetails?id=${currentItem.id}`;
@@ -360,16 +385,9 @@ export default function Browse() {
     }
   };
 
-  const toggleLike = async () => {
-    if (!user) {
-      alert('Please login to like');
-      window.location.href = '/login';
-      return;
-    }
-    setHasLiked(!hasLiked);
-  };
+  const toggleLike = () => setHasLiked(!hasLiked);
 
-  if (isLoading && realListings.length === 0) {
+  if (isLoading && allItems.length === 0) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-amber-50 to-stone-100 flex items-center justify-center">
         <div className="animate-spin rounded-full h-12 w-12 border-4 border-stone-300 border-t-amber-600"></div>
@@ -379,7 +397,6 @@ export default function Browse() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-amber-50 to-stone-100">
-      {/* Header */}
       <div className="bg-white border-b sticky top-0 z-30 shadow-sm">
         <div className="max-w-md mx-auto px-4 py-4 space-y-3">
           <div className="flex items-center justify-between">
@@ -387,6 +404,12 @@ export default function Browse() {
               <h1 className="text-2xl font-bold text-amber-600">iBreedr</h1>
             </Link>
             <div className="flex gap-2">
+              {/* Chat Button */}
+              <Link to="/ChatList">
+                <button className="rounded-full p-2 border-2 border-amber-500 text-amber-500">
+                  <MessageCircle className="w-4 h-4" />
+                </button>
+              </Link>
               <Link to="/Wishlist">
                 <button className="rounded-full p-2 border-2 border-amber-500 text-amber-500">
                   <Bookmark className="w-4 h-4" />
@@ -413,25 +436,30 @@ export default function Browse() {
             </div>
           </div>
 
-          {/* View Mode Toggle */}
           <div className="flex gap-2 rounded-full p-1 bg-stone-100">
-            {[
-              { key: 'both', label: 'All' },
-              { key: 'individual', label: 'Individual' },
-              { key: 'bundles', label: 'Bundles' }
-            ].map((mode) => (
-              <button
-                key={mode.key}
-                onClick={() => { setViewMode(mode.key); setCurrentIndex(0); }}
-                className={`flex-1 px-3 py-1 rounded-full text-sm font-medium transition-colors ${viewMode === mode.key ? 'bg-amber-500 text-white' : 'text-stone-600'
-                  }`}
-              >
-                {mode.label}
-              </button>
-            ))}
+            <button
+              onClick={() => { setViewMode('both'); setCurrentIndex(0); }}
+              className={`flex-1 px-3 py-1 rounded-full text-sm font-medium transition-colors ${viewMode === 'both' ? 'bg-amber-500 text-white' : 'text-stone-600'
+                }`}
+            >
+              All
+            </button>
+            <button
+              onClick={() => { setViewMode('individual'); setCurrentIndex(0); }}
+              className={`flex-1 px-3 py-1 rounded-full text-sm font-medium transition-colors ${viewMode === 'individual' ? 'bg-amber-500 text-white' : 'text-stone-600'
+                }`}
+            >
+              Individual
+            </button>
+            <button
+              onClick={() => { setViewMode('bundles'); setCurrentIndex(0); }}
+              className={`flex-1 px-3 py-1 rounded-full text-sm font-medium transition-colors ${viewMode === 'bundles' ? 'bg-amber-500 text-white' : 'text-stone-600'
+                }`}
+            >
+              Bundles
+            </button>
           </div>
 
-          {/* Search Bar */}
           <div className="flex gap-2">
             <div className="flex-1 relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-stone-400" />
@@ -457,12 +485,11 @@ export default function Browse() {
         </div>
       </div>
 
-      {/* Main Card Area */}
       <div className="max-w-md mx-auto px-4 pt-8 pb-32">
         {displayItems.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-[600px] text-center">
             <div className="text-6xl mb-4">🔍</div>
-            <h3 className="text-xl font-bold text-stone-800 mb-2">No livestock found</h3>
+            <h3 className="text-xl font-bold text-stone-800 mb-2">No listings found</h3>
             <p className="text-stone-600">Try adjusting your search or filters</p>
             <button
               onClick={() => { setFilters({ location: '', priceMin: '', priceMax: '' }); setSearchQuery(''); }}
@@ -500,7 +527,7 @@ export default function Browse() {
                 onClick={handleCardClick}
                 className="cursor-pointer absolute w-full"
               >
-                {currentItem?.isBundle ? (
+                {currentItem?.listing_type === 'bundle' ? (
                   <BundleCard bundle={currentItem} />
                 ) : (
                   <LivestockCard
@@ -512,7 +539,6 @@ export default function Browse() {
               </motion.div>
             </AnimatePresence>
 
-            {/* Action Buttons */}
             <div className="absolute bottom-4 left-0 right-0 flex justify-center gap-8">
               <button
                 onClick={handleSwipeLeft}
@@ -539,7 +565,6 @@ export default function Browse() {
         )}
       </div>
 
-      {/* Filter Panel */}
       <FilterPanel
         isOpen={isFilterOpen}
         onClose={() => setIsFilterOpen(false)}
@@ -547,7 +572,6 @@ export default function Browse() {
         initialFilters={filters}
       />
 
-      {/* FAB - Upload */}
       <Link to="/SellerUpload">
         <button className="fixed bottom-6 right-6 w-14 h-14 bg-amber-500 hover:bg-amber-600 text-white rounded-full shadow-2xl text-3xl transition">
           +
