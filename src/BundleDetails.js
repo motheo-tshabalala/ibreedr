@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ArrowLeft, MapPin, Heart, Eye, Package, Hash, Bookmark } from 'lucide-react';
+import { ArrowLeft, MapPin, Heart, Eye, Package, Hash, Bookmark, MessageCircle } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { supabase } from './supabaseClient';
 
@@ -12,6 +12,9 @@ export default function BundleDetails() {
   const [isLoading, setIsLoading] = useState(true);
   const [hasLiked, setHasLiked] = useState(false);
   const [isInWishlist, setIsInWishlist] = useState(false);
+  const [conversationId, setConversationId] = useState(null);
+  const [lightboxOpen, setLightboxOpen] = useState(false);
+  const [currentImageIndex, setCurrentImageIndex] = useState(0);
 
   useEffect(() => {
     const getUser = async () => {
@@ -54,6 +57,38 @@ export default function BundleDetails() {
 
     loadBundle();
   }, [bundleId, user]);
+
+  // Get or create conversation for chat
+  useEffect(() => {
+    const getOrCreateConversation = async () => {
+      if (!user || !bundle) return;
+      if (user.id === bundle.user_id) return;
+
+      const { data: existing } = await supabase
+        .from('conversations')
+        .select('id')
+        .eq('livestock_id', bundleId)
+        .eq('buyer_id', user.id)
+        .maybeSingle();
+
+      if (existing) {
+        setConversationId(existing.id);
+      } else {
+        const { data: newConvo } = await supabase
+          .from('conversations')
+          .insert([{
+            livestock_id: bundleId,
+            buyer_id: user.id,
+            seller_id: bundle.user_id
+          }])
+          .select()
+          .single();
+
+        if (newConvo) setConversationId(newConvo.id);
+      }
+    };
+    getOrCreateConversation();
+  }, [user, bundle, bundleId]);
 
   const toggleWishlist = async () => {
     if (!user) {
@@ -128,6 +163,7 @@ export default function BundleDetails() {
       </div>
 
       <div className="max-w-4xl mx-auto px-4 py-8 space-y-6">
+        {/* Image/Video Section with Lightbox */}
         <div className="bg-white rounded-2xl overflow-hidden shadow-lg">
           {bundle.video_url ? (
             <video
@@ -137,14 +173,43 @@ export default function BundleDetails() {
               poster={bundle.images?.[0]}
             />
           ) : bundle.images && bundle.images[0] ? (
-            <img src={bundle.images[0]} alt={bundle.bundle_name} className="w-full h-96 object-cover" />
+            <img
+              src={bundle.images[0]}
+              alt={bundle.bundle_name}
+              className="w-full h-96 object-cover cursor-pointer"
+              onClick={() => {
+                setCurrentImageIndex(0);
+                setLightboxOpen(true);
+              }}
+            />
           ) : (
             <div className="h-96 bg-gradient-to-br from-green-200 to-green-400 flex items-center justify-center">
               <Package className="w-24 h-24 text-white" />
             </div>
           )}
+
+          {bundle.images && bundle.images.length > 1 && (
+            <div className="p-4 border-t">
+              <p className="text-sm text-stone-500 mb-2">Additional photos</p>
+              <div className="flex gap-2 overflow-x-auto">
+                {bundle.images.slice(1).map((img, idx) => (
+                  <img
+                    key={idx}
+                    src={img}
+                    alt={`${bundle.bundle_name} ${idx + 2}`}
+                    className="w-20 h-20 rounded-lg object-cover cursor-pointer hover:opacity-80 transition"
+                    onClick={() => {
+                      setCurrentImageIndex(idx + 1);
+                      setLightboxOpen(true);
+                    }}
+                  />
+                ))}
+              </div>
+            </div>
+          )}
         </div>
 
+        {/* Main Info Card */}
         <div className="bg-white rounded-2xl p-6 shadow-lg space-y-4">
           <div className="flex items-start justify-between">
             <div>
@@ -187,7 +252,8 @@ export default function BundleDetails() {
           </div>
         </div>
 
-        {bundle.breed_type && (
+        {/* Specifications Card */}
+        {(bundle.breed_type || bundle.pure_cross || bundle.age_display || bundle.weight_display || bundle.pregnancy_status) && (
           <div className="bg-white rounded-2xl p-6 shadow-lg">
             <h3 className="text-xl font-bold text-stone-800 mb-4">Specifications</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -225,6 +291,7 @@ export default function BundleDetails() {
           </div>
         )}
 
+        {/* Description */}
         {bundle.bundle_description && (
           <div className="bg-white rounded-2xl p-6 shadow-lg">
             <h3 className="text-xl font-bold text-stone-800 mb-3">Description</h3>
@@ -232,15 +299,84 @@ export default function BundleDetails() {
           </div>
         )}
 
+        {/* Contact Seller */}
         <div className="bg-white rounded-2xl p-6 shadow-lg">
           <h3 className="text-xl font-bold text-stone-800 mb-4">Contact Seller</h3>
-          <Link to={`/ChatRoom?conversation=${bundle.id}&livestock=${bundle.id}`}>
-            <button className="w-full bg-amber-500 hover:bg-amber-600 text-white rounded-full h-12 font-semibold">
-              Message Seller
+          {user && user.id !== bundle.user_id && conversationId ? (
+            <Link to={`/ChatRoom?conversation=${conversationId}&livestock=${bundle.id}`}>
+              <button className="w-full bg-amber-500 hover:bg-amber-600 text-white rounded-full h-12 font-semibold flex items-center justify-center gap-2">
+                <MessageCircle className="w-5 h-5" />
+                Message Seller
+              </button>
+            </Link>
+          ) : !user ? (
+            <Link to="/login">
+              <button className="w-full bg-amber-500 hover:bg-amber-600 text-white rounded-full h-12 font-semibold">
+                Login to Message Seller
+              </button>
+            </Link>
+          ) : user && user.id === bundle.user_id ? (
+            <button className="w-full bg-stone-300 text-stone-500 rounded-full h-12 font-semibold cursor-not-allowed">
+              This is your bundle
             </button>
-          </Link>
+          ) : (
+            <button className="w-full bg-stone-300 text-stone-500 rounded-full h-12 font-semibold cursor-not-allowed">
+              Loading...
+            </button>
+          )}
         </div>
       </div>
+
+      {/* Full Screen Image Lightbox */}
+      {lightboxOpen && (
+        <div
+          className="fixed inset-0 bg-black/95 z-50 flex items-center justify-center"
+          onClick={() => setLightboxOpen(false)}
+        >
+          <button
+            className="absolute top-4 right-4 text-white text-4xl z-50 hover:scale-110 transition"
+            onClick={() => setLightboxOpen(false)}
+          >
+            ✕
+          </button>
+          <img
+            src={bundle.images[currentImageIndex]}
+            alt={bundle.bundle_name}
+            className="max-w-full max-h-full object-contain"
+            onClick={(e) => e.stopPropagation()}
+          />
+          {bundle.images && bundle.images.length > 1 && (
+            <>
+              <button
+                className="absolute left-4 top-1/2 -translate-y-1/2 text-white text-4xl bg-black/50 hover:bg-black/70 rounded-full w-12 h-12 flex items-center justify-center transition"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setCurrentImageIndex((prev) => (prev > 0 ? prev - 1 : bundle.images.length - 1));
+                }}
+              >
+                ←
+              </button>
+              <button
+                className="absolute right-4 top-1/2 -translate-y-1/2 text-white text-4xl bg-black/50 hover:bg-black/70 rounded-full w-12 h-12 flex items-center justify-center transition"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setCurrentImageIndex((prev) => (prev < bundle.images.length - 1 ? prev + 1 : 0));
+                }}
+              >
+                →
+              </button>
+              <div className="absolute bottom-4 left-0 right-0 flex justify-center gap-2">
+                {bundle.images.map((_, idx) => (
+                  <div
+                    key={idx}
+                    className={`w-2 h-2 rounded-full transition ${idx === currentImageIndex ? 'bg-white' : 'bg-white/50'}`}
+                  />
+                ))}
+              </div>
+            </>
+          )}
+        </div>
+      )}
     </div>
   );
 }
