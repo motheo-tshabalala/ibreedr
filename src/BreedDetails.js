@@ -19,6 +19,8 @@ export default function BreedDetails() {
   const [reviewerName, setReviewerName] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const [conversationId, setConversationId] = useState(null);
+  const [lightboxOpen, setLightboxOpen] = useState(false);
+  const [currentImageIndex, setCurrentImageIndex] = useState(0);
 
   useEffect(() => {
     const getUser = async () => {
@@ -312,7 +314,15 @@ export default function BreedDetails() {
               poster={livestock.images?.[0]}
             />
           ) : livestock.images && livestock.images[0] ? (
-            <img src={livestock.images[0]} alt={livestock.name} className="w-full h-96 object-cover" />
+            <img
+              src={livestock.images[0]}
+              alt={livestock.name}
+              className="w-full h-96 object-cover cursor-pointer"
+              onClick={() => {
+                setCurrentImageIndex(0);
+                setLightboxOpen(true);
+              }}
+            />
           ) : (
             <div className="h-96 bg-gradient-to-br from-amber-200 to-amber-400 flex items-center justify-center">
               <span className="text-8xl">🐄</span>
@@ -324,7 +334,16 @@ export default function BreedDetails() {
               <p className="text-sm text-stone-500 mb-2">Additional photos</p>
               <div className="flex gap-2 overflow-x-auto">
                 {livestock.images.slice(1).map((img, idx) => (
-                  <img key={idx} src={img} alt={`${livestock.name} ${idx + 2}`} className="w-20 h-20 rounded-lg object-cover" />
+                  <img
+                    key={idx}
+                    src={img}
+                    alt={`${livestock.name} ${idx + 2}`}
+                    className="w-20 h-20 rounded-lg object-cover cursor-pointer hover:opacity-80 transition"
+                    onClick={() => {
+                      setCurrentImageIndex(idx + 1);
+                      setLightboxOpen(true);
+                    }}
+                  />
                 ))}
               </div>
             </div>
@@ -438,12 +457,12 @@ export default function BreedDetails() {
               </div>
             )}
 
-            {livestock.sire_used && (
+            {livestock.rams_used && (
               <div className="flex items-center gap-3 p-3 bg-stone-50 rounded-xl">
                 <Users className="w-5 h-5 text-stone-500" />
                 <div>
                   <p className="text-xs text-stone-500">Sire Used</p>
-                  <p className="font-semibold text-stone-800">{livestock.sire_used}</p>
+                  <p className="font-semibold text-stone-800">{livestock.rams_used}</p>
                 </div>
               </div>
             )}
@@ -627,6 +646,57 @@ export default function BreedDetails() {
           </div>
         </div>
       </div>
+
+      {/* Full Screen Image Lightbox */}
+      {lightboxOpen && (
+        <div
+          className="fixed inset-0 bg-black/95 z-50 flex items-center justify-center"
+          onClick={() => setLightboxOpen(false)}
+        >
+          <button
+            className="absolute top-4 right-4 text-white text-4xl z-50 hover:scale-110 transition"
+            onClick={() => setLightboxOpen(false)}
+          >
+            ✕
+          </button>
+          <img
+            src={livestock.images[currentImageIndex]}
+            alt={livestock.name}
+            className="max-w-full max-h-full object-contain"
+            onClick={(e) => e.stopPropagation()}
+          />
+          {livestock.images && livestock.images.length > 1 && (
+            <>
+              <button
+                className="absolute left-4 top-1/2 -translate-y-1/2 text-white text-4xl bg-black/50 hover:bg-black/70 rounded-full w-12 h-12 flex items-center justify-center transition"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setCurrentImageIndex((prev) => (prev > 0 ? prev - 1 : livestock.images.length - 1));
+                }}
+              >
+                ←
+              </button>
+              <button
+                className="absolute right-4 top-1/2 -translate-y-1/2 text-white text-4xl bg-black/50 hover:bg-black/70 rounded-full w-12 h-12 flex items-center justify-center transition"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setCurrentImageIndex((prev) => (prev < livestock.images.length - 1 ? prev + 1 : 0));
+                }}
+              >
+                →
+              </button>
+              <div className="absolute bottom-4 left-0 right-0 flex justify-center gap-2">
+                {livestock.images.map((_, idx) => (
+                  <div
+                    key={idx}
+                    className={`w-2 h-2 rounded-full transition ${idx === currentImageIndex ? 'bg-white' : 'bg-white/50'}`}
+                  />
+                ))}
+              </div>
+            </>
+          )}
+        </div>
+      )}
     </div>
   );
 }
