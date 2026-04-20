@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Search, SlidersHorizontal, X, Heart, Bookmark, MessageCircle } from 'lucide-react';
+import { Search, SlidersHorizontal, X, Heart, Bookmark, MessageCircle, HelpCircle } from 'lucide-react';
 import { motion, useMotionValue, useTransform, AnimatePresence } from 'framer-motion';
 import { Link } from 'react-router-dom';
 import { supabase } from './supabaseClient';
+import { useHelp } from './HelpContext';
 
 // Livestock Card
 function LivestockCard({ livestock, onWishlist, isInWishlist }) {
@@ -22,7 +23,7 @@ function LivestockCard({ livestock, onWishlist, isInWishlist }) {
   if (!livestock) {
     return (
       <div className="bg-white rounded-2xl shadow-xl overflow-hidden">
-        <div className="h-96 bg-gray-200 flex items-center justify-center">
+        <div className="h-80 bg-gray-200 flex items-center justify-center">
           <span className="text-6xl">🐄</span>
         </div>
       </div>
@@ -55,7 +56,7 @@ function LivestockCard({ livestock, onWishlist, isInWishlist }) {
 
   return (
     <div className="bg-white rounded-2xl shadow-xl overflow-hidden cursor-pointer relative">
-      <div className="h-96 bg-gradient-to-br from-amber-200 to-amber-400 flex items-center justify-center relative">
+      <div className="h-80 bg-gradient-to-br from-amber-200 to-amber-400 flex items-center justify-center relative">
         {isVideo ? (
           <video
             src={mediaUrl}
@@ -126,7 +127,7 @@ function BundleCard({ bundle }) {
   if (!bundle) {
     return (
       <div className="bg-white rounded-2xl shadow-xl overflow-hidden">
-        <div className="h-96 bg-gray-200 flex items-center justify-center">
+        <div className="h-80 bg-gray-200 flex items-center justify-center">
           <span className="text-6xl">📦</span>
         </div>
       </div>
@@ -135,7 +136,7 @@ function BundleCard({ bundle }) {
 
   return (
     <div className="bg-white rounded-2xl shadow-xl overflow-hidden cursor-pointer">
-      <div className="h-96 bg-gradient-to-br from-green-200 to-green-400 flex items-center justify-center relative">
+      <div className="h-80 bg-gradient-to-br from-green-200 to-green-400 flex items-center justify-center relative">
         {bundle.video_url ? (
           <video
             src={bundle.video_url}
@@ -168,35 +169,39 @@ function FilterPanel({ isOpen, onClose, onApply, initialFilters }) {
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex justify-end">
-      <div className="bg-white w-full max-w-sm h-full p-4 overflow-y-auto">
-        <div className="flex justify-between items-center mb-4">
-          <h2 className="text-xl font-bold">Filters</h2>
-          <button onClick={onClose} className="p-2"><X /></button>
+      <div className="bg-white w-full max-w-sm h-full p-6 overflow-y-auto">
+        <div className="flex justify-between items-center mb-6">
+          <h2 className="text-xl font-bold text-stone-800">Filters</h2>
+          <button onClick={onClose} className="p-2 -m-2 rounded-full hover:bg-stone-100">
+            <X className="w-5 h-5 text-stone-500" />
+          </button>
         </div>
-        <div className="space-y-4">
+        <div className="space-y-5">
           <div>
-            <label className="block font-semibold mb-2">Min Price (R)</label>
+            <label className="block font-semibold text-stone-700 mb-2">Min Price (R)</label>
             <input
               type="number"
-              className="w-full border rounded-lg p-2"
+              className="w-full border border-stone-200 rounded-xl p-3 focus:border-amber-400 focus:ring-2 focus:ring-amber-100 outline-none transition"
               value={filters.priceMin}
               onChange={(e) => setFilters({ ...filters, priceMin: e.target.value })}
+              placeholder="0"
             />
           </div>
           <div>
-            <label className="block font-semibold mb-2">Max Price (R)</label>
+            <label className="block font-semibold text-stone-700 mb-2">Max Price (R)</label>
             <input
               type="number"
-              className="w-full border rounded-lg p-2"
+              className="w-full border border-stone-200 rounded-xl p-3 focus:border-amber-400 focus:ring-2 focus:ring-amber-100 outline-none transition"
               value={filters.priceMax}
               onChange={(e) => setFilters({ ...filters, priceMax: e.target.value })}
+              placeholder="Any"
             />
           </div>
           <div>
-            <label className="block font-semibold mb-2">Location</label>
+            <label className="block font-semibold text-stone-700 mb-2">Location</label>
             <input
               type="text"
-              className="w-full border rounded-lg p-2"
+              className="w-full border border-stone-200 rounded-xl p-3 focus:border-amber-400 focus:ring-2 focus:ring-amber-100 outline-none transition"
               placeholder="City or town"
               value={filters.location}
               onChange={(e) => setFilters({ ...filters, location: e.target.value })}
@@ -204,7 +209,7 @@ function FilterPanel({ isOpen, onClose, onApply, initialFilters }) {
           </div>
           <button
             onClick={() => { onApply(filters); onClose(); }}
-            className="w-full bg-amber-500 text-white py-2 rounded-lg font-semibold"
+            className="w-full bg-amber-500 hover:bg-amber-600 text-white py-3 rounded-xl font-semibold transition mt-4"
           >
             Apply Filters
           </button>
@@ -232,8 +237,10 @@ export default function Browse() {
   const [isLoading, setIsLoading] = useState(true);
   const [wishlistIds, setWishlistIds] = useState([]);
 
+  const { helpMode, toggleHelpMode, showHelp } = useHelp();
+
   const x = useMotionValue(0);
-  const rotate = useTransform(x, [-200, 200], [-25, 25]);
+  const rotate = useTransform(x, [-200, 200], [-15, 15]);
   const opacity = useTransform(x, [-200, -100, 0, 100, 200], [0, 1, 1, 1, 0]);
 
   useEffect(() => {
@@ -395,6 +402,7 @@ export default function Browse() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-amber-50 to-stone-100">
+      {/* Header */}
       <div className="bg-white border-b sticky top-0 z-30 shadow-sm">
         <div className="max-w-md mx-auto px-4 py-4 space-y-3">
           <div className="flex items-center justify-between">
@@ -402,158 +410,259 @@ export default function Browse() {
               <h1 className="text-2xl font-bold text-amber-600">iBreedr</h1>
             </Link>
             <div className="flex gap-2">
-              <Link to="/ChatList">
-                <button className="rounded-full p-2 border-2 border-amber-500 text-amber-500">
-                  <MessageCircle className="w-4 h-4" />
-                </button>
-              </Link>
-              <Link to="/Wishlist">
-                <button className="rounded-full p-2 border-2 border-amber-500 text-amber-500">
-                  <Bookmark className="w-4 h-4" />
-                </button>
-              </Link>
-              <Link to="/MyListings">
-                <button className="rounded-full px-3 py-1 border-2 border-amber-500 text-amber-500 text-sm">
-                  My Listings
-                </button>
-              </Link>
+              {/* Help Button */}
+              <button
+                onClick={toggleHelpMode}
+                className={`rounded-full p-2 border-2 transition ${helpMode
+                    ? 'bg-amber-500 border-amber-500 text-white'
+                    : 'border-stone-300 text-stone-500 hover:border-amber-500'
+                  }`}
+              >
+                <HelpCircle className="w-4 h-4" />
+              </button>
+
+              <button
+                onClick={(e) => {
+                  if (helpMode) {
+                    e.stopPropagation();
+                    showHelp('chat');
+                  } else {
+                    window.location.href = '/ChatList';
+                  }
+                }}
+                className="rounded-full p-2 border-2 border-amber-500 text-amber-500"
+              >
+                <MessageCircle className="w-4 h-4" />
+              </button>
+
+              <button
+                onClick={(e) => {
+                  if (helpMode) {
+                    e.stopPropagation();
+                    showHelp('wishlist');
+                  } else {
+                    window.location.href = '/Wishlist';
+                  }
+                }}
+                className="rounded-full p-2 border-2 border-amber-500 text-amber-500"
+              >
+                <Bookmark className="w-4 h-4" />
+              </button>
+
+              <button
+                onClick={(e) => {
+                  if (helpMode) {
+                    e.stopPropagation();
+                    showHelp('myListings');
+                  } else {
+                    window.location.href = '/MyListings';
+                  }
+                }}
+                className="rounded-full px-3 py-1 border-2 border-amber-500 text-amber-500 text-sm"
+              >
+                My Listings
+              </button>
+
               {user ? (
-                <Link to="/logout">
-                  <button className="rounded-full px-3 py-1 border-2 border-red-500 text-red-500 text-sm">
-                    Logout
-                  </button>
-                </Link>
+                <button
+                  onClick={(e) => {
+                    if (helpMode) {
+                      e.stopPropagation();
+                      showHelp('logout');
+                    } else {
+                      window.location.href = '/logout';
+                    }
+                  }}
+                  className="rounded-full px-3 py-1 border-2 border-red-500 text-red-500 text-sm"
+                >
+                  Logout
+                </button>
               ) : (
-                <Link to="/login">
-                  <button className="rounded-full px-3 py-1 border-2 border-blue-500 text-blue-500 text-sm">
-                    Login
-                  </button>
-                </Link>
+                <button
+                  onClick={(e) => {
+                    if (helpMode) {
+                      e.stopPropagation();
+                      showHelp('login');
+                    } else {
+                      window.location.href = '/login';
+                    }
+                  }}
+                  className="rounded-full px-3 py-1 border-2 border-blue-500 text-blue-500 text-sm"
+                >
+                  Login
+                </button>
               )}
             </div>
           </div>
 
+          {/* View Mode Toggle */}
           <div className="flex gap-2 rounded-full p-1 bg-stone-100">
             <button
               onClick={() => { setViewMode('both'); setCurrentIndex(0); }}
-              className={`flex-1 px-3 py-1 rounded-full text-sm font-medium transition-colors ${viewMode === 'both' ? 'bg-amber-500 text-white' : 'text-stone-600'
+              className={`flex-1 py-2 rounded-full text-sm font-medium transition-all ${viewMode === 'both' ? 'bg-white shadow-sm text-amber-600' : 'text-stone-500'
                 }`}
             >
               All
             </button>
             <button
               onClick={() => { setViewMode('individual'); setCurrentIndex(0); }}
-              className={`flex-1 px-3 py-1 rounded-full text-sm font-medium transition-colors ${viewMode === 'individual' ? 'bg-amber-500 text-white' : 'text-stone-600'
+              className={`flex-1 py-2 rounded-full text-sm font-medium transition-all ${viewMode === 'individual' ? 'bg-white shadow-sm text-amber-600' : 'text-stone-500'
                 }`}
             >
               Individual
             </button>
             <button
               onClick={() => { setViewMode('bundles'); setCurrentIndex(0); }}
-              className={`flex-1 px-3 py-1 rounded-full text-sm font-medium transition-colors ${viewMode === 'bundles' ? 'bg-amber-500 text-white' : 'text-stone-600'
+              className={`flex-1 py-2 rounded-full text-sm font-medium transition-all ${viewMode === 'bundles' ? 'bg-white shadow-sm text-amber-600' : 'text-stone-500'
                 }`}
             >
               Bundles
             </button>
           </div>
 
+          {/* Search Bar */}
           <div className="flex gap-2">
             <div className="flex-1 relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-stone-400" />
+              <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-stone-400" />
               <input
                 placeholder="Search livestock, breeds..."
                 value={searchQuery}
                 onChange={(e) => { setSearchQuery(e.target.value); setCurrentIndex(0); }}
-                className="w-full pl-10 pr-8 h-11 border-2 border-amber-300 rounded-full bg-white focus:outline-none focus:border-amber-500"
+                className="w-full pl-11 pr-4 py-3 bg-white border border-stone-200 rounded-full focus:border-amber-400 focus:ring-2 focus:ring-amber-100 outline-none transition"
               />
               {searchQuery && (
-                <button onClick={() => { setSearchQuery(''); setCurrentIndex(0); }} className="absolute right-3 top-1/2 -translate-y-1/2">
+                <button onClick={() => { setSearchQuery(''); setCurrentIndex(0); }} className="absolute right-4 top-1/2 -translate-y-1/2">
                   <X className="w-4 h-4 text-stone-400" />
                 </button>
               )}
             </div>
             <button
-              onClick={() => setIsFilterOpen(true)}
-              className="h-11 w-11 rounded-full border-2 border-amber-500 text-amber-500 flex items-center justify-center hover:bg-amber-50"
+              onClick={(e) => {
+                if (helpMode) {
+                  e.stopPropagation();
+                  showHelp('filter');
+                } else {
+                  setIsFilterOpen(true);
+                }
+              }}
+              className="w-12 h-12 rounded-full bg-white border border-stone-200 flex items-center justify-center hover:bg-stone-50 transition"
             >
-              <SlidersHorizontal className="w-5 h-5" />
+              <SlidersHorizontal className="w-5 h-5 text-stone-600" />
             </button>
           </div>
         </div>
       </div>
 
-      <div className="max-w-md mx-auto px-4 pt-8 pb-32">
+      {/* Main Card Area with Fixed Spacing */}
+      <div className="max-w-md mx-auto px-4 pt-6 pb-32">
         {displayItems.length === 0 ? (
-          <div className="flex flex-col items-center justify-center h-[600px] text-center">
-            <div className="text-6xl mb-4">🔍</div>
-            <h3 className="text-xl font-bold text-stone-800 mb-2">No listings found</h3>
-            <p className="text-stone-600">Try adjusting your search or filters</p>
+          <div className="flex flex-col items-center justify-center h-[500px] text-center">
+            <div className="w-20 h-20 bg-amber-100 rounded-full flex items-center justify-center mb-4">
+              <Search className="w-10 h-10 text-amber-500" />
+            </div>
+            <h3 className="text-xl font-semibold text-stone-800 mb-2">No listings found</h3>
+            <p className="text-stone-500 mb-6">Try adjusting your search or filters</p>
             <button
               onClick={() => { setFilters({ location: '', priceMin: '', priceMax: '' }); setSearchQuery(''); }}
-              className="mt-4 text-amber-600 underline"
+              className="text-amber-600 underline"
             >
               Clear all filters
             </button>
-            <Link to="/SellerUpload">
-              <button className="mt-6 bg-amber-500 text-white px-6 py-2 rounded-full">
-                + Add Your First Listing
-              </button>
-            </Link>
+            <button
+              onClick={(e) => {
+                if (helpMode) {
+                  e.stopPropagation();
+                  showHelp('upload');
+                } else {
+                  window.location.href = '/SellerUpload';
+                }
+              }}
+              className="bg-amber-500 hover:bg-amber-600 text-white px-6 py-2 rounded-full mt-6 transition"
+            >
+              + Add Your First Listing
+            </button>
           </div>
         ) : currentIndex >= displayItems.length ? (
-          <div className="flex flex-col items-center justify-center h-[600px] text-center">
-            <div className="text-6xl mb-4">✨</div>
-            <h3 className="text-xl font-bold text-stone-800 mb-2">That's all for now!</h3>
-            <p className="text-stone-600 mb-6">Check back later for more listings</p>
+          <div className="flex flex-col items-center justify-center h-[500px] text-center">
+            <div className="w-20 h-20 bg-stone-100 rounded-full flex items-center justify-center mb-4">
+              <span className="text-4xl">✨</span>
+            </div>
+            <h3 className="text-xl font-semibold text-stone-800 mb-2">That's all for now!</h3>
+            <p className="text-stone-500 mb-6">Check back later for more listings</p>
             <button
               onClick={() => setCurrentIndex(0)}
-              className="rounded-full px-6 py-2 bg-amber-500 text-white font-semibold"
+              className="bg-amber-500 hover:bg-amber-600 text-white px-6 py-2 rounded-full transition"
             >
               Start Over
             </button>
           </div>
         ) : (
-          <div className="relative h-[600px]">
-            <AnimatePresence>
-              <motion.div
-                key={currentItem?.id || currentItem?.bundle_name}
-                drag="x"
-                dragConstraints={{ left: 0, right: 0 }}
-                onDragEnd={handleDragEnd}
-                style={{ x, rotate, opacity }}
-                onClick={handleCardClick}
-                className="cursor-pointer absolute w-full"
-              >
-                {currentItem?.listing_type === 'bundle' ? (
-                  <BundleCard bundle={currentItem} />
-                ) : (
-                  <LivestockCard
-                    livestock={currentItem}
-                    onWishlist={addToWishlist}
-                    isInWishlist={wishlistIds.includes(currentItem?.id)}
-                  />
-                )}
-              </motion.div>
-            </AnimatePresence>
+          <div className="relative">
+            {/* Card Container - Fixed height for consistent spacing */}
+            <div className="h-[520px] mb-6">
+              <AnimatePresence>
+                <motion.div
+                  key={currentItem?.id || currentItem?.bundle_name}
+                  drag="x"
+                  dragConstraints={{ left: 0, right: 0 }}
+                  onDragEnd={handleDragEnd}
+                  style={{ x, rotate, opacity }}
+                  onClick={handleCardClick}
+                  className="cursor-pointer absolute w-full"
+                >
+                  {currentItem?.listing_type === 'bundle' ? (
+                    <BundleCard bundle={currentItem} />
+                  ) : (
+                    <LivestockCard
+                      livestock={currentItem}
+                      onWishlist={addToWishlist}
+                      isInWishlist={wishlistIds.includes(currentItem?.id)}
+                    />
+                  )}
+                </motion.div>
+              </AnimatePresence>
+            </div>
 
-            <div className="absolute bottom-4 left-0 right-0 flex justify-center gap-8">
+            {/* Action Buttons - Below card with proper spacing */}
+            <div className="flex justify-center gap-8 py-4">
               <button
-                onClick={handleSwipeLeft}
-                className="bg-red-500 hover:bg-red-600 text-white rounded-full w-16 h-16 shadow-lg flex items-center justify-center text-2xl font-bold transition"
+                onClick={(e) => {
+                  if (helpMode) {
+                    e.stopPropagation();
+                    showHelp('swipeLeft');
+                  } else {
+                    handleSwipeLeft();
+                  }
+                }}
+                className="bg-red-500 hover:bg-red-600 text-white rounded-full w-16 h-16 shadow-lg flex items-center justify-center text-2xl font-bold transition transform active:scale-95"
               >
                 ←
               </button>
 
               <button
-                onClick={toggleLike}
-                className="bg-white hover:bg-gray-50 rounded-full w-16 h-16 shadow-lg flex items-center justify-center transition"
+                onClick={(e) => {
+                  if (helpMode) {
+                    e.stopPropagation();
+                    showHelp('like');
+                  } else {
+                    toggleLike();
+                  }
+                }}
+                className="bg-white hover:bg-gray-50 rounded-full w-16 h-16 shadow-lg flex items-center justify-center transition transform active:scale-95"
               >
                 <Heart className={`w-8 h-8 ${hasLiked ? 'fill-amber-500 text-amber-500' : 'text-gray-400'}`} />
               </button>
 
               <button
-                onClick={handleSwipeRight}
-                className="bg-green-500 hover:bg-green-600 text-white rounded-full w-16 h-16 shadow-lg flex items-center justify-center text-2xl font-bold transition"
+                onClick={(e) => {
+                  if (helpMode) {
+                    e.stopPropagation();
+                    showHelp('swipeRight');
+                  } else {
+                    handleSwipeRight();
+                  }
+                }}
+                className="bg-green-500 hover:bg-green-600 text-white rounded-full w-16 h-16 shadow-lg flex items-center justify-center text-2xl font-bold transition transform active:scale-95"
               >
                 →
               </button>
@@ -562,6 +671,7 @@ export default function Browse() {
         )}
       </div>
 
+      {/* Filter Panel */}
       <FilterPanel
         isOpen={isFilterOpen}
         onClose={() => setIsFilterOpen(false)}
@@ -569,11 +679,20 @@ export default function Browse() {
         initialFilters={filters}
       />
 
-      <Link to="/SellerUpload">
-        <button className="fixed bottom-6 right-6 w-14 h-14 bg-amber-500 hover:bg-amber-600 text-white rounded-full shadow-2xl text-3xl transition">
-          +
-        </button>
-      </Link>
+      {/* FAB - Upload */}
+      <button
+        onClick={(e) => {
+          if (helpMode) {
+            e.stopPropagation();
+            showHelp('upload');
+          } else {
+            window.location.href = '/SellerUpload';
+          }
+        }}
+        className="fixed bottom-6 right-6 w-14 h-14 bg-amber-500 hover:bg-amber-600 text-white rounded-full shadow-2xl text-3xl transition transform active:scale-95"
+      >
+        +
+      </button>
     </div>
   );
 }
