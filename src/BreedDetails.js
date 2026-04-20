@@ -26,6 +26,7 @@ export default function BreedDetails() {
     const getUser = async () => {
       const { data: { user } } = await supabase.auth.getUser();
       setUser(user);
+      console.log('Current user:', user?.email);
     };
     getUser();
   }, []);
@@ -34,17 +35,24 @@ export default function BreedDetails() {
     const loadLivestock = async () => {
       if (!livestockId) return;
       setIsLoading(true);
+
+      console.log('Loading livestock ID:', livestockId);
+
       const { data: livestockData, error: livestockError } = await supabase
         .from('livestock')
         .select('*')
         .eq('id', livestockId)
         .single();
+
       if (livestockError) {
         console.error('Error loading livestock:', livestockError);
         setIsLoading(false);
         return;
       }
+
       setLivestock(livestockData);
+      console.log('Livestock loaded:', livestockData.name, 'Seller ID:', livestockData.user_id);
+
       if (livestockData) {
         await supabase
           .from('livestock')
@@ -52,6 +60,7 @@ export default function BreedDetails() {
           .eq('id', livestockId);
         setLivestock({ ...livestockData, views_count: (livestockData.views_count || 0) + 1 });
       }
+
       if (livestockData.user_id) {
         const { data: sellerData } = await supabase
           .from('profiles')
@@ -60,12 +69,14 @@ export default function BreedDetails() {
           .single();
         setSeller(sellerData);
       }
+
       const { data: reviewsData } = await supabase
         .from('reviews')
         .select('*')
         .eq('livestock_id', livestockId)
         .order('created_at', { ascending: false });
       setReviews(reviewsData || []);
+
       if (user) {
         const { data: likeData } = await supabase
           .from('likes')
@@ -74,6 +85,7 @@ export default function BreedDetails() {
           .eq('user_id', user.id)
           .maybeSingle();
         setHasLiked(!!likeData);
+
         const { data: wishlistData } = await supabase
           .from('wishlist')
           .select('*')
@@ -82,25 +94,51 @@ export default function BreedDetails() {
           .maybeSingle();
         setIsInWishlist(!!wishlistData);
       }
+
       setIsLoading(false);
     };
+
     loadLivestock();
   }, [livestockId, user]);
 
+  // Get or create conversation for chat
   useEffect(() => {
     const getOrCreateConversation = async () => {
-      if (!user || !livestock) return;
-      if (user.id === livestock.user_id) return;
-      const { data: existing } = await supabase
+      if (!user || !livestock) {
+        console.log('No user or livestock');
+        return;
+      }
+
+      if (user.id === livestock.user_id) {
+        console.log('Cannot message yourself');
+        return;
+      }
+
+      console.log('Getting conversation for:', {
+        buyerId: user.id,
+        sellerId: livestock.user_id,
+        livestockId: livestock.id
+      });
+
+      // Check if conversation exists
+      const { data: existing, error: findError } = await supabase
         .from('conversations')
         .select('id')
         .eq('livestock_id', livestock.id)
         .eq('buyer_id', user.id)
         .maybeSingle();
+
+      if (findError) {
+        console.error('Error finding conversation:', findError);
+      }
+
       if (existing) {
+        console.log('Found existing conversation:', existing.id);
         setConversationId(existing.id);
       } else {
-        const { data: newConvo, error } = await supabase
+        // Create new conversation
+        console.log('Creating new conversation...');
+        const { data: newConvo, error: insertError } = await supabase
           .from('conversations')
           .insert([{
             livestock_id: livestock.id,
@@ -109,11 +147,16 @@ export default function BreedDetails() {
           }])
           .select()
           .single();
-        if (!error && newConvo) {
+
+        if (insertError) {
+          console.error('Error creating conversation:', insertError);
+        } else if (newConvo) {
+          console.log('Created new conversation:', newConvo.id);
           setConversationId(newConvo.id);
         }
       }
     };
+
     getOrCreateConversation();
   }, [user, livestock]);
 
@@ -479,7 +522,6 @@ export default function BreedDetails() {
                 </div>
               )}
 
-              {/* Social Media Links - Also hidden until login */}
               {(livestock.facebook_url || livestock.instagram_url || livestock.whatsapp_number || livestock.website_url) && (
                 <div className="mt-3 pt-2 border-t border-stone-100">
                   <p className="text-xs text-stone-400 mb-1.5">Connect on Social Media</p>
@@ -508,7 +550,7 @@ export default function BreedDetails() {
                 </div>
               )}
 
-              {user.id !== livestock.user_id && conversationId && (
+              {user.id !== livestock.user_id && conversationId ? (
                 <div className="pt-3">
                   <Link to={`/ChatRoom?conversation=${conversationId}&livestock=${livestock.id}`}>
                     <button className="w-full bg-amber-500 hover:bg-amber-600 text-white rounded-lg h-10 text-sm font-medium flex items-center justify-center gap-1.5 transition">
@@ -517,11 +559,16 @@ export default function BreedDetails() {
                     </button>
                   </Link>
                 </div>
-              )}
-              {user.id === livestock.user_id && (
+              ) : user.id === livestock.user_id ? (
                 <div className="pt-3">
                   <button className="w-full bg-stone-100 text-stone-400 rounded-lg h-10 text-sm font-medium cursor-not-allowed">
                     This is your listing
+                  </button>
+                </div>
+              ) : (
+                <div className="pt-3">
+                  <button className="w-full bg-stone-100 text-stone-400 rounded-lg h-10 text-sm font-medium cursor-not-allowed">
+                    Loading...
                   </button>
                 </div>
               )}
