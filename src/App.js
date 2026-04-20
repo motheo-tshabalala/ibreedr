@@ -14,28 +14,31 @@ import Auth from './Auth';
 import Logout from './Logout';
 import ChatList from './ChatList';
 import ChatRoom from './ChatRoom';
-
+import { HelpProvider } from './HelpContext';
+import HelpModal from './HelpModal';
 
 function App() {
   return (
-    <Router>
-      <Routes>
-        <Route path="/" element={<Home />} />
-        <Route path="/Browse" element={<Browse />} />
-        <Route path="/SellerUpload" element={<SellerUpload />} />
-        <Route path="/MyListings" element={<MyListings />} />
-        <Route path="/Wishlist" element={<Wishlist />} />
-        <Route path="/Dashboard" element={<Dashboard />} />
-        <Route path="/CreateBundle" element={<CreateBundle />} />
-        <Route path="/BundleDetails" element={<BundleDetails />} />
-        <Route path="/BreedDetails" element={<BreedDetails />} />
-        <Route path="/login" element={<Auth />} />
-        <Route path="/logout" element={<Logout />} />
-        <Route path="/ChatList" element={<ChatList />} />
-        <Route path="/ChatRoom" element={<ChatRoom />} />
-
-      </Routes>
-    </Router>
+    <HelpProvider>
+      <Router>
+        <Routes>
+          <Route path="/" element={<Home />} />
+          <Route path="/Browse" element={<Browse />} />
+          <Route path="/SellerUpload" element={<SellerUpload />} />
+          <Route path="/MyListings" element={<MyListings />} />
+          <Route path="/Wishlist" element={<Wishlist />} />
+          <Route path="/Dashboard" element={<Dashboard />} />
+          <Route path="/CreateBundle" element={<CreateBundle />} />
+          <Route path="/BundleDetails" element={<BundleDetails />} />
+          <Route path="/BreedDetails" element={<BreedDetails />} />
+          <Route path="/login" element={<Auth />} />
+          <Route path="/logout" element={<Logout />} />
+          <Route path="/ChatList" element={<ChatList />} />
+          <Route path="/ChatRoom" element={<ChatRoom />} />
+        </Routes>
+      </Router>
+      <HelpModal />
+    </HelpProvider>
   );
 }
 
