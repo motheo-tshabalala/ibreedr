@@ -395,24 +395,27 @@ export default function Browse() {
   if (isLoading && allItems.length === 0) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-amber-50 to-stone-100 flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-4 border-stone-300 border-t-amber-600"></div>
+        <div className="animate-spin rounded-full h-10 w-10 border-4 border-stone-300 border-t-amber-600"></div>
       </div>
     );
   }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-amber-50 to-stone-100">
-      {/* Header - Consistent spacing: p-4 */}
+      {/* Header */}
       <div className="bg-white border-b border-stone-100 sticky top-0 z-30">
         <div className="max-w-md mx-auto px-4 py-4 space-y-3">
+          {/* Logo and Mobile Scrollable Buttons */}
           <div className="flex items-center justify-between">
             <Link to="/">
               <h1 className="text-2xl font-bold text-amber-600">iBreedr</h1>
             </Link>
-            <div className="flex gap-2">
+
+            {/* Horizontal scrollable buttons for mobile */}
+            <div className="flex gap-1 overflow-x-auto pb-1 no-scrollbar">
               <button
                 onClick={toggleHelpMode}
-                className={`rounded-full p-2 border transition ${helpMode
+                className={`rounded-full p-2 border transition flex-shrink-0 ${helpMode
                     ? 'bg-amber-500 border-amber-500 text-white'
                     : 'border-stone-200 text-stone-500 hover:border-amber-300'
                   }`}
@@ -429,7 +432,7 @@ export default function Browse() {
                     window.location.href = '/ChatList';
                   }
                 }}
-                className="rounded-full p-2 border border-amber-400 text-amber-500"
+                className="rounded-full p-2 border border-amber-400 text-amber-500 flex-shrink-0"
               >
                 <MessageCircle className="w-4 h-4" />
               </button>
@@ -443,7 +446,7 @@ export default function Browse() {
                     window.location.href = '/Wishlist';
                   }
                 }}
-                className="rounded-full p-2 border border-amber-400 text-amber-500"
+                className="rounded-full p-2 border border-amber-400 text-amber-500 flex-shrink-0"
               >
                 <Bookmark className="w-4 h-4" />
               </button>
@@ -457,7 +460,7 @@ export default function Browse() {
                     window.location.href = '/MyListings';
                   }
                 }}
-                className="rounded-full px-3 py-1 border border-amber-400 text-amber-500 text-sm"
+                className="rounded-full px-3 py-1 border border-amber-400 text-amber-500 text-sm flex-shrink-0"
               >
                 My Listings
               </button>
@@ -472,7 +475,7 @@ export default function Browse() {
                       window.location.href = '/logout';
                     }
                   }}
-                  className="rounded-full px-3 py-1 border border-red-300 text-red-500 text-sm"
+                  className="rounded-full px-3 py-1 border border-red-300 text-red-500 text-sm flex-shrink-0"
                 >
                   Logout
                 </button>
@@ -486,7 +489,7 @@ export default function Browse() {
                       window.location.href = '/login';
                     }
                   }}
-                  className="rounded-full px-3 py-1 border border-blue-400 text-blue-500 text-sm"
+                  className="rounded-full px-3 py-1 border border-blue-400 text-blue-500 text-sm flex-shrink-0"
                 >
                   Login
                 </button>
@@ -494,7 +497,7 @@ export default function Browse() {
             </div>
           </div>
 
-          {/* View Mode Toggle - Consistent spacing: gap-1, p-1 */}
+          {/* View Mode Toggle */}
           <div className="flex gap-1 rounded-full p-1 bg-stone-100">
             <button
               onClick={() => { setViewMode('both'); setCurrentIndex(0); }}
@@ -519,7 +522,7 @@ export default function Browse() {
             </button>
           </div>
 
-          {/* Search Bar - Consistent spacing: gap-2 */}
+          {/* Search Bar */}
           <div className="flex gap-2">
             <div className="flex-1 relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-stone-400" />
@@ -552,7 +555,7 @@ export default function Browse() {
         </div>
       </div>
 
-      {/* Main Card Area - Consistent spacing: pt-6, pb-32 */}
+      {/* Main Card Area */}
       <div className="max-w-md mx-auto px-4 pt-6 pb-32">
         {displayItems.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-[500px] text-center">
@@ -597,7 +600,7 @@ export default function Browse() {
           </div>
         ) : (
           <div className="relative">
-            {/* Card Container - Fixed height: h-[500px], margin bottom: mb-6 */}
+            {/* Card Container */}
             <div className="h-[500px] mb-6">
               <AnimatePresence>
                 <motion.div
@@ -622,7 +625,7 @@ export default function Browse() {
               </AnimatePresence>
             </div>
 
-            {/* Action Buttons - Consistent spacing: gap-6 */}
+            {/* Action Buttons */}
             <div className="flex justify-center gap-6">
               <button
                 onClick={(e) => {
@@ -678,7 +681,7 @@ export default function Browse() {
         initialFilters={filters}
       />
 
-      {/* FAB - Upload - Consistent spacing: bottom-6 right-6 */}
+      {/* FAB - Upload */}
       <button
         onClick={(e) => {
           if (helpMode) {
