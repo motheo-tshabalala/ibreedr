@@ -3,17 +3,6 @@ import { ArrowLeft, X, Package, Percent, Truck } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { supabase } from './supabaseClient';
 
-const ANIMAL_TYPES = [
-  { value: 'cattle', label: 'Cattle' },
-  { value: 'goats', label: 'Goats' },
-  { value: 'sheep', label: 'Sheep' },
-  { value: 'pigs', label: 'Pigs' },
-  { value: 'chickens', label: 'Chickens' },
-  { value: 'horses', label: 'Horses' },
-  { value: 'donkeys', label: 'Donkeys' },
-  { value: 'rabbits', label: 'Rabbits' }
-];
-
 export default function CreateBundle() {
   const [user, setUser] = useState(null);
   const [myListings, setMyListings] = useState([]);
@@ -192,8 +181,8 @@ export default function CreateBundle() {
                     key={animal.id}
                     onClick={() => toggleLivestock(animal.id)}
                     className={`flex items-center gap-3 p-3 rounded-xl border-2 transition-all text-left ${selectedLivestock.includes(animal.id)
-                        ? 'border-amber-400 bg-amber-50'
-                        : 'border-stone-200 hover:border-stone-300'
+                      ? 'border-amber-400 bg-amber-50'
+                      : 'border-stone-200 hover:border-stone-300'
                       }`}
                   >
                     {animal.images && animal.images[0] ? (

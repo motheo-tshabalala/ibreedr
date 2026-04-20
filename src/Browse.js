@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Search, SlidersHorizontal, X, Heart, Bookmark, Eye, MessageCircle } from 'lucide-react';
+import { Search, SlidersHorizontal, X, Heart, Bookmark, MessageCircle } from 'lucide-react';
 import { motion, useMotionValue, useTransform, AnimatePresence } from 'framer-motion';
 import { Link } from 'react-router-dom';
 import { supabase } from './supabaseClient';

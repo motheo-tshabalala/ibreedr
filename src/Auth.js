@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import { supabase } from './supabaseClient';
-import { Link } from 'react-router-dom';
 
 export default function Auth() {
   const [email, setEmail] = useState('');
