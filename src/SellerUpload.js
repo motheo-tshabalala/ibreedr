@@ -22,7 +22,6 @@ export default function SellerUpload() {
 
   const [listingType, setListingType] = useState('');
 
-  // Individual form fields
   const [individualData, setIndividualData] = useState({
     name: '',
     animal_type: '',
@@ -49,7 +48,6 @@ export default function SellerUpload() {
     website_url: ''
   });
 
-  // Bundle form fields
   const [bundleData, setBundleData] = useState({
     bundle_name: '',
     bundle_description: '',
@@ -287,47 +285,47 @@ export default function SellerUpload() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-amber-50 via-white to-stone-50">
-      <div className="bg-white/80 backdrop-blur-md border-b border-stone-200 sticky top-0 z-30">
+      <div className="bg-white border-b border-stone-100 sticky top-0 z-30">
         <div className="max-w-4xl mx-auto px-4 py-4 flex items-center gap-4">
           <Link to="/Browse">
-            <button className="p-2 hover:bg-stone-100 rounded-full">
-              <ArrowLeft className="w-6 h-6 text-stone-800" />
+            <button className="p-2 -m-2 rounded-full hover:bg-stone-100 transition">
+              <ArrowLeft className="w-5 h-5 text-stone-600" />
             </button>
           </Link>
           <h1 className="text-xl font-bold text-stone-800">List Your Livestock</h1>
         </div>
       </div>
 
-      <div className="max-w-4xl mx-auto px-4 py-8">
-        <form onSubmit={handleSubmit} className="space-y-6">
+      <div className="max-w-4xl mx-auto px-4 py-6">
+        <form onSubmit={handleSubmit} className="space-y-5">
           {/* Listing Type Selection */}
-          <div className="bg-white rounded-2xl p-6 shadow-lg">
-            <label className="text-lg font-bold block mb-4">What are you listing?</label>
+          <div className="bg-white rounded-xl border border-stone-100 p-5 shadow-sm">
+            <label className="text-base font-bold block mb-4">What are you listing?</label>
             <div className="grid grid-cols-2 gap-4">
               <button
                 type="button"
                 onClick={() => setListingType('individual')}
-                className={`p-6 rounded-2xl border-2 transition-all ${listingType === 'individual'
-                    ? 'border-amber-500 bg-amber-50'
+                className={`p-5 rounded-xl border-2 transition-all ${listingType === 'individual'
+                    ? 'border-amber-400 bg-amber-50'
                     : 'border-stone-200 hover:border-stone-300'
                   }`}
               >
                 <div className="text-4xl mb-2">🐄</div>
-                <div className="font-semibold">Individual Animal</div>
-                <div className="text-sm text-stone-500">Single livestock</div>
+                <div className="font-semibold text-stone-800">Individual Animal</div>
+                <div className="text-sm text-stone-500 mt-0.5">Single livestock</div>
               </button>
 
               <button
                 type="button"
                 onClick={() => setListingType('bundle')}
-                className={`p-6 rounded-2xl border-2 transition-all ${listingType === 'bundle'
-                    ? 'border-amber-500 bg-amber-50'
+                className={`p-5 rounded-xl border-2 transition-all ${listingType === 'bundle'
+                    ? 'border-amber-400 bg-amber-50'
                     : 'border-stone-200 hover:border-stone-300'
                   }`}
               >
                 <div className="text-4xl mb-2">📦</div>
-                <div className="font-semibold">Bundle</div>
-                <div className="text-sm text-stone-500">Multiple animals, one price</div>
+                <div className="font-semibold text-stone-800">Bundle</div>
+                <div className="text-sm text-stone-500 mt-0.5">Multiple animals, one price</div>
               </button>
             </div>
           </div>
@@ -335,34 +333,34 @@ export default function SellerUpload() {
           {listingType === 'individual' && (
             <>
               {/* Images Upload */}
-              <div className="bg-white rounded-2xl p-6 shadow-lg">
-                <label className="text-lg font-bold block mb-4">Photos</label>
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 mb-4">
+              <div className="bg-white rounded-xl border border-stone-100 p-5 shadow-sm">
+                <label className="text-base font-bold block mb-3">Photos</label>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-3">
                   {individualData.images.map((url, index) => (
-                    <div key={index} className="relative aspect-square rounded-xl overflow-hidden bg-stone-100">
+                    <div key={index} className="relative aspect-square rounded-lg overflow-hidden bg-stone-100">
                       <img src={url} alt="Upload" className="w-full h-full object-cover" />
-                      <button type="button" onClick={() => removeImage(index, false)} className="absolute top-2 right-2 p-1 bg-white rounded-full">
-                        <X className="w-4 h-4" />
+                      <button type="button" onClick={() => removeImage(index, false)} className="absolute top-1 right-1 p-1 bg-white rounded-full shadow-sm">
+                        <X className="w-3 h-3 text-stone-600" />
                       </button>
                     </div>
                   ))}
-                  <label className="aspect-square rounded-xl border-2 border-dashed border-stone-300 flex flex-col items-center justify-center cursor-pointer">
-                    <Upload className="w-8 h-8 text-stone-400 mb-2" />
-                    <span className="text-sm text-stone-600">Add Photo</span>
+                  <label className="aspect-square rounded-lg border-2 border-dashed border-stone-300 flex flex-col items-center justify-center cursor-pointer hover:border-amber-400 transition">
+                    <Upload className="w-6 h-6 text-stone-400 mb-1" />
+                    <span className="text-xs text-stone-500">Add Photo</span>
                     <input type="file" multiple accept="image/*" onChange={(e) => handleImageUpload(e, false)} className="hidden" disabled={uploading} />
                   </label>
                 </div>
-                {uploading && <p className="text-sm text-amber-600">Uploading images...</p>}
+                {uploading && <p className="text-sm text-amber-600 mt-2">Uploading images...</p>}
               </div>
 
               {/* Video Upload */}
-              <div className="bg-white rounded-2xl p-6 shadow-lg">
-                <label className="text-lg font-bold block mb-4">Video (Optional)</label>
-                <div className="border-2 border-dashed border-stone-300 rounded-xl p-6 text-center">
-                  <Video className="w-8 h-8 text-stone-400 mx-auto mb-2" />
-                  <p className="text-sm text-stone-600 mb-3">Upload a video of your livestock</p>
+              <div className="bg-white rounded-xl border border-stone-100 p-5 shadow-sm">
+                <label className="text-base font-bold block mb-3">Video (Optional)</label>
+                <div className="border-2 border-dashed border-stone-300 rounded-lg p-5 text-center">
+                  <Video className="w-6 h-6 text-stone-400 mx-auto mb-2" />
+                  <p className="text-sm text-stone-500 mb-3">Upload a video of your livestock</p>
                   <input type="file" accept="video/*" onChange={(e) => handleVideoUpload(e, false)} className="hidden" id="individualVideoUpload" />
-                  <button type="button" onClick={() => document.getElementById('individualVideoUpload').click()} className="bg-stone-800 text-white rounded-full px-4 py-2 text-sm">
+                  <button type="button" onClick={() => document.getElementById('individualVideoUpload').click()} className="bg-stone-800 text-white rounded-full px-4 py-1.5 text-sm hover:bg-stone-900 transition">
                     {videoUploading ? 'Uploading...' : 'Choose Video'}
                   </button>
                   {individualData.video_url && <p className="text-green-600 text-sm mt-2">✓ Video uploaded</p>}
@@ -370,30 +368,30 @@ export default function SellerUpload() {
               </div>
 
               {/* Basic Information */}
-              <div className="bg-white rounded-2xl p-6 shadow-lg space-y-4">
-                <h3 className="text-lg font-bold">Basic Information</h3>
+              <div className="bg-white rounded-xl border border-stone-100 p-5 shadow-sm space-y-4">
+                <h3 className="text-base font-bold text-stone-800">Basic Information</h3>
 
                 <div>
-                  <label className="block font-semibold mb-2">Name *</label>
-                  <input value={individualData.name} onChange={(e) => setIndividualData({ ...individualData, name: e.target.value })} className="w-full border-2 rounded-xl p-3" required />
+                  <label className="text-sm font-medium text-stone-700 mb-1 block">Name *</label>
+                  <input value={individualData.name} onChange={(e) => setIndividualData({ ...individualData, name: e.target.value })} className="w-full border border-stone-200 rounded-lg p-2.5 text-sm focus:border-amber-400 focus:ring-1 focus:ring-amber-100 outline-none transition" required />
                 </div>
 
                 <div>
-                  <label className="block font-semibold mb-2">Animal Type *</label>
-                  <select value={individualData.animal_type} onChange={(e) => setIndividualData({ ...individualData, animal_type: e.target.value })} className="w-full border-2 rounded-xl p-3" required>
+                  <label className="text-sm font-medium text-stone-700 mb-1 block">Animal Type *</label>
+                  <select value={individualData.animal_type} onChange={(e) => setIndividualData({ ...individualData, animal_type: e.target.value })} className="w-full border border-stone-200 rounded-lg p-2.5 text-sm focus:border-amber-400 focus:ring-1 focus:ring-amber-100 outline-none transition" required>
                     <option value="">Select</option>
                     {ANIMAL_TYPES.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
                   </select>
                 </div>
 
                 <div>
-                  <label className="block font-semibold mb-2">Breed Type *</label>
-                  <input value={individualData.breed_type} onChange={(e) => setIndividualData({ ...individualData, breed_type: e.target.value })} className="w-full border-2 rounded-xl p-3" required />
+                  <label className="text-sm font-medium text-stone-700 mb-1 block">Breed Type *</label>
+                  <input value={individualData.breed_type} onChange={(e) => setIndividualData({ ...individualData, breed_type: e.target.value })} className="w-full border border-stone-200 rounded-lg p-2.5 text-sm focus:border-amber-400 focus:ring-1 focus:ring-amber-100 outline-none transition" required />
                 </div>
 
                 <div>
-                  <label className="block font-semibold mb-2">Pure / Cross</label>
-                  <select value={individualData.pure_cross} onChange={(e) => setIndividualData({ ...individualData, pure_cross: e.target.value })} className="w-full border-2 rounded-xl p-3">
+                  <label className="text-sm font-medium text-stone-700 mb-1 block">Pure / Cross</label>
+                  <select value={individualData.pure_cross} onChange={(e) => setIndividualData({ ...individualData, pure_cross: e.target.value })} className="w-full border border-stone-200 rounded-lg p-2.5 text-sm focus:border-amber-400 focus:ring-1 focus:ring-amber-100 outline-none transition">
                     <option value="">Select</option>
                     <option value="pure">Pure Breed</option>
                     <option value="cross">Cross Breed</option>
@@ -402,34 +400,34 @@ export default function SellerUpload() {
 
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block font-semibold mb-2">Age (Years)</label>
-                    <input type="number" value={individualData.age_years} onChange={(e) => setIndividualData({ ...individualData, age_years: e.target.value })} className="w-full border-2 rounded-xl p-3" />
+                    <label className="text-sm font-medium text-stone-700 mb-1 block">Age (Years)</label>
+                    <input type="number" value={individualData.age_years} onChange={(e) => setIndividualData({ ...individualData, age_years: e.target.value })} className="w-full border border-stone-200 rounded-lg p-2.5 text-sm focus:border-amber-400 focus:ring-1 focus:ring-amber-100 outline-none transition" />
                   </div>
                   <div>
-                    <label className="block font-semibold mb-2">Age (Months)</label>
-                    <input type="number" value={individualData.age_months} onChange={(e) => setIndividualData({ ...individualData, age_months: e.target.value })} className="w-full border-2 rounded-xl p-3" />
+                    <label className="text-sm font-medium text-stone-700 mb-1 block">Age (Months)</label>
+                    <input type="number" value={individualData.age_months} onChange={(e) => setIndividualData({ ...individualData, age_months: e.target.value })} className="w-full border border-stone-200 rounded-lg p-2.5 text-sm focus:border-amber-400 focus:ring-1 focus:ring-amber-100 outline-none transition" />
                   </div>
                 </div>
 
                 <div>
-                  <label className="block font-semibold mb-2">Teeth / Age Description</label>
-                  <input value={individualData.teeth_age} onChange={(e) => setIndividualData({ ...individualData, teeth_age: e.target.value })} placeholder="e.g., 8 teeth" className="w-full border-2 rounded-xl p-3" />
+                  <label className="text-sm font-medium text-stone-700 mb-1 block">Teeth / Age Description</label>
+                  <input value={individualData.teeth_age} onChange={(e) => setIndividualData({ ...individualData, teeth_age: e.target.value })} placeholder="e.g., 8 teeth" className="w-full border border-stone-200 rounded-lg p-2.5 text-sm focus:border-amber-400 focus:ring-1 focus:ring-amber-100 outline-none transition" />
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block font-semibold mb-2">Weight Min (KG)</label>
-                    <input type="number" value={individualData.weight_min} onChange={(e) => setIndividualData({ ...individualData, weight_min: e.target.value })} className="w-full border-2 rounded-xl p-3" />
+                    <label className="text-sm font-medium text-stone-700 mb-1 block">Weight Min (KG)</label>
+                    <input type="number" value={individualData.weight_min} onChange={(e) => setIndividualData({ ...individualData, weight_min: e.target.value })} className="w-full border border-stone-200 rounded-lg p-2.5 text-sm focus:border-amber-400 focus:ring-1 focus:ring-amber-100 outline-none transition" />
                   </div>
                   <div>
-                    <label className="block font-semibold mb-2">Weight Max (KG)</label>
-                    <input type="number" value={individualData.weight_max} onChange={(e) => setIndividualData({ ...individualData, weight_max: e.target.value })} className="w-full border-2 rounded-xl p-3" />
+                    <label className="text-sm font-medium text-stone-700 mb-1 block">Weight Max (KG)</label>
+                    <input type="number" value={individualData.weight_max} onChange={(e) => setIndividualData({ ...individualData, weight_max: e.target.value })} className="w-full border border-stone-200 rounded-lg p-2.5 text-sm focus:border-amber-400 focus:ring-1 focus:ring-amber-100 outline-none transition" />
                   </div>
                 </div>
 
                 <div>
-                  <label className="block font-semibold mb-2">Pregnancy Status</label>
-                  <select value={individualData.pregnancy_status} onChange={(e) => setIndividualData({ ...individualData, pregnancy_status: e.target.value })} className="w-full border-2 rounded-xl p-3">
+                  <label className="text-sm font-medium text-stone-700 mb-1 block">Pregnancy Status</label>
+                  <select value={individualData.pregnancy_status} onChange={(e) => setIndividualData({ ...individualData, pregnancy_status: e.target.value })} className="w-full border border-stone-200 rounded-lg p-2.5 text-sm focus:border-amber-400 focus:ring-1 focus:ring-amber-100 outline-none transition">
                     <option value="">Select</option>
                     <option value="pregnant">Pregnant</option>
                     <option value="open">Open (Not Pregnant)</option>
@@ -438,94 +436,70 @@ export default function SellerUpload() {
                 </div>
 
                 <div>
-                  <label className="block font-semibold mb-2">Sire Used</label>
-                  <input value={individualData.sire_used} onChange={(e) => setIndividualData({ ...individualData, sire_used: e.target.value })} placeholder="e.g., Meatmaster Bull, Angus Bull" className="w-full border-2 rounded-xl p-3" />
+                  <label className="text-sm font-medium text-stone-700 mb-1 block">Sire Used</label>
+                  <input value={individualData.sire_used} onChange={(e) => setIndividualData({ ...individualData, sire_used: e.target.value })} placeholder="e.g., Meatmaster Bull" className="w-full border border-stone-200 rounded-lg p-2.5 text-sm focus:border-amber-400 focus:ring-1 focus:ring-amber-100 outline-none transition" />
                 </div>
 
                 <div>
-                  <label className="block font-semibold mb-2">Location *</label>
-                  <input value={individualData.location} onChange={(e) => setIndividualData({ ...individualData, location: e.target.value })} className="w-full border-2 rounded-xl p-3" required />
+                  <label className="text-sm font-medium text-stone-700 mb-1 block">Location *</label>
+                  <input value={individualData.location} onChange={(e) => setIndividualData({ ...individualData, location: e.target.value })} className="w-full border border-stone-200 rounded-lg p-2.5 text-sm focus:border-amber-400 focus:ring-1 focus:ring-amber-100 outline-none transition" required />
                 </div>
 
                 <div>
-                  <label className="block font-semibold mb-2">Price (R)</label>
-                  <input type="number" value={individualData.price} onChange={(e) => setIndividualData({ ...individualData, price: e.target.value })} className="w-full border-2 rounded-xl p-3" />
+                  <label className="text-sm font-medium text-stone-700 mb-1 block">Price (R)</label>
+                  <input type="number" value={individualData.price} onChange={(e) => setIndividualData({ ...individualData, price: e.target.value })} className="w-full border border-stone-200 rounded-lg p-2.5 text-sm focus:border-amber-400 focus:ring-1 focus:ring-amber-100 outline-none transition" />
                 </div>
               </div>
 
               {/* Health & Notes */}
-              <div className="bg-white rounded-2xl p-6 shadow-lg space-y-4">
-                <h3 className="text-lg font-bold">Health & Additional Information</h3>
+              <div className="bg-white rounded-xl border border-stone-100 p-5 shadow-sm space-y-4">
+                <h3 className="text-base font-bold text-stone-800">Health & Additional Information</h3>
                 <div>
-                  <label className="block font-semibold mb-2">Health Information</label>
-                  <textarea value={individualData.health_info} onChange={(e) => setIndividualData({ ...individualData, health_info: e.target.value })} rows={3} className="w-full border-2 rounded-xl p-3" />
+                  <label className="text-sm font-medium text-stone-700 mb-1 block">Health Information</label>
+                  <textarea value={individualData.health_info} onChange={(e) => setIndividualData({ ...individualData, health_info: e.target.value })} rows={3} className="w-full border border-stone-200 rounded-lg p-2.5 text-sm focus:border-amber-400 focus:ring-1 focus:ring-amber-100 outline-none transition" />
                 </div>
                 <div>
-                  <label className="block font-semibold mb-2">Additional Notes</label>
-                  <textarea value={individualData.notes} onChange={(e) => setIndividualData({ ...individualData, notes: e.target.value })} rows={3} className="w-full border-2 rounded-xl p-3" />
+                  <label className="text-sm font-medium text-stone-700 mb-1 block">Additional Notes</label>
+                  <textarea value={individualData.notes} onChange={(e) => setIndividualData({ ...individualData, notes: e.target.value })} rows={3} className="w-full border border-stone-200 rounded-lg p-2.5 text-sm focus:border-amber-400 focus:ring-1 focus:ring-amber-100 outline-none transition" />
                 </div>
               </div>
 
               {/* Contact Information */}
-              <div className="bg-white rounded-2xl p-6 shadow-lg space-y-4">
-                <h3 className="text-lg font-bold">Contact Information</h3>
+              <div className="bg-white rounded-xl border border-stone-100 p-5 shadow-sm space-y-4">
+                <h3 className="text-base font-bold text-stone-800">Contact Information</h3>
                 <div>
-                  <label className="block font-semibold mb-2">Your Name</label>
-                  <input value={individualData.seller_name} onChange={(e) => setIndividualData({ ...individualData, seller_name: e.target.value })} className="w-full border-2 rounded-xl p-3" />
+                  <label className="text-sm font-medium text-stone-700 mb-1 block">Your Name</label>
+                  <input value={individualData.seller_name} onChange={(e) => setIndividualData({ ...individualData, seller_name: e.target.value })} className="w-full border border-stone-200 rounded-lg p-2.5 text-sm focus:border-amber-400 focus:ring-1 focus:ring-amber-100 outline-none transition" />
                 </div>
                 <div>
-                  <label className="block font-semibold mb-2">Phone Number</label>
-                  <input type="tel" value={individualData.seller_phone} onChange={(e) => setIndividualData({ ...individualData, seller_phone: e.target.value })} placeholder="+27 XX XXX XXXX" className="w-full border-2 rounded-xl p-3" />
+                  <label className="text-sm font-medium text-stone-700 mb-1 block">Phone Number</label>
+                  <input type="tel" value={individualData.seller_phone} onChange={(e) => setIndividualData({ ...individualData, seller_phone: e.target.value })} placeholder="+27 XX XXX XXXX" className="w-full border border-stone-200 rounded-lg p-2.5 text-sm focus:border-amber-400 focus:ring-1 focus:ring-amber-100 outline-none transition" />
                 </div>
               </div>
 
-              {/* Social Media (Optional) */}
-              <div className="bg-white rounded-2xl p-6 shadow-lg space-y-4">
-                <h3 className="text-lg font-bold">Social Media (Optional)</h3>
+              {/* Social Media */}
+              <div className="bg-white rounded-xl border border-stone-100 p-5 shadow-sm space-y-4">
+                <h3 className="text-base font-bold text-stone-800">Social Media (Optional)</h3>
                 <p className="text-sm text-stone-500 -mt-2">Share your social profiles to build trust with buyers</p>
 
                 <div>
-                  <label className="block font-semibold mb-2">Facebook Profile/Page</label>
-                  <input
-                    type="url"
-                    value={individualData.facebook_url}
-                    onChange={(e) => setIndividualData({ ...individualData, facebook_url: e.target.value })}
-                    placeholder="https://facebook.com/yourfarm"
-                    className="w-full border-2 rounded-xl p-3"
-                  />
+                  <label className="text-sm font-medium text-stone-700 mb-1 block">Facebook</label>
+                  <input type="url" value={individualData.facebook_url} onChange={(e) => setIndividualData({ ...individualData, facebook_url: e.target.value })} placeholder="https://facebook.com/yourfarm" className="w-full border border-stone-200 rounded-lg p-2.5 text-sm focus:border-amber-400 focus:ring-1 focus:ring-amber-100 outline-none transition" />
                 </div>
 
                 <div>
-                  <label className="block font-semibold mb-2">Instagram Profile</label>
-                  <input
-                    type="url"
-                    value={individualData.instagram_url}
-                    onChange={(e) => setIndividualData({ ...individualData, instagram_url: e.target.value })}
-                    placeholder="https://instagram.com/yourfarm"
-                    className="w-full border-2 rounded-xl p-3"
-                  />
+                  <label className="text-sm font-medium text-stone-700 mb-1 block">Instagram</label>
+                  <input type="url" value={individualData.instagram_url} onChange={(e) => setIndividualData({ ...individualData, instagram_url: e.target.value })} placeholder="https://instagram.com/yourfarm" className="w-full border border-stone-200 rounded-lg p-2.5 text-sm focus:border-amber-400 focus:ring-1 focus:ring-amber-100 outline-none transition" />
                 </div>
 
                 <div>
-                  <label className="block font-semibold mb-2">WhatsApp Number</label>
-                  <input
-                    type="tel"
-                    value={individualData.whatsapp_number}
-                    onChange={(e) => setIndividualData({ ...individualData, whatsapp_number: e.target.value })}
-                    placeholder="+27 XX XXX XXXX"
-                    className="w-full border-2 rounded-xl p-3"
-                  />
+                  <label className="text-sm font-medium text-stone-700 mb-1 block">WhatsApp Number</label>
+                  <input type="tel" value={individualData.whatsapp_number} onChange={(e) => setIndividualData({ ...individualData, whatsapp_number: e.target.value })} placeholder="+27 XX XXX XXXX" className="w-full border border-stone-200 rounded-lg p-2.5 text-sm focus:border-amber-400 focus:ring-1 focus:ring-amber-100 outline-none transition" />
                 </div>
 
                 <div>
-                  <label className="block font-semibold mb-2">Website</label>
-                  <input
-                    type="url"
-                    value={individualData.website_url}
-                    onChange={(e) => setIndividualData({ ...individualData, website_url: e.target.value })}
-                    placeholder="https://yourfarm.com"
-                    className="w-full border-2 rounded-xl p-3"
-                  />
+                  <label className="text-sm font-medium text-stone-700 mb-1 block">Website</label>
+                  <input type="url" value={individualData.website_url} onChange={(e) => setIndividualData({ ...individualData, website_url: e.target.value })} placeholder="https://yourfarm.com" className="w-full border border-stone-200 rounded-lg p-2.5 text-sm focus:border-amber-400 focus:ring-1 focus:ring-amber-100 outline-none transition" />
                 </div>
               </div>
             </>
@@ -534,32 +508,32 @@ export default function SellerUpload() {
           {listingType === 'bundle' && (
             <>
               {/* Bundle Images Upload */}
-              <div className="bg-white rounded-2xl p-6 shadow-lg">
-                <label className="text-lg font-bold block mb-4">Bundle Photos</label>
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 mb-4">
+              <div className="bg-white rounded-xl border border-stone-100 p-5 shadow-sm">
+                <label className="text-base font-bold block mb-3">Bundle Photos</label>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-3">
                   {bundleData.images.map((url, index) => (
-                    <div key={index} className="relative aspect-square rounded-xl overflow-hidden bg-stone-100">
+                    <div key={index} className="relative aspect-square rounded-lg overflow-hidden bg-stone-100">
                       <img src={url} alt="Bundle" className="w-full h-full object-cover" />
-                      <button type="button" onClick={() => removeImage(index, true)} className="absolute top-2 right-2 p-1 bg-white rounded-full">
-                        <X className="w-4 h-4" />
+                      <button type="button" onClick={() => removeImage(index, true)} className="absolute top-1 right-1 p-1 bg-white rounded-full shadow-sm">
+                        <X className="w-3 h-3 text-stone-600" />
                       </button>
                     </div>
                   ))}
-                  <label className="aspect-square rounded-xl border-2 border-dashed border-stone-300 flex flex-col items-center justify-center cursor-pointer">
-                    <Upload className="w-8 h-8 text-stone-400 mb-2" />
-                    <span className="text-sm text-stone-600">Add Photo</span>
+                  <label className="aspect-square rounded-lg border-2 border-dashed border-stone-300 flex flex-col items-center justify-center cursor-pointer hover:border-amber-400 transition">
+                    <Upload className="w-6 h-6 text-stone-400 mb-1" />
+                    <span className="text-xs text-stone-500">Add Photo</span>
                     <input type="file" multiple accept="image/*" onChange={(e) => handleImageUpload(e, true)} className="hidden" disabled={uploading} />
                   </label>
                 </div>
               </div>
 
               {/* Bundle Video Upload */}
-              <div className="bg-white rounded-2xl p-6 shadow-lg">
-                <label className="text-lg font-bold block mb-4">Bundle Video (Optional)</label>
-                <div className="border-2 border-dashed border-stone-300 rounded-xl p-6 text-center">
-                  <Video className="w-8 h-8 text-stone-400 mx-auto mb-2" />
+              <div className="bg-white rounded-xl border border-stone-100 p-5 shadow-sm">
+                <label className="text-base font-bold block mb-3">Bundle Video (Optional)</label>
+                <div className="border-2 border-dashed border-stone-300 rounded-lg p-5 text-center">
+                  <Video className="w-6 h-6 text-stone-400 mx-auto mb-2" />
                   <input type="file" accept="video/*" onChange={(e) => handleVideoUpload(e, true)} className="hidden" id="bundleVideoUpload" />
-                  <button type="button" onClick={() => document.getElementById('bundleVideoUpload').click()} className="bg-stone-800 text-white rounded-full px-4 py-2 text-sm">
+                  <button type="button" onClick={() => document.getElementById('bundleVideoUpload').click()} className="bg-stone-800 text-white rounded-full px-4 py-1.5 text-sm hover:bg-stone-900 transition">
                     {videoUploading ? 'Uploading...' : 'Choose Video'}
                   </button>
                   {bundleData.video_url && <p className="text-green-600 text-sm mt-2">✓ Video uploaded</p>}
@@ -567,90 +541,92 @@ export default function SellerUpload() {
               </div>
 
               {/* Bundle Information */}
-              <div className="bg-white rounded-2xl p-6 shadow-lg space-y-4">
-                <h3 className="text-lg font-bold">Bundle Information</h3>
+              <div className="bg-white rounded-xl border border-stone-100 p-5 shadow-sm space-y-4">
+                <h3 className="text-base font-bold text-stone-800">Bundle Information</h3>
 
                 <div>
-                  <label className="block font-semibold mb-2">Bundle Name *</label>
-                  <input value={bundleData.bundle_name} onChange={(e) => setBundleData({ ...bundleData, bundle_name: e.target.value })} placeholder="e.g., 190 Kapaters" className="w-full border-2 rounded-xl p-3" required />
+                  <label className="text-sm font-medium text-stone-700 mb-1 block">Bundle Name *</label>
+                  <input value={bundleData.bundle_name} onChange={(e) => setBundleData({ ...bundleData, bundle_name: e.target.value })} placeholder="e.g., 190 Kapaters" className="w-full border border-stone-200 rounded-lg p-2.5 text-sm focus:border-amber-400 focus:ring-1 focus:ring-amber-100 outline-none transition" required />
                 </div>
 
                 <div>
-                  <label className="block font-semibold mb-2">Description</label>
-                  <textarea value={bundleData.bundle_description} onChange={(e) => setBundleData({ ...bundleData, bundle_description: e.target.value })} placeholder="Describe what's included..." rows={3} className="w-full border-2 rounded-xl p-3" />
+                  <label className="text-sm font-medium text-stone-700 mb-1 block">Description</label>
+                  <textarea value={bundleData.bundle_description} onChange={(e) => setBundleData({ ...bundleData, bundle_description: e.target.value })} placeholder="Describe what's included..." rows={3} className="w-full border border-stone-200 rounded-lg p-2.5 text-sm focus:border-amber-400 focus:ring-1 focus:ring-amber-100 outline-none transition" />
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block font-semibold mb-2">Quantity *</label>
-                    <input type="number" value={bundleData.quantity} onChange={(e) => setBundleData({ ...bundleData, quantity: e.target.value })} placeholder="Number of animals" className="w-full border-2 rounded-xl p-3" required />
+                    <label className="text-sm font-medium text-stone-700 mb-1 block">Quantity *</label>
+                    <input type="number" value={bundleData.quantity} onChange={(e) => setBundleData({ ...bundleData, quantity: e.target.value })} placeholder="Number of animals" className="w-full border border-stone-200 rounded-lg p-2.5 text-sm focus:border-amber-400 focus:ring-1 focus:ring-amber-100 outline-none transition" required />
                   </div>
                   <div>
-                    <label className="block font-semibold mb-2">Price per Head (R) *</label>
-                    <input type="number" value={bundleData.price_per_head} onChange={(e) => setBundleData({ ...bundleData, price_per_head: e.target.value })} placeholder="R 1,250" className="w-full border-2 rounded-xl p-3" required />
+                    <label className="text-sm font-medium text-stone-700 mb-1 block">Price per Head (R) *</label>
+                    <input type="number" value={bundleData.price_per_head} onChange={(e) => setBundleData({ ...bundleData, price_per_head: e.target.value })} placeholder="R 1,250" className="w-full border border-stone-200 rounded-lg p-2.5 text-sm focus:border-amber-400 focus:ring-1 focus:ring-amber-100 outline-none transition" required />
                   </div>
                 </div>
 
-                <div className="p-3 bg-amber-50 rounded-xl">
+                <div className="p-3 bg-amber-50 rounded-lg">
                   <p className="text-sm text-stone-600">Total Bundle Price</p>
-                  <p className="text-2xl font-bold text-amber-600">
+                  <p className="text-xl font-bold text-amber-600">
                     R {(bundleData.price_per_head * bundleData.quantity).toLocaleString() || '0'}
                   </p>
                 </div>
 
-                <div className="border-t pt-4 mt-2">
-                  <h4 className="font-semibold text-stone-800 mb-3">Animal Specifications</h4>
+                <div className="border-t border-stone-100 pt-4 mt-2">
+                  <h4 className="font-semibold text-stone-800 mb-3 text-sm">Animal Specifications</h4>
 
-                  <div>
-                    <label className="block font-semibold mb-2">Breed Type</label>
-                    <input value={bundleData.breed_type} onChange={(e) => setBundleData({ ...bundleData, breed_type: e.target.value })} placeholder="e.g., Angora Goat" className="w-full border-2 rounded-xl p-3" />
-                  </div>
+                  <div className="space-y-4">
+                    <div>
+                      <label className="text-sm font-medium text-stone-700 mb-1 block">Breed Type</label>
+                      <input value={bundleData.breed_type} onChange={(e) => setBundleData({ ...bundleData, breed_type: e.target.value })} placeholder="e.g., Angora Goat" className="w-full border border-stone-200 rounded-lg p-2.5 text-sm focus:border-amber-400 focus:ring-1 focus:ring-amber-100 outline-none transition" />
+                    </div>
 
-                  <div>
-                    <label className="block font-semibold mb-2">Pure / Cross</label>
-                    <select value={bundleData.pure_cross} onChange={(e) => setBundleData({ ...bundleData, pure_cross: e.target.value })} className="w-full border-2 rounded-xl p-3">
-                      <option value="">Select</option>
-                      <option value="pure">Pure Breed</option>
-                      <option value="cross">Cross Breed</option>
-                    </select>
-                  </div>
+                    <div>
+                      <label className="text-sm font-medium text-stone-700 mb-1 block">Pure / Cross</label>
+                      <select value={bundleData.pure_cross} onChange={(e) => setBundleData({ ...bundleData, pure_cross: e.target.value })} className="w-full border border-stone-200 rounded-lg p-2.5 text-sm focus:border-amber-400 focus:ring-1 focus:ring-amber-100 outline-none transition">
+                        <option value="">Select</option>
+                        <option value="pure">Pure Breed</option>
+                        <option value="cross">Cross Breed</option>
+                      </select>
+                    </div>
 
-                  <div>
-                    <label className="block font-semibold mb-2">Age</label>
-                    <input value={bundleData.age_display} onChange={(e) => setBundleData({ ...bundleData, age_display: e.target.value })} placeholder="e.g., 2tand, 8 teeth" className="w-full border-2 rounded-xl p-3" />
-                  </div>
+                    <div>
+                      <label className="text-sm font-medium text-stone-700 mb-1 block">Age</label>
+                      <input value={bundleData.age_display} onChange={(e) => setBundleData({ ...bundleData, age_display: e.target.value })} placeholder="e.g., 2tand, 8 teeth" className="w-full border border-stone-200 rounded-lg p-2.5 text-sm focus:border-amber-400 focus:ring-1 focus:ring-amber-100 outline-none transition" />
+                    </div>
 
-                  <div>
-                    <label className="block font-semibold mb-2">Weight</label>
-                    <input value={bundleData.weight_display} onChange={(e) => setBundleData({ ...bundleData, weight_display: e.target.value })} placeholder="e.g., 45-50 KG" className="w-full border-2 rounded-xl p-3" />
-                  </div>
+                    <div>
+                      <label className="text-sm font-medium text-stone-700 mb-1 block">Weight</label>
+                      <input value={bundleData.weight_display} onChange={(e) => setBundleData({ ...bundleData, weight_display: e.target.value })} placeholder="e.g., 45-50 KG" className="w-full border border-stone-200 rounded-lg p-2.5 text-sm focus:border-amber-400 focus:ring-1 focus:ring-amber-100 outline-none transition" />
+                    </div>
 
-                  <div>
-                    <label className="block font-semibold mb-2">Pregnancy Status</label>
-                    <select value={bundleData.pregnancy_status} onChange={(e) => setBundleData({ ...bundleData, pregnancy_status: e.target.value })} className="w-full border-2 rounded-xl p-3">
-                      <option value="">Select</option>
-                      <option value="pregnant">Pregnant</option>
-                      <option value="open">Open</option>
-                      <option value="n/a">N/A</option>
-                    </select>
-                  </div>
+                    <div>
+                      <label className="text-sm font-medium text-stone-700 mb-1 block">Pregnancy Status</label>
+                      <select value={bundleData.pregnancy_status} onChange={(e) => setBundleData({ ...bundleData, pregnancy_status: e.target.value })} className="w-full border border-stone-200 rounded-lg p-2.5 text-sm focus:border-amber-400 focus:ring-1 focus:ring-amber-100 outline-none transition">
+                        <option value="">Select</option>
+                        <option value="pregnant">Pregnant</option>
+                        <option value="open">Open</option>
+                        <option value="n/a">N/A</option>
+                      </select>
+                    </div>
 
-                  <div>
-                    <label className="block font-semibold mb-2">Sire Used</label>
-                    <input value={bundleData.sire_used} onChange={(e) => setBundleData({ ...bundleData, sire_used: e.target.value })} placeholder="e.g., Meatmaster Bull" className="w-full border-2 rounded-xl p-3" />
+                    <div>
+                      <label className="text-sm font-medium text-stone-700 mb-1 block">Sire Used</label>
+                      <input value={bundleData.sire_used} onChange={(e) => setBundleData({ ...bundleData, sire_used: e.target.value })} placeholder="e.g., Meatmaster Bull" className="w-full border border-stone-200 rounded-lg p-2.5 text-sm focus:border-amber-400 focus:ring-1 focus:ring-amber-100 outline-none transition" />
+                    </div>
                   </div>
                 </div>
 
                 <div>
-                  <label className="block font-semibold mb-2">Location *</label>
-                  <input value={bundleData.location} onChange={(e) => setBundleData({ ...bundleData, location: e.target.value })} className="w-full border-2 rounded-xl p-3" required />
+                  <label className="text-sm font-medium text-stone-700 mb-1 block">Location *</label>
+                  <input value={bundleData.location} onChange={(e) => setBundleData({ ...bundleData, location: e.target.value })} className="w-full border border-stone-200 rounded-lg p-2.5 text-sm focus:border-amber-400 focus:ring-1 focus:ring-amber-100 outline-none transition" required />
                 </div>
               </div>
             </>
           )}
 
           {/* Submit Button */}
-          <button type="submit" disabled={!isFormValid() || submitting} className="w-full h-14 bg-stone-800 hover:bg-stone-900 text-white rounded-2xl text-lg font-semibold disabled:opacity-50">
+          <button type="submit" disabled={!isFormValid() || submitting} className="w-full h-12 bg-amber-500 hover:bg-amber-600 text-white rounded-lg text-base font-semibold disabled:opacity-50 transition">
             {submitting ? 'Publishing...' : `Publish ${listingType === 'individual' ? 'Listing' : 'Bundle'}`}
           </button>
         </form>
