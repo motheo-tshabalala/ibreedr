@@ -22,8 +22,8 @@ function LivestockCard({ livestock, onWishlist, isInWishlist }) {
 
   if (!livestock) {
     return (
-      <div className="bg-white rounded-2xl shadow-xl overflow-hidden">
-        <div className="h-80 bg-gray-200 flex items-center justify-center">
+      <div className="bg-white rounded-2xl shadow-md overflow-hidden">
+        <div className="h-80 bg-gray-100 flex items-center justify-center">
           <span className="text-6xl">🐄</span>
         </div>
       </div>
@@ -55,8 +55,8 @@ function LivestockCard({ livestock, onWishlist, isInWishlist }) {
   const ageDisplay = getAgeDisplay();
 
   return (
-    <div className="bg-white rounded-2xl shadow-xl overflow-hidden cursor-pointer relative">
-      <div className="h-80 bg-gradient-to-br from-amber-200 to-amber-400 flex items-center justify-center relative">
+    <div className="bg-white rounded-2xl shadow-md overflow-hidden cursor-pointer relative">
+      <div className="h-80 bg-gradient-to-br from-amber-100 to-amber-200 flex items-center justify-center relative">
         {isVideo ? (
           <video
             src={mediaUrl}
@@ -77,42 +77,42 @@ function LivestockCard({ livestock, onWishlist, isInWishlist }) {
           e.stopPropagation();
           onWishlist(livestock);
         }}
-        className="absolute top-4 right-4 bg-white/90 hover:bg-white rounded-full p-2 shadow-lg transition z-10"
+        className="absolute top-3 right-3 bg-white/90 hover:bg-white rounded-full p-2 shadow-md transition z-10"
       >
-        <Bookmark className={`w-6 h-6 ${isInWishlist ? 'fill-amber-500 text-amber-500' : 'text-stone-500'}`} />
+        <Bookmark className={`w-5 h-5 ${isInWishlist ? 'fill-amber-500 text-amber-500' : 'text-stone-500'}`} />
       </button>
 
       <div className="p-4">
         <div className="flex justify-between items-start">
           <div>
-            <h2 className="text-xl font-bold text-stone-800">{livestock.name || 'Unnamed'}</h2>
-            <p className="text-xs text-stone-400">Ref: {livestock.reference_number || 'N/A'}</p>
+            <h2 className="text-lg font-bold text-stone-800">{livestock.name || 'Unnamed'}</h2>
+            <p className="text-xs text-stone-400 mt-0.5">Ref: {livestock.reference_number || 'N/A'}</p>
           </div>
           <p className="text-amber-600 font-bold text-lg">R{livestock.price ? Number(livestock.price).toLocaleString() : '0'}</p>
         </div>
 
         <div className="mt-2 space-y-1">
-          <p className="text-stone-600">{livestock.breed_type} • {livestock.animal_type}</p>
+          <p className="text-stone-600 text-sm">{livestock.breed_type} • {livestock.animal_type}</p>
           <p className="text-stone-500 text-sm">{livestock.location}</p>
 
-          <div className="flex flex-wrap gap-2 mt-2">
+          <div className="flex flex-wrap gap-1 mt-2">
             {livestock.pure_cross && (
-              <span className="text-xs bg-stone-100 px-2 py-1 rounded-full">
+              <span className="text-xs bg-stone-100 px-2 py-0.5 rounded-full">
                 {livestock.pure_cross === 'pure' ? 'Pure Breed' : 'Cross Breed'}
               </span>
             )}
             {ageDisplay && (
-              <span className="text-xs bg-stone-100 px-2 py-1 rounded-full">
+              <span className="text-xs bg-stone-100 px-2 py-0.5 rounded-full">
                 {ageDisplay}
               </span>
             )}
             {weightDisplay && (
-              <span className="text-xs bg-stone-100 px-2 py-1 rounded-full">
+              <span className="text-xs bg-stone-100 px-2 py-0.5 rounded-full">
                 {weightDisplay}
               </span>
             )}
             {livestock.pregnancy_status && livestock.pregnancy_status !== 'n/a' && (
-              <span className="text-xs bg-pink-100 text-pink-700 px-2 py-1 rounded-full">
+              <span className="text-xs bg-pink-100 text-pink-700 px-2 py-0.5 rounded-full">
                 {livestock.pregnancy_status === 'pregnant' ? '🤰 Pregnant' : livestock.pregnancy_status}
               </span>
             )}
@@ -126,8 +126,8 @@ function LivestockCard({ livestock, onWishlist, isInWishlist }) {
 function BundleCard({ bundle }) {
   if (!bundle) {
     return (
-      <div className="bg-white rounded-2xl shadow-xl overflow-hidden">
-        <div className="h-80 bg-gray-200 flex items-center justify-center">
+      <div className="bg-white rounded-2xl shadow-md overflow-hidden">
+        <div className="h-80 bg-gray-100 flex items-center justify-center">
           <span className="text-6xl">📦</span>
         </div>
       </div>
@@ -135,8 +135,8 @@ function BundleCard({ bundle }) {
   }
 
   return (
-    <div className="bg-white rounded-2xl shadow-xl overflow-hidden cursor-pointer">
-      <div className="h-80 bg-gradient-to-br from-green-200 to-green-400 flex items-center justify-center relative">
+    <div className="bg-white rounded-2xl shadow-md overflow-hidden cursor-pointer">
+      <div className="h-80 bg-gradient-to-br from-green-100 to-green-200 flex items-center justify-center relative">
         {bundle.video_url ? (
           <video
             src={bundle.video_url}
@@ -151,9 +151,9 @@ function BundleCard({ bundle }) {
         )}
       </div>
       <div className="p-4">
-        <h2 className="text-xl font-bold">{bundle.bundle_name || 'Bundle'}</h2>
-        <p className="text-amber-600 font-semibold">R{bundle.bundle_price ? Number(bundle.bundle_price).toLocaleString() : '0'}</p>
-        <p className="text-stone-500 text-sm">{bundle.location || 'No location'}</p>
+        <h2 className="text-lg font-bold">{bundle.bundle_name || 'Bundle'}</h2>
+        <p className="text-amber-600 font-semibold text-lg">R{bundle.bundle_price ? Number(bundle.bundle_price).toLocaleString() : '0'}</p>
+        <p className="text-stone-500 text-sm mt-1">{bundle.location || 'No location'}</p>
         {bundle.bundle_description && (
           <p className="text-stone-600 text-sm mt-2 line-clamp-2">{bundle.bundle_description}</p>
         )}
@@ -168,7 +168,7 @@ function FilterPanel({ isOpen, onClose, onApply, initialFilters }) {
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex justify-end">
+    <div className="fixed inset-0 bg-black bg-opacity-40 z-50 flex justify-end">
       <div className="bg-white w-full max-w-sm h-full p-6 overflow-y-auto">
         <div className="flex justify-between items-center mb-6">
           <h2 className="text-xl font-bold text-stone-800">Filters</h2>
@@ -402,20 +402,19 @@ export default function Browse() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-amber-50 to-stone-100">
-      {/* Header */}
-      <div className="bg-white border-b sticky top-0 z-30 shadow-sm">
+      {/* Header - Consistent spacing: p-4 */}
+      <div className="bg-white border-b border-stone-100 sticky top-0 z-30">
         <div className="max-w-md mx-auto px-4 py-4 space-y-3">
           <div className="flex items-center justify-between">
             <Link to="/">
               <h1 className="text-2xl font-bold text-amber-600">iBreedr</h1>
             </Link>
             <div className="flex gap-2">
-              {/* Help Button */}
               <button
                 onClick={toggleHelpMode}
-                className={`rounded-full p-2 border-2 transition ${helpMode
+                className={`rounded-full p-2 border transition ${helpMode
                     ? 'bg-amber-500 border-amber-500 text-white'
-                    : 'border-stone-300 text-stone-500 hover:border-amber-500'
+                    : 'border-stone-200 text-stone-500 hover:border-amber-300'
                   }`}
               >
                 <HelpCircle className="w-4 h-4" />
@@ -430,7 +429,7 @@ export default function Browse() {
                     window.location.href = '/ChatList';
                   }
                 }}
-                className="rounded-full p-2 border-2 border-amber-500 text-amber-500"
+                className="rounded-full p-2 border border-amber-400 text-amber-500"
               >
                 <MessageCircle className="w-4 h-4" />
               </button>
@@ -444,7 +443,7 @@ export default function Browse() {
                     window.location.href = '/Wishlist';
                   }
                 }}
-                className="rounded-full p-2 border-2 border-amber-500 text-amber-500"
+                className="rounded-full p-2 border border-amber-400 text-amber-500"
               >
                 <Bookmark className="w-4 h-4" />
               </button>
@@ -458,7 +457,7 @@ export default function Browse() {
                     window.location.href = '/MyListings';
                   }
                 }}
-                className="rounded-full px-3 py-1 border-2 border-amber-500 text-amber-500 text-sm"
+                className="rounded-full px-3 py-1 border border-amber-400 text-amber-500 text-sm"
               >
                 My Listings
               </button>
@@ -473,7 +472,7 @@ export default function Browse() {
                       window.location.href = '/logout';
                     }
                   }}
-                  className="rounded-full px-3 py-1 border-2 border-red-500 text-red-500 text-sm"
+                  className="rounded-full px-3 py-1 border border-red-300 text-red-500 text-sm"
                 >
                   Logout
                 </button>
@@ -487,7 +486,7 @@ export default function Browse() {
                       window.location.href = '/login';
                     }
                   }}
-                  className="rounded-full px-3 py-1 border-2 border-blue-500 text-blue-500 text-sm"
+                  className="rounded-full px-3 py-1 border border-blue-400 text-blue-500 text-sm"
                 >
                   Login
                 </button>
@@ -495,8 +494,8 @@ export default function Browse() {
             </div>
           </div>
 
-          {/* View Mode Toggle */}
-          <div className="flex gap-2 rounded-full p-1 bg-stone-100">
+          {/* View Mode Toggle - Consistent spacing: gap-1, p-1 */}
+          <div className="flex gap-1 rounded-full p-1 bg-stone-100">
             <button
               onClick={() => { setViewMode('both'); setCurrentIndex(0); }}
               className={`flex-1 py-2 rounded-full text-sm font-medium transition-all ${viewMode === 'both' ? 'bg-white shadow-sm text-amber-600' : 'text-stone-500'
@@ -520,19 +519,19 @@ export default function Browse() {
             </button>
           </div>
 
-          {/* Search Bar */}
+          {/* Search Bar - Consistent spacing: gap-2 */}
           <div className="flex gap-2">
             <div className="flex-1 relative">
-              <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-stone-400" />
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-stone-400" />
               <input
                 placeholder="Search livestock, breeds..."
                 value={searchQuery}
                 onChange={(e) => { setSearchQuery(e.target.value); setCurrentIndex(0); }}
-                className="w-full pl-11 pr-4 py-3 bg-white border border-stone-200 rounded-full focus:border-amber-400 focus:ring-2 focus:ring-amber-100 outline-none transition"
+                className="w-full pl-9 pr-8 py-2 bg-white border border-stone-200 rounded-full focus:border-amber-400 focus:ring-2 focus:ring-amber-100 outline-none transition text-sm"
               />
               {searchQuery && (
-                <button onClick={() => { setSearchQuery(''); setCurrentIndex(0); }} className="absolute right-4 top-1/2 -translate-y-1/2">
-                  <X className="w-4 h-4 text-stone-400" />
+                <button onClick={() => { setSearchQuery(''); setCurrentIndex(0); }} className="absolute right-3 top-1/2 -translate-y-1/2">
+                  <X className="w-3 h-3 text-stone-400" />
                 </button>
               )}
             </div>
@@ -545,26 +544,26 @@ export default function Browse() {
                   setIsFilterOpen(true);
                 }
               }}
-              className="w-12 h-12 rounded-full bg-white border border-stone-200 flex items-center justify-center hover:bg-stone-50 transition"
+              className="w-10 h-10 rounded-full bg-white border border-stone-200 flex items-center justify-center hover:bg-stone-50 transition"
             >
-              <SlidersHorizontal className="w-5 h-5 text-stone-600" />
+              <SlidersHorizontal className="w-4 h-4 text-stone-600" />
             </button>
           </div>
         </div>
       </div>
 
-      {/* Main Card Area with Fixed Spacing */}
+      {/* Main Card Area - Consistent spacing: pt-6, pb-32 */}
       <div className="max-w-md mx-auto px-4 pt-6 pb-32">
         {displayItems.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-[500px] text-center">
-            <div className="w-20 h-20 bg-amber-100 rounded-full flex items-center justify-center mb-4">
-              <Search className="w-10 h-10 text-amber-500" />
+            <div className="w-16 h-16 bg-amber-100 rounded-full flex items-center justify-center mb-4">
+              <Search className="w-8 h-8 text-amber-500" />
             </div>
-            <h3 className="text-xl font-semibold text-stone-800 mb-2">No listings found</h3>
-            <p className="text-stone-500 mb-6">Try adjusting your search or filters</p>
+            <h3 className="text-lg font-semibold text-stone-800 mb-2">No listings found</h3>
+            <p className="text-stone-500 text-sm mb-6">Try adjusting your search or filters</p>
             <button
               onClick={() => { setFilters({ location: '', priceMin: '', priceMax: '' }); setSearchQuery(''); }}
-              className="text-amber-600 underline"
+              className="text-amber-600 text-sm underline"
             >
               Clear all filters
             </button>
@@ -577,29 +576,29 @@ export default function Browse() {
                   window.location.href = '/SellerUpload';
                 }
               }}
-              className="bg-amber-500 hover:bg-amber-600 text-white px-6 py-2 rounded-full mt-6 transition"
+              className="bg-amber-500 hover:bg-amber-600 text-white px-5 py-2 rounded-full text-sm mt-6 transition"
             >
               + Add Your First Listing
             </button>
           </div>
         ) : currentIndex >= displayItems.length ? (
           <div className="flex flex-col items-center justify-center h-[500px] text-center">
-            <div className="w-20 h-20 bg-stone-100 rounded-full flex items-center justify-center mb-4">
-              <span className="text-4xl">✨</span>
+            <div className="w-16 h-16 bg-stone-100 rounded-full flex items-center justify-center mb-4">
+              <span className="text-3xl">✨</span>
             </div>
-            <h3 className="text-xl font-semibold text-stone-800 mb-2">That's all for now!</h3>
-            <p className="text-stone-500 mb-6">Check back later for more listings</p>
+            <h3 className="text-lg font-semibold text-stone-800 mb-2">That's all for now!</h3>
+            <p className="text-stone-500 text-sm mb-6">Check back later for more listings</p>
             <button
               onClick={() => setCurrentIndex(0)}
-              className="bg-amber-500 hover:bg-amber-600 text-white px-6 py-2 rounded-full transition"
+              className="bg-amber-500 hover:bg-amber-600 text-white px-5 py-2 rounded-full text-sm transition"
             >
               Start Over
             </button>
           </div>
         ) : (
           <div className="relative">
-            {/* Card Container - Fixed height for consistent spacing */}
-            <div className="h-[520px] mb-6">
+            {/* Card Container - Fixed height: h-[500px], margin bottom: mb-6 */}
+            <div className="h-[500px] mb-6">
               <AnimatePresence>
                 <motion.div
                   key={currentItem?.id || currentItem?.bundle_name}
@@ -623,8 +622,8 @@ export default function Browse() {
               </AnimatePresence>
             </div>
 
-            {/* Action Buttons - Below card with proper spacing */}
-            <div className="flex justify-center gap-8 py-4">
+            {/* Action Buttons - Consistent spacing: gap-6 */}
+            <div className="flex justify-center gap-6">
               <button
                 onClick={(e) => {
                   if (helpMode) {
@@ -634,7 +633,7 @@ export default function Browse() {
                     handleSwipeLeft();
                   }
                 }}
-                className="bg-red-500 hover:bg-red-600 text-white rounded-full w-16 h-16 shadow-lg flex items-center justify-center text-2xl font-bold transition transform active:scale-95"
+                className="bg-red-500 hover:bg-red-600 text-white rounded-full w-14 h-14 shadow-md flex items-center justify-center text-xl font-bold transition active:scale-95"
               >
                 ←
               </button>
@@ -648,9 +647,9 @@ export default function Browse() {
                     toggleLike();
                   }
                 }}
-                className="bg-white hover:bg-gray-50 rounded-full w-16 h-16 shadow-lg flex items-center justify-center transition transform active:scale-95"
+                className="bg-white hover:bg-gray-50 rounded-full w-14 h-14 shadow-md flex items-center justify-center transition active:scale-95 border border-stone-100"
               >
-                <Heart className={`w-8 h-8 ${hasLiked ? 'fill-amber-500 text-amber-500' : 'text-gray-400'}`} />
+                <Heart className={`w-6 h-6 ${hasLiked ? 'fill-amber-500 text-amber-500' : 'text-gray-400'}`} />
               </button>
 
               <button
@@ -662,7 +661,7 @@ export default function Browse() {
                     handleSwipeRight();
                   }
                 }}
-                className="bg-green-500 hover:bg-green-600 text-white rounded-full w-16 h-16 shadow-lg flex items-center justify-center text-2xl font-bold transition transform active:scale-95"
+                className="bg-green-500 hover:bg-green-600 text-white rounded-full w-14 h-14 shadow-md flex items-center justify-center text-xl font-bold transition active:scale-95"
               >
                 →
               </button>
@@ -679,7 +678,7 @@ export default function Browse() {
         initialFilters={filters}
       />
 
-      {/* FAB - Upload */}
+      {/* FAB - Upload - Consistent spacing: bottom-6 right-6 */}
       <button
         onClick={(e) => {
           if (helpMode) {
@@ -689,7 +688,7 @@ export default function Browse() {
             window.location.href = '/SellerUpload';
           }
         }}
-        className="fixed bottom-6 right-6 w-14 h-14 bg-amber-500 hover:bg-amber-600 text-white rounded-full shadow-2xl text-3xl transition transform active:scale-95"
+        className="fixed bottom-6 right-6 w-12 h-12 bg-amber-500 hover:bg-amber-600 text-white rounded-full shadow-lg text-2xl transition active:scale-95 flex items-center justify-center"
       >
         +
       </button>

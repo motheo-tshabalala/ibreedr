@@ -9,7 +9,6 @@ export default function Wishlist() {
   const [listings, setListings] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Get current user
   useEffect(() => {
     const getUser = async () => {
       const { data: { user } } = await supabase.auth.getUser();
@@ -22,14 +21,12 @@ export default function Wishlist() {
     getUser();
   }, []);
 
-  // Load wishlist and listings
   useEffect(() => {
     const loadWishlist = async () => {
       if (!user) return;
 
       setIsLoading(true);
 
-      // Get wishlist items
       const { data: wishlistData, error: wishlistError } = await supabase
         .from('wishlist')
         .select('*')
@@ -41,14 +38,12 @@ export default function Wishlist() {
       } else {
         setWishlistItems(wishlistData || []);
 
-        // Get all livestock for these wishlist items
         if (wishlistData && wishlistData.length > 0) {
           const livestockIds = wishlistData.map(item => item.livestock_id);
           const { data: livestockData } = await supabase
             .from('livestock')
             .select('*')
             .in('id', livestockIds);
-
           setListings(livestockData || []);
         }
       }
@@ -66,7 +61,6 @@ export default function Wishlist() {
       .eq('id', id);
 
     if (error) {
-      console.error('Remove error:', error);
       alert('Failed to remove from wishlist');
     } else {
       setWishlistItems(wishlistItems.filter(item => item.id !== id));
@@ -75,17 +69,12 @@ export default function Wishlist() {
   };
 
   const updateNotification = async (id, field, value) => {
-    const { error } = await supabase
+    await supabase
       .from('wishlist')
       .update({ [field]: value })
       .eq('id', id);
-
-    if (error) {
-      console.error('Update error:', error);
-    }
   };
 
-  // Enrich wishlist with current livestock data
   const enrichedWishlist = wishlistItems.map(item => {
     const livestock = listings.find(l => l.id === item.livestock_id);
     const priceDropped = livestock && item.original_price && livestock.price < item.original_price;
@@ -102,39 +91,39 @@ export default function Wishlist() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-amber-50 via-white to-stone-50 flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-4 border-stone-300 border-t-amber-600"></div>
+      <div className="min-h-screen bg-gradient-to-br from-amber-50 to-stone-100 flex items-center justify-center">
+        <div className="animate-spin rounded-full h-10 w-10 border-4 border-stone-300 border-t-amber-600"></div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-amber-50 via-white to-stone-50">
-      <div className="bg-white/80 backdrop-blur-md border-b border-stone-200 sticky top-0 z-30">
+    <div className="min-h-screen bg-gradient-to-br from-amber-50 to-stone-100">
+      <div className="bg-white border-b border-stone-100 sticky top-0 z-30">
         <div className="max-w-4xl mx-auto px-4 py-4 flex items-center gap-4">
           <Link to="/Browse">
-            <button className="p-2 hover:bg-stone-100 rounded-full">
-              <ArrowLeft className="w-6 h-6 text-stone-800" />
+            <button className="p-2 -m-2 rounded-full hover:bg-stone-100 transition">
+              <ArrowLeft className="w-5 h-5 text-stone-600" />
             </button>
           </Link>
           <div className="flex items-center gap-2">
-            <Heart className="w-6 h-6 text-rose-500 fill-rose-500" />
+            <Heart className="w-5 h-5 text-rose-500 fill-rose-500" />
             <h1 className="text-xl font-bold text-stone-800">My Wishlist</h1>
           </div>
-          <span className="px-2 py-1 bg-stone-100 text-stone-800 rounded-full text-sm">
+          <span className="px-2 py-0.5 bg-stone-100 text-stone-600 rounded-full text-xs">
             {wishlistItems.length} items
           </span>
         </div>
       </div>
 
-      <div className="max-w-4xl mx-auto px-4 py-8">
+      <div className="max-w-4xl mx-auto px-4 py-6">
         {enrichedWishlist.length === 0 ? (
           <div className="text-center py-16">
-            <Heart className="w-16 h-16 text-stone-300 mx-auto mb-4" />
-            <h3 className="text-xl font-bold text-stone-800 mb-2">Your wishlist is empty</h3>
-            <p className="text-stone-600 mb-6">Save livestock you're interested in</p>
+            <Heart className="w-12 h-12 text-stone-300 mx-auto mb-4" />
+            <h3 className="text-lg font-semibold text-stone-800 mb-2">Your wishlist is empty</h3>
+            <p className="text-stone-500 text-sm mb-6">Save livestock you're interested in</p>
             <Link to="/Browse">
-              <button className="bg-stone-800 hover:bg-stone-900 text-white rounded-full px-6 py-2">
+              <button className="bg-amber-500 hover:bg-amber-600 text-white rounded-full px-5 py-2 text-sm transition">
                 Browse Livestock
               </button>
             </Link>
@@ -142,15 +131,15 @@ export default function Wishlist() {
         ) : (
           <div className="space-y-4">
             {enrichedWishlist.map(item => (
-              <div key={item.id} className="bg-white rounded-2xl shadow-lg overflow-hidden">
+              <div key={item.id} className="bg-white rounded-xl border border-stone-100 overflow-hidden shadow-sm">
                 {item.priceDropped && (
-                  <div className="bg-green-500 text-white px-4 py-2 flex items-center gap-2">
+                  <div className="bg-green-500 text-white px-4 py-2 flex items-center gap-2 text-sm">
                     <TrendingDown className="w-4 h-4" />
                     <span className="font-medium">Price dropped by R {item.priceDrop.toLocaleString()}!</span>
                   </div>
                 )}
                 {item.statusChanged && (
-                  <div className="bg-amber-500 text-white px-4 py-2 flex items-center gap-2">
+                  <div className="bg-amber-500 text-white px-4 py-2 flex items-center gap-2 text-sm">
                     <Bell className="w-4 h-4" />
                     <span className="font-medium">Status changed to: {item.livestock?.status}</span>
                   </div>
@@ -159,13 +148,9 @@ export default function Wishlist() {
                 <div className="p-4">
                   <div className="flex gap-4">
                     {item.livestock?.images && item.livestock.images[0] ? (
-                      <img
-                        src={item.livestock.images[0]}
-                        alt={item.livestock_name}
-                        className="w-24 h-24 rounded-xl object-cover"
-                      />
+                      <img src={item.livestock.images[0]} alt={item.livestock_name} className="w-20 h-20 rounded-lg object-cover" />
                     ) : (
-                      <div className="w-24 h-24 rounded-xl bg-stone-100 flex items-center justify-center">
+                      <div className="w-20 h-20 rounded-lg bg-stone-100 flex items-center justify-center">
                         <span className="text-3xl">🐄</span>
                       </div>
                     )}
@@ -173,13 +158,13 @@ export default function Wishlist() {
                     <div className="flex-1">
                       <div className="flex items-start justify-between">
                         <div>
-                          <h3 className="font-bold text-stone-800">{item.livestock_name}</h3>
-                          <p className="text-sm text-stone-600">
+                          <h3 className="font-semibold text-stone-800">{item.livestock_name}</h3>
+                          <p className="text-sm text-stone-500 mt-0.5">
                             {item.livestock?.breed_type} • {item.livestock?.location}
                           </p>
                         </div>
                         {item.livestock?.status !== 'active' && (
-                          <span className={`px-2 py-1 rounded-full text-xs font-medium ${item.livestock?.status === 'sold' ? 'bg-stone-200 text-stone-800' : 'bg-amber-100 text-amber-800'
+                          <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${item.livestock?.status === 'sold' ? 'bg-stone-100 text-stone-600' : 'bg-amber-100 text-amber-700'
                             }`}>
                             {item.livestock?.status}
                           </span>
@@ -205,15 +190,15 @@ export default function Wishlist() {
                     </div>
                   </div>
 
-                  <div className="mt-4 pt-4 border-t border-stone-200">
+                  <div className="mt-4 pt-3 border-t border-stone-100">
                     <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-6">
+                      <div className="flex items-center gap-4">
                         <label className="flex items-center gap-2 cursor-pointer">
                           <button
                             onClick={() => updateNotification(item.id, 'notify_price_drop', !item.notify_price_drop)}
-                            className={`w-10 h-5 rounded-full transition-colors ${item.notify_price_drop ? 'bg-amber-500' : 'bg-stone-300'}`}
+                            className={`w-8 h-4 rounded-full transition-colors ${item.notify_price_drop ? 'bg-amber-500' : 'bg-stone-300'}`}
                           >
-                            <div className={`w-4 h-4 bg-white rounded-full transition-transform ${item.notify_price_drop ? 'translate-x-5' : 'translate-x-1'}`} />
+                            <div className={`w-3 h-3 bg-white rounded-full transition-transform ${item.notify_price_drop ? 'translate-x-4' : 'translate-x-0.5'}`} />
                           </button>
                           <span className="text-sm text-stone-600">Price alerts</span>
                         </label>
@@ -221,9 +206,9 @@ export default function Wishlist() {
                         <label className="flex items-center gap-2 cursor-pointer">
                           <button
                             onClick={() => updateNotification(item.id, 'notify_status_change', !item.notify_status_change)}
-                            className={`w-10 h-5 rounded-full transition-colors ${item.notify_status_change ? 'bg-amber-500' : 'bg-stone-300'}`}
+                            className={`w-8 h-4 rounded-full transition-colors ${item.notify_status_change ? 'bg-amber-500' : 'bg-stone-300'}`}
                           >
-                            <div className={`w-4 h-4 bg-white rounded-full transition-transform ${item.notify_status_change ? 'translate-x-5' : 'translate-x-1'}`} />
+                            <div className={`w-3 h-3 bg-white rounded-full transition-transform ${item.notify_status_change ? 'translate-x-4' : 'translate-x-0.5'}`} />
                           </button>
                           <span className="text-sm text-stone-600">Status alerts</span>
                         </label>
@@ -232,16 +217,16 @@ export default function Wishlist() {
                       <div className="flex gap-2">
                         {item.livestock?.status === 'active' && (
                           <Link to={`/BreedDetails?id=${item.livestock_id}`}>
-                            <button className="bg-stone-800 hover:bg-stone-900 text-white rounded-full px-4 py-1 text-sm">
+                            <button className="bg-amber-500 hover:bg-amber-600 text-white rounded-full px-3 py-1 text-sm transition">
                               View
                             </button>
                           </Link>
                         )}
                         <button
                           onClick={() => removeFromWishlist(item.id)}
-                          className="px-3 py-1 border-2 border-red-300 text-red-600 rounded-full hover:bg-red-50 text-sm"
+                          className="px-3 py-1 border border-red-200 text-red-500 rounded-full text-sm hover:bg-red-50 transition"
                         >
-                          <Trash2 className="w-4 h-4 inline" />
+                          <Trash2 className="w-4 h-4" />
                         </button>
                       </div>
                     </div>
