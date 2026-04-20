@@ -22,7 +22,7 @@ export default function SellerUpload() {
 
   const [listingType, setListingType] = useState('');
 
-  // Individual form fields (ADDED SOCIAL FIELDS)
+  // Individual form fields
   const [individualData, setIndividualData] = useState({
     name: '',
     animal_type: '',
@@ -34,7 +34,7 @@ export default function SellerUpload() {
     weight_min: '',
     weight_max: '',
     pregnancy_status: '',
-    rams_used: '',
+    sire_used: '',
     location: '',
     price: '',
     health_info: '',
@@ -60,6 +60,7 @@ export default function SellerUpload() {
     age_display: '',
     weight_display: '',
     pregnancy_status: '',
+    sire_used: '',
     location: '',
     images: [],
     video_url: ''
@@ -208,7 +209,7 @@ export default function SellerUpload() {
           weight_min: individualData.weight_min ? parseFloat(individualData.weight_min) : null,
           weight_max: individualData.weight_max ? parseFloat(individualData.weight_max) : null,
           pregnancy_status: individualData.pregnancy_status,
-          rams_used: individualData.rams_used,
+          sire_used: individualData.sire_used,
           location: individualData.location,
           price: individualData.price ? parseFloat(individualData.price) : null,
           health_info: individualData.health_info,
@@ -249,6 +250,7 @@ export default function SellerUpload() {
           age_display: bundleData.age_display,
           weight_display: bundleData.weight_display,
           pregnancy_status: bundleData.pregnancy_status,
+          sire_used: bundleData.sire_used,
           location: bundleData.location,
           images: bundleData.images,
           video_url: bundleData.video_url,
@@ -436,8 +438,8 @@ export default function SellerUpload() {
                 </div>
 
                 <div>
-                  <label className="block font-semibold mb-2">Rams Used</label>
-                  <input value={individualData.rams_used} onChange={(e) => setIndividualData({ ...individualData, rams_used: e.target.value })} placeholder="e.g., Meatmaster Ram" className="w-full border-2 rounded-xl p-3" />
+                  <label className="block font-semibold mb-2">Sire Used</label>
+                  <input value={individualData.sire_used} onChange={(e) => setIndividualData({ ...individualData, sire_used: e.target.value })} placeholder="e.g., Meatmaster Bull, Angus Bull" className="w-full border-2 rounded-xl p-3" />
                 </div>
 
                 <div>
@@ -631,6 +633,11 @@ export default function SellerUpload() {
                       <option value="open">Open</option>
                       <option value="n/a">N/A</option>
                     </select>
+                  </div>
+
+                  <div>
+                    <label className="block font-semibold mb-2">Sire Used</label>
+                    <input value={bundleData.sire_used} onChange={(e) => setBundleData({ ...bundleData, sire_used: e.target.value })} placeholder="e.g., Meatmaster Bull" className="w-full border-2 rounded-xl p-3" />
                   </div>
                 </div>
 

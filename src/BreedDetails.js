@@ -302,6 +302,7 @@ export default function BreedDetails() {
       </div>
 
       <div className="max-w-4xl mx-auto px-4 py-8 space-y-6">
+        {/* Image/Video Section */}
         <div className="bg-white rounded-2xl overflow-hidden shadow-lg">
           {livestock.video_url ? (
             <video
@@ -330,6 +331,7 @@ export default function BreedDetails() {
           )}
         </div>
 
+        {/* Main Info Card */}
         <div className="bg-white rounded-2xl p-6 shadow-lg space-y-4">
           <div className="flex items-start justify-between">
             <div className="flex-1">
@@ -384,6 +386,7 @@ export default function BreedDetails() {
           )}
         </div>
 
+        {/* Specifications Card */}
         <div className="bg-white rounded-2xl p-6 shadow-lg">
           <h3 className="text-xl font-bold text-stone-800 mb-4">Specifications</h3>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -435,18 +438,19 @@ export default function BreedDetails() {
               </div>
             )}
 
-            {livestock.rams_used && (
+            {livestock.sire_used && (
               <div className="flex items-center gap-3 p-3 bg-stone-50 rounded-xl">
                 <Users className="w-5 h-5 text-stone-500" />
                 <div>
-                  <p className="text-xs text-stone-500">Rams Used</p>
-                  <p className="font-semibold text-stone-800">{livestock.rams_used}</p>
+                  <p className="text-xs text-stone-500">Sire Used</p>
+                  <p className="font-semibold text-stone-800">{livestock.sire_used}</p>
                 </div>
               </div>
             )}
           </div>
         </div>
 
+        {/* Health Info */}
         {livestock.health_info && (
           <div className="bg-white rounded-2xl p-6 shadow-lg">
             <h3 className="text-xl font-bold text-stone-800 mb-3">Health & Vaccination</h3>
@@ -454,6 +458,7 @@ export default function BreedDetails() {
           </div>
         )}
 
+        {/* Notes */}
         {livestock.notes && (
           <div className="bg-white rounded-2xl p-6 shadow-lg">
             <h3 className="text-xl font-bold text-stone-800 mb-3">Additional Information</h3>
@@ -461,7 +466,7 @@ export default function BreedDetails() {
           </div>
         )}
 
-        {/* Contact Seller Section with Chat Button */}
+        {/* Contact Seller Section */}
         <div className="bg-white rounded-2xl p-6 shadow-lg">
           <h3 className="text-xl font-bold text-stone-800 mb-4">Contact Seller</h3>
           <div className="space-y-3">
