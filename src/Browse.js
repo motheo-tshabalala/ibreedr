@@ -340,20 +340,20 @@ function LivestockCard({ livestock, onWishlist, isInWishlist, onLike, hasLiked, 
   };
 
   return (
-    <Card className="overflow-hidden rounded-2xl border shadow-lg hover:shadow-xl transition-all relative" onClick={handleCardClick}>
-      <div className="relative h-64 bg-muted">
+    <Card className="overflow-hidden rounded-2xl border shadow-lg hover:shadow-xl transition-all" onClick={handleCardClick}>
+      <div className="relative bg-muted">
         {isVideo ? (
           <video
             src={mediaUrl}
-            className="w-full h-full object-cover"
+            className="w-full h-auto max-h-80 object-contain"
             poster={livestock.images?.[0]}
             controls
             onClick={(e) => e.stopPropagation()}
           />
         ) : mediaUrl ? (
-          <img src={mediaUrl} alt={livestock.name} className="w-full h-full object-cover" />
+          <img src={mediaUrl} alt={livestock.name} className="w-full h-auto max-h-80 object-contain" />
         ) : (
-          <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-amber-100 to-amber-200">
+          <div className="w-full h-48 flex items-center justify-center bg-gradient-to-br from-amber-100 to-amber-200">
             <span className="text-6xl">🐄</span>
           </div>
         )}
@@ -366,7 +366,7 @@ function LivestockCard({ livestock, onWishlist, isInWishlist, onLike, hasLiked, 
         </button>
       </div>
 
-      <CardContent className="p-4 space-y-2 pb-16">
+      <CardContent className="p-4 space-y-2">
         <div className="flex justify-between items-start">
           <div>
             <h3 className="font-bold text-lg text-gray-900">{livestock.name}</h3>
@@ -418,19 +418,19 @@ function BundleCard({ bundle }) {
   const pricePerHead = bundle.price_per_head || (totalPrice / bundle.quantity);
 
   return (
-    <Card className="overflow-hidden cursor-pointer rounded-2xl border shadow-lg hover:shadow-xl transition-all">
-      <div className="relative h-64 bg-muted">
+    <Card className="overflow-hidden rounded-2xl border shadow-lg hover:shadow-xl transition-all">
+      <div className="relative bg-muted">
         {bundle.video_url ? (
           <video
             src={bundle.video_url}
-            className="w-full h-full object-cover"
+            className="w-full h-auto max-h-80 object-contain"
             controls
             onClick={(e) => e.stopPropagation()}
           />
         ) : bundle.images && bundle.images[0] ? (
-          <img src={bundle.images[0]} alt={bundle.bundle_name} className="w-full h-full object-cover" />
+          <img src={bundle.images[0]} alt={bundle.bundle_name} className="w-full h-auto max-h-80 object-contain" />
         ) : (
-          <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-green-100 to-green-200">
+          <div className="w-full h-48 flex items-center justify-center bg-gradient-to-br from-green-100 to-green-200">
             <span className="text-6xl">📦</span>
           </div>
         )}
@@ -733,7 +733,7 @@ export default function Browse() {
     <div className="min-h-screen bg-gradient-to-br from-amber-50 to-stone-100">
       {/* Header */}
       <div className="bg-white border-b sticky top-0 z-30">
-        <div className="max-w-md mx-auto px-4 py-4 space-y-3">
+        <div className="max-w-md mx-auto px-3 sm:px-4 py-4 space-y-3">
           <div className="text-center">
             <Link to="/">
               <h1 className="text-2xl font-bold text-amber-600">iBreedr</h1>
@@ -798,27 +798,29 @@ export default function Browse() {
       </div>
 
       {/* Main Card Area with Side Arrows */}
-      <div className="relative max-w-md mx-auto px-4 pt-6 pb-32">
+      <div className="relative max-w-md mx-auto px-3 sm:px-4 pt-4 sm:pt-6 pb-32">
+        {/* Left Arrow - previous card */}
         {currentIndex > 0 && (
           <button
             onClick={handleLeftArrowClick}
-            className="fixed left-2 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-white shadow-md flex items-center justify-center text-xl text-gray-500 hover:text-red-500 transition z-20"
+            className="fixed left-1 sm:left-2 top-1/2 -translate-y-1/2 w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-white shadow-md flex items-center justify-center text-lg sm:text-xl text-gray-500 hover:text-red-500 transition z-20"
           >
             &lt;
           </button>
         )}
 
+        {/* Right Arrow - next card */}
         {currentIndex < displayItems.length - 1 && (
           <button
             onClick={handleRightArrowClick}
-            className="fixed right-2 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-white shadow-md flex items-center justify-center text-xl text-gray-500 hover:text-green-500 transition z-20"
+            className="fixed right-1 sm:right-2 top-1/2 -translate-y-1/2 w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-white shadow-md flex items-center justify-center text-lg sm:text-xl text-gray-500 hover:text-green-500 transition z-20"
           >
             &gt;
           </button>
         )}
 
         {displayItems.length === 0 ? (
-          <div className="flex flex-col items-center justify-center h-[500px] text-center">
+          <div className="flex flex-col items-center justify-center h-[60vh] text-center">
             <div className="w-16 h-16 bg-amber-100 rounded-full flex items-center justify-center mb-4">
               <Search className="w-8 h-8 text-amber-500" />
             </div>
@@ -838,7 +840,7 @@ export default function Browse() {
             </button>
           </div>
         ) : currentIndex >= displayItems.length ? (
-          <div className="flex flex-col items-center justify-center h-[500px] text-center">
+          <div className="flex flex-col items-center justify-center h-[60vh] text-center">
             <div className="w-16 h-16 bg-stone-100 rounded-full flex items-center justify-center mb-4">
               <span className="text-3xl">✨</span>
             </div>
@@ -852,33 +854,45 @@ export default function Browse() {
             </button>
           </div>
         ) : (
-          <div className="h-[550px] mb-6">
-            <AnimatePresence>
-              <motion.div
-                key={currentItem?.id || currentItem?.bundle_name}
-                drag="x"
-                dragConstraints={{ left: 0, right: 0 }}
-                onDragEnd={handleDragEnd}
-                style={{ x, rotate, opacity }}
-                onClick={handleCardClick}
-                className="cursor-pointer absolute w-full"
+          <>
+            <div className="mb-4">
+              <AnimatePresence>
+                <motion.div
+                  key={currentItem?.id || currentItem?.bundle_name}
+                  drag="x"
+                  dragConstraints={{ left: 0, right: 0 }}
+                  onDragEnd={handleDragEnd}
+                  style={{ x, rotate, opacity }}
+                  onClick={handleCardClick}
+                  className="cursor-pointer w-full"
+                >
+                  {currentItem?.listing_type === 'bundle' ? (
+                    <BundleCard bundle={currentItem} />
+                  ) : (
+                    <LivestockCard
+                      livestock={currentItem}
+                      onWishlist={addToWishlist}
+                      isInWishlist={wishlistIds.includes(currentItem?.id)}
+                      onLike={toggleLike}
+                      hasLiked={hasLiked}
+                      helpMode={helpMode}
+                      showHelp={showHelp}
+                    />
+                  )}
+                </motion.div>
+              </AnimatePresence>
+            </div>
+
+            {/* Heart Button - centered below card */}
+            <div className="flex justify-center mt-2 sm:mt-4">
+              <button
+                onClick={toggleLike}
+                className="w-10 h-10 rounded-full bg-white shadow-md flex items-center justify-center transition active:scale-95 border border-stone-100"
               >
-                {currentItem?.listing_type === 'bundle' ? (
-                  <BundleCard bundle={currentItem} />
-                ) : (
-                  <LivestockCard
-                    livestock={currentItem}
-                    onWishlist={addToWishlist}
-                    isInWishlist={wishlistIds.includes(currentItem?.id)}
-                    onLike={toggleLike}
-                    hasLiked={hasLiked}
-                    helpMode={helpMode}
-                    showHelp={showHelp}
-                  />
-                )}
-              </motion.div>
-            </AnimatePresence>
-          </div>
+                <Heart className={`w-5 h-5 ${hasLiked ? 'fill-amber-500 text-amber-500' : 'text-gray-400'}`} />
+              </button>
+            </div>
+          </>
         )}
       </div>
 
