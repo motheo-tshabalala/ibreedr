@@ -24,12 +24,22 @@ export function HelpProvider({ children }) {
   };
 
   return (
-    <HelpContext.Provider value={{ helpMode, toggleHelpMode, showHelp, helpElement, closeHelp }}>
+    <HelpContext.Provider value={{
+      helpMode,
+      toggleHelpMode,
+      showHelp,
+      helpElement,
+      closeHelp
+    }}>
       {children}
     </HelpContext.Provider>
   );
 }
 
 export function useHelp() {
-  return useContext(HelpContext);
+  const context = useContext(HelpContext);
+  if (!context) {
+    throw new Error('useHelp must be used within a HelpProvider');
+  }
+  return context;
 }

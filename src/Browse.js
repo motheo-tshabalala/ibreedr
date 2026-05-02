@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Search, SlidersHorizontal, X, Heart, Bookmark, MessageCircle, HelpCircle, MapPin } from 'lucide-react';
+import { Search, SlidersHorizontal, X, Heart, Bookmark, MessageCircle, HelpCircle, MapPin, Menu, Filter, RotateCcw } from 'lucide-react';
 import { motion, useMotionValue, useTransform, AnimatePresence } from 'framer-motion';
 import { Link } from 'react-router-dom';
 import { supabase } from './supabaseClient';
@@ -8,8 +8,277 @@ import { Card, CardContent } from "./components/ui/card";
 import { Badge } from "./components/ui/Badge";
 import { Button } from "./components/ui/button";
 
-// Livestock Card with shadcn/ui
-function LivestockCard({ livestock, onWishlist, isInWishlist }) {
+// Mobile Menu Component
+function MobileMenu({ user, toggleHelpMode, helpMode, showHelp }) {
+  const [isOpen, setIsOpen] = useState(false);
+
+  return (
+    <>
+      <button
+        onClick={() => setIsOpen(!isOpen)}
+        className="rounded-full p-2 border border-stone-200 text-stone-500 hover:border-amber-300"
+      >
+        <Menu className="w-5 h-5" />
+      </button>
+
+      {isOpen && (
+        <>
+          <div className="fixed inset-0 bg-black/50 z-40" onClick={() => setIsOpen(false)} />
+          <div className="fixed left-0 top-0 h-full w-64 bg-white shadow-xl z-50 p-4 animate-in slide-in-from-left duration-200">
+            <div className="flex justify-between items-center mb-6">
+              <h3 className="font-bold">Menu</h3>
+              <button onClick={() => setIsOpen(false)} className="p-1">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="space-y-4">
+              <button
+                onClick={() => {
+                  toggleHelpMode();
+                  setIsOpen(false);
+                }}
+                className={`w-full text-left px-3 py-2 rounded-lg transition ${helpMode ? 'bg-amber-100 text-amber-600' : 'hover:bg-stone-100'
+                  }`}
+              >
+                <HelpCircle className="w-4 h-4 inline mr-2" />
+                {helpMode ? 'Exit Help Mode' : 'Help Mode'}
+              </button>
+              <Link
+                to="/ChatList"
+                onClick={(e) => {
+                  if (helpMode) {
+                    e.preventDefault();
+                    showHelp('chat');
+                    setIsOpen(false);
+                  }
+                }}
+              >
+                <div className="px-3 py-2 rounded-lg hover:bg-stone-100">
+                  <MessageCircle className="w-4 h-4 inline mr-2" />
+                  Messages
+                </div>
+              </Link>
+              <Link
+                to="/Wishlist"
+                onClick={(e) => {
+                  if (helpMode) {
+                    e.preventDefault();
+                    showHelp('wishlist');
+                    setIsOpen(false);
+                  }
+                }}
+              >
+                <div className="px-3 py-2 rounded-lg hover:bg-stone-100">
+                  <Bookmark className="w-4 h-4 inline mr-2" />
+                  Wishlist
+                </div>
+              </Link>
+              <Link
+                to="/MyListings"
+                onClick={(e) => {
+                  if (helpMode) {
+                    e.preventDefault();
+                    showHelp('myListings');
+                    setIsOpen(false);
+                  }
+                }}
+              >
+                <div className="px-3 py-2 rounded-lg hover:bg-stone-100">
+                  My Listings
+                </div>
+              </Link>
+              <Link
+                to="/Dashboard"
+                onClick={(e) => {
+                  if (helpMode) {
+                    e.preventDefault();
+                    showHelp('dashboard');
+                    setIsOpen(false);
+                  }
+                }}
+              >
+                <div className="px-3 py-2 rounded-lg hover:bg-stone-100">
+                  Dashboard
+                </div>
+              </Link>
+              {user ? (
+                <Link
+                  to="/logout"
+                  onClick={(e) => {
+                    if (helpMode) {
+                      e.preventDefault();
+                      showHelp('logout');
+                      setIsOpen(false);
+                    }
+                  }}
+                >
+                  <div className="px-3 py-2 rounded-lg hover:bg-red-50 text-red-600">
+                    Logout
+                  </div>
+                </Link>
+              ) : (
+                <Link
+                  to="/login"
+                  onClick={(e) => {
+                    if (helpMode) {
+                      e.preventDefault();
+                      showHelp('login');
+                      setIsOpen(false);
+                    }
+                  }}
+                >
+                  <div className="px-3 py-2 rounded-lg hover:bg-blue-50 text-blue-600">
+                    Login
+                  </div>
+                </Link>
+              )}
+            </div>
+          </div>
+        </>
+      )}
+    </>
+  );
+}
+
+// Filter Panel
+function FilterPanel({ isOpen, onClose, onApply, initialFilters, helpMode, showHelp }) {
+  const [filters, setFilters] = useState(initialFilters);
+
+  const resetFilters = () => {
+    setFilters({
+      location: '',
+      priceMin: '',
+      priceMax: '',
+      animalType: '',
+      listingType: 'all',
+      pureCross: ''
+    });
+  };
+
+  if (!isOpen) return null;
+
+  const handleApply = () => {
+    if (helpMode) {
+      showHelp('filter');
+    } else {
+      onApply(filters);
+      onClose();
+    }
+  };
+
+  const handleReset = () => {
+    if (helpMode) {
+      showHelp('filter');
+    } else {
+      resetFilters();
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/50 z-50 flex justify-end">
+      <div className="bg-white w-full max-w-sm h-full p-6 overflow-y-auto">
+        <div className="flex justify-between items-center mb-6">
+          <h2 className="text-xl font-bold">Filters</h2>
+          <button onClick={onClose} className="p-2 -m-2 rounded-full hover:bg-gray-100">
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+
+        <div className="space-y-5">
+          <div>
+            <label className="text-sm font-medium mb-2 block">Animal Type</label>
+            <select
+              value={filters.animalType}
+              onChange={(e) => setFilters({ ...filters, animalType: e.target.value })}
+              className="w-full rounded-lg border p-3 text-sm"
+            >
+              <option value="">All Types</option>
+              <option value="cattle">Cattle</option>
+              <option value="goats">Goats</option>
+              <option value="sheep">Sheep</option>
+              <option value="pigs">Pigs</option>
+              <option value="chickens">Chickens</option>
+              <option value="horses">Horses</option>
+            </select>
+          </div>
+
+          <div>
+            <label className="text-sm font-medium mb-2 block">Listing Type</label>
+            <select
+              value={filters.listingType}
+              onChange={(e) => setFilters({ ...filters, listingType: e.target.value })}
+              className="w-full rounded-lg border p-3 text-sm"
+            >
+              <option value="all">All</option>
+              <option value="individual">Individual Only</option>
+              <option value="bundle">Bundles Only</option>
+            </select>
+          </div>
+
+          <div>
+            <label className="text-sm font-medium mb-2 block">Pure / Cross</label>
+            <select
+              value={filters.pureCross}
+              onChange={(e) => setFilters({ ...filters, pureCross: e.target.value })}
+              className="w-full rounded-lg border p-3 text-sm"
+            >
+              <option value="">All</option>
+              <option value="pure">Pure Breed</option>
+              <option value="cross">Cross Breed</option>
+            </select>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="text-sm font-medium mb-2 block">Min Price (R)</label>
+              <input
+                type="number"
+                className="w-full rounded-lg border p-3 text-sm"
+                value={filters.priceMin}
+                onChange={(e) => setFilters({ ...filters, priceMin: e.target.value })}
+                placeholder="0"
+              />
+            </div>
+            <div>
+              <label className="text-sm font-medium mb-2 block">Max Price (R)</label>
+              <input
+                type="number"
+                className="w-full rounded-lg border p-3 text-sm"
+                value={filters.priceMax}
+                onChange={(e) => setFilters({ ...filters, priceMax: e.target.value })}
+                placeholder="Any"
+              />
+            </div>
+          </div>
+
+          <div>
+            <label className="text-sm font-medium mb-2 block">Location</label>
+            <input
+              type="text"
+              className="w-full rounded-lg border p-3 text-sm"
+              placeholder="City or town"
+              value={filters.location}
+              onChange={(e) => setFilters({ ...filters, location: e.target.value })}
+            />
+          </div>
+
+          <div className="flex gap-3 pt-4">
+            <button onClick={handleApply} className="flex-1 bg-amber-500 hover:bg-amber-600 text-white py-3 rounded-lg font-semibold transition">
+              Apply Filters
+            </button>
+            <button onClick={handleReset} className="px-4 py-3 border border-stone-300 rounded-lg hover:bg-stone-50 transition flex items-center gap-2">
+              <RotateCcw className="w-4 h-4" />
+              Reset
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// Livestock Card
+function LivestockCard({ livestock, onWishlist, isInWishlist, onLike, hasLiked, helpMode, showHelp }) {
   const [isVideo, setIsVideo] = useState(false);
   const [mediaUrl, setMediaUrl] = useState('');
 
@@ -46,9 +315,33 @@ function LivestockCard({ livestock, onWishlist, isInWishlist }) {
   const ageDisplay = getAgeDisplay();
   const weightDisplay = getWeightDisplay();
 
+  const handleWishlistClick = (e) => {
+    e.stopPropagation();
+    if (helpMode) {
+      showHelp('wishlist');
+    } else {
+      onWishlist(livestock);
+    }
+  };
+
+  const handleLikeClick = (e) => {
+    e.stopPropagation();
+    if (helpMode) {
+      showHelp('like');
+    } else {
+      onLike();
+    }
+  };
+
+  const handleCardClick = () => {
+    if (helpMode) {
+      showHelp('tapCard');
+    }
+  };
+
   return (
-    <Card className="overflow-hidden cursor-pointer rounded-2xl border shadow-lg hover:shadow-xl transition-all">
-      <div className="relative h-64 bg-gray-100">
+    <Card className="overflow-hidden rounded-2xl border shadow-lg hover:shadow-xl transition-all relative" onClick={handleCardClick}>
+      <div className="relative h-64 bg-muted">
         {isVideo ? (
           <video
             src={mediaUrl}
@@ -66,17 +359,14 @@ function LivestockCard({ livestock, onWishlist, isInWishlist }) {
         )}
 
         <button
-          onClick={(e) => {
-            e.stopPropagation();
-            onWishlist(livestock);
-          }}
+          onClick={handleWishlistClick}
           className="absolute top-3 right-3 bg-white/80 backdrop-blur-sm rounded-full p-2 shadow-sm transition hover:scale-105"
         >
           <Bookmark className={`w-4 h-4 ${isInWishlist ? 'fill-amber-500 text-amber-500' : 'text-gray-500'}`} />
         </button>
       </div>
 
-      <CardContent className="p-4 space-y-2">
+      <CardContent className="p-4 space-y-2 pb-16">
         <div className="flex justify-between items-start">
           <div>
             <h3 className="font-bold text-lg text-gray-900">{livestock.name}</h3>
@@ -110,11 +400,17 @@ function LivestockCard({ livestock, onWishlist, isInWishlist }) {
 
         <p className="text-xs text-gray-400 pt-1">Ref: {livestock.reference_number || 'N/A'}</p>
       </CardContent>
+
+      <button
+        onClick={handleLikeClick}
+        className="absolute bottom-3 left-1/2 -translate-x-1/2 w-10 h-10 rounded-full bg-white shadow-md flex items-center justify-center transition active:scale-95 border border-stone-100 z-10"
+      >
+        <Heart className={`w-5 h-5 ${hasLiked ? 'fill-amber-500 text-amber-500' : 'text-gray-400'}`} />
+      </button>
     </Card>
   );
 }
 
-// Bundle Card with shadcn/ui
 function BundleCard({ bundle }) {
   if (!bundle) return null;
 
@@ -123,7 +419,7 @@ function BundleCard({ bundle }) {
 
   return (
     <Card className="overflow-hidden cursor-pointer rounded-2xl border shadow-lg hover:shadow-xl transition-all">
-      <div className="relative h-64 bg-gray-100">
+      <div className="relative h-64 bg-muted">
         {bundle.video_url ? (
           <video
             src={bundle.video_url}
@@ -174,65 +470,17 @@ function BundleCard({ bundle }) {
   );
 }
 
-// Filter Panel
-function FilterPanel({ isOpen, onClose, onApply, initialFilters }) {
-  const [filters, setFilters] = useState(initialFilters);
-
-  if (!isOpen) return null;
-
-  return (
-    <div className="fixed inset-0 bg-black/50 z-50 flex justify-end">
-      <div className="bg-white w-full max-w-sm h-full p-6 overflow-y-auto">
-        <div className="flex justify-between items-center mb-6">
-          <h2 className="text-xl font-bold">Filters</h2>
-          <button onClick={onClose} className="p-2 -m-2 rounded-full hover:bg-gray-100">
-            <X className="w-5 h-5" />
-          </button>
-        </div>
-        <div className="space-y-5">
-          <div>
-            <label className="text-sm font-medium mb-2 block">Min Price (R)</label>
-            <input
-              type="number"
-              className="w-full rounded-lg border p-3 text-sm"
-              value={filters.priceMin}
-              onChange={(e) => setFilters({ ...filters, priceMin: e.target.value })}
-              placeholder="0"
-            />
-          </div>
-          <div>
-            <label className="text-sm font-medium mb-2 block">Max Price (R)</label>
-            <input
-              type="number"
-              className="w-full rounded-lg border p-3 text-sm"
-              value={filters.priceMax}
-              onChange={(e) => setFilters({ ...filters, priceMax: e.target.value })}
-              placeholder="Any"
-            />
-          </div>
-          <div>
-            <label className="text-sm font-medium mb-2 block">Location</label>
-            <input
-              type="text"
-              className="w-full rounded-lg border p-3 text-sm"
-              placeholder="City or town"
-              value={filters.location}
-              onChange={(e) => setFilters({ ...filters, location: e.target.value })}
-            />
-          </div>
-          <Button onClick={() => { onApply(filters); onClose(); }} className="w-full bg-amber-500 hover:bg-amber-600">
-            Apply Filters
-          </Button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
 export default function Browse() {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [searchQuery, setSearchQuery] = useState('');
-  const [filters, setFilters] = useState({ location: '', priceMin: '', priceMax: '' });
+  const [filters, setFilters] = useState({
+    location: '',
+    priceMin: '',
+    priceMax: '',
+    animalType: '',
+    listingType: 'all',
+    pureCross: ''
+  });
   const [viewMode, setViewMode] = useState('both');
   const [isFilterOpen, setIsFilterOpen] = useState(false);
   const [currentItem, setCurrentItem] = useState(null);
@@ -333,10 +581,30 @@ export default function Browse() {
       });
     }
 
+    if (viewMode === 'individual') {
+      items = items.filter(item => item.listing_type === 'individual');
+    } else if (viewMode === 'bundles') {
+      items = items.filter(item => item.listing_type === 'bundle');
+    }
+
     if (filters.location) {
       items = items.filter(item =>
         (item.location || '').toLowerCase().includes(filters.location.toLowerCase())
       );
+    }
+
+    if (filters.animalType) {
+      items = items.filter(item => item.animal_type === filters.animalType);
+    }
+
+    if (filters.listingType === 'individual') {
+      items = items.filter(item => item.listing_type === 'individual');
+    } else if (filters.listingType === 'bundle') {
+      items = items.filter(item => item.listing_type === 'bundle');
+    }
+
+    if (filters.pureCross) {
+      items = items.filter(item => item.pure_cross === filters.pureCross);
     }
 
     if (filters.priceMin) {
@@ -355,15 +623,14 @@ export default function Browse() {
       });
     }
 
-    if (viewMode === 'individual') items = items.filter(item => item.listing_type === 'individual');
-    else if (viewMode === 'bundles') items = items.filter(item => item.listing_type === 'bundle');
-
     return items;
-  }, [allItems, searchQuery, filters, viewMode]);
+  }, [allItems, searchQuery, viewMode, filters]);
 
   useEffect(() => {
     if (displayItems.length > 0 && currentIndex < displayItems.length) {
       setCurrentItem(displayItems[currentIndex]);
+    } else if (currentIndex >= displayItems.length) {
+      setCurrentIndex(displayItems.length);
     }
   }, [currentIndex, displayItems]);
 
@@ -378,16 +645,28 @@ export default function Browse() {
     x.set(0);
   };
 
-  const handleSwipeRight = () => nextCard();
-  const handleSwipeLeft = () => nextCard();
+  const handleSwipeRight = () => {
+    if (helpMode) {
+      showHelp('swipeRight');
+    } else if (currentIndex < displayItems.length - 1) {
+      setCurrentIndex(prev => prev + 1);
+    } else {
+      setCurrentIndex(displayItems.length);
+    }
+  };
 
-  const nextCard = () => {
-    if (currentIndex < displayItems.length - 1) setCurrentIndex(prev => prev + 1);
-    else setCurrentIndex(displayItems.length);
+  const handleSwipeLeft = () => {
+    if (helpMode) {
+      showHelp('swipeLeft');
+    } else if (currentIndex > 0) {
+      setCurrentIndex(prev => prev - 1);
+    }
   };
 
   const handleCardClick = () => {
-    if (currentItem) {
+    if (helpMode) {
+      showHelp('tapCard');
+    } else if (currentItem) {
       if (currentItem.listing_type === 'bundle') {
         window.location.href = `/BundleDetails?id=${currentItem.id}`;
       } else {
@@ -396,7 +675,51 @@ export default function Browse() {
     }
   };
 
-  const toggleLike = () => setHasLiked(!hasLiked);
+  const toggleLike = () => {
+    if (helpMode) {
+      showHelp('like');
+    } else {
+      setHasLiked(!hasLiked);
+    }
+  };
+
+  const handleFilterClick = () => {
+    if (helpMode) {
+      showHelp('filter');
+    } else {
+      setIsFilterOpen(true);
+    }
+  };
+
+  const handleLeftArrowClick = () => {
+    if (helpMode) {
+      showHelp('swipeLeft');
+    } else if (currentIndex > 0) {
+      setCurrentIndex(prev => prev - 1);
+    }
+  };
+
+  const handleRightArrowClick = () => {
+    if (helpMode) {
+      showHelp('swipeRight');
+    } else if (currentIndex < displayItems.length - 1) {
+      setCurrentIndex(prev => prev + 1);
+    }
+  };
+
+  const handleSearchClick = () => {
+    if (helpMode) {
+      showHelp('search');
+    }
+  };
+
+  const handleUploadClick = () => {
+    if (helpMode) {
+      showHelp('upload');
+    } else {
+      window.location.href = '/SellerUpload';
+    }
+  };
 
   if (isLoading && allItems.length === 0) {
     return (
@@ -411,123 +734,21 @@ export default function Browse() {
       {/* Header */}
       <div className="bg-white border-b sticky top-0 z-30">
         <div className="max-w-md mx-auto px-4 py-4 space-y-3">
-          <div className="flex items-center justify-between">
+          <div className="text-center">
             <Link to="/">
               <h1 className="text-2xl font-bold text-amber-600">iBreedr</h1>
             </Link>
-            <div className="flex gap-1 overflow-x-auto pb-1 no-scrollbar">
-              <button
-                onClick={toggleHelpMode}
-                className={`rounded-full p-2 border transition flex-shrink-0 ${helpMode
-                  ? 'bg-amber-500 border-amber-500 text-white'
-                  : 'border-stone-200 text-stone-500 hover:border-amber-300'
-                  }`}
-              >
-                <HelpCircle className="w-4 h-4" />
-              </button>
-
-              <button
-                onClick={(e) => {
-                  if (helpMode) {
-                    e.stopPropagation();
-                    showHelp('chat');
-                  } else {
-                    window.location.href = '/ChatList';
-                  }
-                }}
-                className="rounded-full p-2 border border-amber-400 text-amber-500 flex-shrink-0"
-              >
-                <MessageCircle className="w-4 h-4" />
-              </button>
-
-              <button
-                onClick={(e) => {
-                  if (helpMode) {
-                    e.stopPropagation();
-                    showHelp('wishlist');
-                  } else {
-                    window.location.href = '/Wishlist';
-                  }
-                }}
-                className="rounded-full p-2 border border-amber-400 text-amber-500 flex-shrink-0"
-              >
-                <Bookmark className="w-4 h-4" />
-              </button>
-
-              <button
-                onClick={(e) => {
-                  if (helpMode) {
-                    e.stopPropagation();
-                    showHelp('myListings');
-                  } else {
-                    window.location.href = '/MyListings';
-                  }
-                }}
-                className="rounded-full px-3 py-1 border border-amber-400 text-amber-500 text-sm flex-shrink-0"
-              >
-                My Listings
-              </button>
-
-              {user ? (
-                <button
-                  onClick={(e) => {
-                    if (helpMode) {
-                      e.stopPropagation();
-                      showHelp('logout');
-                    } else {
-                      window.location.href = '/logout';
-                    }
-                  }}
-                  className="rounded-full px-3 py-1 border border-red-300 text-red-500 text-sm flex-shrink-0"
-                >
-                  Logout
-                </button>
-              ) : (
-                <button
-                  onClick={(e) => {
-                    if (helpMode) {
-                      e.stopPropagation();
-                      showHelp('login');
-                    } else {
-                      window.location.href = '/login';
-                    }
-                  }}
-                  className="rounded-full px-3 py-1 border border-blue-400 text-blue-500 text-sm flex-shrink-0"
-                >
-                  Login
-                </button>
-              )}
-            </div>
           </div>
 
-          {/* View Mode Toggle */}
-          <div className="flex gap-1 rounded-full p-1 bg-stone-100">
-            <button
-              onClick={() => { setViewMode('both'); setCurrentIndex(0); }}
-              className={`flex-1 py-2 rounded-full text-sm font-medium transition-all ${viewMode === 'both' ? 'bg-white shadow-sm text-amber-600' : 'text-stone-500'
-                }`}
-            >
-              All
-            </button>
-            <button
-              onClick={() => { setViewMode('individual'); setCurrentIndex(0); }}
-              className={`flex-1 py-2 rounded-full text-sm font-medium transition-all ${viewMode === 'individual' ? 'bg-white shadow-sm text-amber-600' : 'text-stone-500'
-                }`}
-            >
-              Individual
-            </button>
-            <button
-              onClick={() => { setViewMode('bundles'); setCurrentIndex(0); }}
-              className={`flex-1 py-2 rounded-full text-sm font-medium transition-all ${viewMode === 'bundles' ? 'bg-white shadow-sm text-amber-600' : 'text-stone-500'
-                }`}
-            >
-              Bundles
-            </button>
-          </div>
+          <div className="flex items-center gap-2">
+            <MobileMenu
+              user={user}
+              toggleHelpMode={toggleHelpMode}
+              helpMode={helpMode}
+              showHelp={showHelp}
+            />
 
-          {/* Search Bar */}
-          <div className="flex gap-2">
-            <div className="flex-1 relative">
+            <div className="flex-1 relative" onClick={handleSearchClick}>
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-stone-400" />
               <input
                 placeholder="Search livestock, breeds..."
@@ -541,25 +762,61 @@ export default function Browse() {
                 </button>
               )}
             </div>
+
             <button
-              onClick={(e) => {
-                if (helpMode) {
-                  e.stopPropagation();
-                  showHelp('filter');
-                } else {
-                  setIsFilterOpen(true);
-                }
-              }}
+              onClick={handleFilterClick}
               className="w-10 h-10 rounded-full bg-white border border-stone-200 flex items-center justify-center hover:bg-stone-50 transition"
             >
-              <SlidersHorizontal className="w-4 h-4 text-stone-600" />
+              <Filter className="w-4 h-4 text-stone-600" />
+            </button>
+          </div>
+
+          <div className="flex gap-1 rounded-full p-1 bg-stone-100">
+            <button
+              onClick={() => setViewMode('both')}
+              className={`flex-1 py-2 rounded-full text-sm font-medium transition-all ${viewMode === 'both' ? 'bg-white shadow-sm text-amber-600' : 'text-stone-500'
+                }`}
+            >
+              All
+            </button>
+            <button
+              onClick={() => setViewMode('individual')}
+              className={`flex-1 py-2 rounded-full text-sm font-medium transition-all ${viewMode === 'individual' ? 'bg-white shadow-sm text-amber-600' : 'text-stone-500'
+                }`}
+            >
+              Individual
+            </button>
+            <button
+              onClick={() => setViewMode('bundles')}
+              className={`flex-1 py-2 rounded-full text-sm font-medium transition-all ${viewMode === 'bundles' ? 'bg-white shadow-sm text-amber-600' : 'text-stone-500'
+                }`}
+            >
+              Bundles
             </button>
           </div>
         </div>
       </div>
 
-      {/* Main Card Area */}
-      <div className="max-w-md mx-auto px-4 pt-6 pb-32">
+      {/* Main Card Area with Side Arrows */}
+      <div className="relative max-w-md mx-auto px-4 pt-6 pb-32">
+        {currentIndex > 0 && (
+          <button
+            onClick={handleLeftArrowClick}
+            className="fixed left-2 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-white shadow-md flex items-center justify-center text-xl text-gray-500 hover:text-red-500 transition z-20"
+          >
+            &lt;
+          </button>
+        )}
+
+        {currentIndex < displayItems.length - 1 && (
+          <button
+            onClick={handleRightArrowClick}
+            className="fixed right-2 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-white shadow-md flex items-center justify-center text-xl text-gray-500 hover:text-green-500 transition z-20"
+          >
+            &gt;
+          </button>
+        )}
+
         {displayItems.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-[500px] text-center">
             <div className="w-16 h-16 bg-amber-100 rounded-full flex items-center justify-center mb-4">
@@ -568,20 +825,13 @@ export default function Browse() {
             <h3 className="text-lg font-semibold text-stone-800 mb-2">No listings found</h3>
             <p className="text-stone-500 text-sm mb-6">Try adjusting your search or filters</p>
             <button
-              onClick={() => { setFilters({ location: '', priceMin: '', priceMax: '' }); setSearchQuery(''); }}
+              onClick={() => { setFilters({ location: '', priceMin: '', priceMax: '', animalType: '', listingType: 'all', pureCross: '' }); setSearchQuery(''); }}
               className="text-amber-600 text-sm underline"
             >
               Clear all filters
             </button>
             <button
-              onClick={(e) => {
-                if (helpMode) {
-                  e.stopPropagation();
-                  showHelp('upload');
-                } else {
-                  window.location.href = '/SellerUpload';
-                }
-              }}
+              onClick={() => window.location.href = '/SellerUpload'}
               className="bg-amber-500 hover:bg-amber-600 text-white px-5 py-2 rounded-full text-sm mt-6 transition"
             >
               + Add Your First Listing
@@ -602,74 +852,32 @@ export default function Browse() {
             </button>
           </div>
         ) : (
-          <div className="relative">
-            <div className="h-[550px] mb-6">
-              <AnimatePresence>
-                <motion.div
-                  key={currentItem?.id || currentItem?.bundle_name}
-                  drag="x"
-                  dragConstraints={{ left: 0, right: 0 }}
-                  onDragEnd={handleDragEnd}
-                  style={{ x, rotate, opacity }}
-                  onClick={handleCardClick}
-                  className="cursor-pointer absolute w-full"
-                >
-                  {currentItem?.listing_type === 'bundle' ? (
-                    <BundleCard bundle={currentItem} />
-                  ) : (
-                    <LivestockCard
-                      livestock={currentItem}
-                      onWishlist={addToWishlist}
-                      isInWishlist={wishlistIds.includes(currentItem?.id)}
-                    />
-                  )}
-                </motion.div>
-              </AnimatePresence>
-            </div>
-
-            <div className="flex justify-center gap-6">
-              <button
-                onClick={(e) => {
-                  if (helpMode) {
-                    e.stopPropagation();
-                    showHelp('swipeLeft');
-                  } else {
-                    handleSwipeLeft();
-                  }
-                }}
-                className="bg-red-500 hover:bg-red-600 text-white rounded-full w-14 h-14 shadow-md flex items-center justify-center text-xl font-bold transition active:scale-95"
+          <div className="h-[550px] mb-6">
+            <AnimatePresence>
+              <motion.div
+                key={currentItem?.id || currentItem?.bundle_name}
+                drag="x"
+                dragConstraints={{ left: 0, right: 0 }}
+                onDragEnd={handleDragEnd}
+                style={{ x, rotate, opacity }}
+                onClick={handleCardClick}
+                className="cursor-pointer absolute w-full"
               >
-                ←
-              </button>
-
-              <button
-                onClick={(e) => {
-                  if (helpMode) {
-                    e.stopPropagation();
-                    showHelp('like');
-                  } else {
-                    toggleLike();
-                  }
-                }}
-                className="bg-white hover:bg-gray-50 rounded-full w-14 h-14 shadow-md flex items-center justify-center transition active:scale-95 border border-stone-100"
-              >
-                <Heart className={`w-6 h-6 ${hasLiked ? 'fill-amber-500 text-amber-500' : 'text-gray-400'}`} />
-              </button>
-
-              <button
-                onClick={(e) => {
-                  if (helpMode) {
-                    e.stopPropagation();
-                    showHelp('swipeRight');
-                  } else {
-                    handleSwipeRight();
-                  }
-                }}
-                className="bg-green-500 hover:bg-green-600 text-white rounded-full w-14 h-14 shadow-md flex items-center justify-center text-xl font-bold transition active:scale-95"
-              >
-                →
-              </button>
-            </div>
+                {currentItem?.listing_type === 'bundle' ? (
+                  <BundleCard bundle={currentItem} />
+                ) : (
+                  <LivestockCard
+                    livestock={currentItem}
+                    onWishlist={addToWishlist}
+                    isInWishlist={wishlistIds.includes(currentItem?.id)}
+                    onLike={toggleLike}
+                    hasLiked={hasLiked}
+                    helpMode={helpMode}
+                    showHelp={showHelp}
+                  />
+                )}
+              </motion.div>
+            </AnimatePresence>
           </div>
         )}
       </div>
@@ -680,18 +888,13 @@ export default function Browse() {
         onClose={() => setIsFilterOpen(false)}
         onApply={setFilters}
         initialFilters={filters}
+        helpMode={helpMode}
+        showHelp={showHelp}
       />
 
       {/* FAB - Upload */}
       <button
-        onClick={(e) => {
-          if (helpMode) {
-            e.stopPropagation();
-            showHelp('upload');
-          } else {
-            window.location.href = '/SellerUpload';
-          }
-        }}
+        onClick={handleUploadClick}
         className="fixed bottom-6 right-6 w-12 h-12 bg-amber-500 hover:bg-amber-600 text-white rounded-full shadow-lg text-2xl transition active:scale-95 flex items-center justify-center"
       >
         +

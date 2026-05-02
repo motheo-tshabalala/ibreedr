@@ -14,10 +14,9 @@ import Auth from './Auth';
 import Logout from './Logout';
 import ChatList from './ChatList';
 import ChatRoom from './ChatRoom';
+import EditListing from './EditListing';
 import { HelpProvider } from './HelpContext';
 import HelpModal from './HelpModal';
-import EditListing from './EditListing';
-
 
 function App() {
   return (
