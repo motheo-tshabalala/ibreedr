@@ -1,7 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { ArrowLeft, Heart, Eye, Package, TrendingUp, DollarSign } from 'lucide-react';
+import { ArrowLeft, Heart, Eye, Package, TrendingUp, DollarSign, Users, ShoppingBag, CheckCircle, Clock } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { supabase } from './supabaseClient';
+import { Card, CardContent } from "./components/ui/card";
+import { Button } from "./components/ui/button";
+import { Badge } from "./components/ui/Badge";
+import { Table, TableHeader, TableBody, TableHead, TableRow, TableCell } from "./components/ui/table";
 
 export default function Dashboard() {
   const [user, setUser] = useState(null);
@@ -84,153 +88,185 @@ export default function Dashboard() {
     likes: likesPerListing[listing.id] || 0
   }));
 
-  const StatCard = ({ title, value, icon: Icon, color }) => (
-    <div className="bg-white rounded-xl border border-stone-100 p-5 shadow-sm">
-      <div className="flex items-center justify-between">
-        <div>
-          <p className="text-sm text-stone-500 mb-1">{title}</p>
-          <p className="text-3xl font-bold text-stone-800">{value}</p>
+  const StatCard = ({ title, value, icon: Icon, color, subtitle }) => (
+    <Card className="overflow-hidden">
+      <CardContent className="p-0">
+        <div className="p-5">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm text-muted-foreground mb-1">{title}</p>
+              <p className="text-3xl font-bold">{value.toLocaleString()}</p>
+              {subtitle && <p className="text-xs text-muted-foreground mt-1">{subtitle}</p>}
+            </div>
+            <div className={`p-3 rounded-full ${color}`}>
+              <Icon className="w-5 h-5 text-white" />
+            </div>
+          </div>
         </div>
-        <div className={`p-2 rounded-full ${color}`}>
-          <Icon className="w-5 h-5 text-white" />
-        </div>
-      </div>
-    </div>
+      </CardContent>
+    </Card>
   );
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-amber-50 via-white to-stone-50 flex items-center justify-center">
-        <div className="animate-spin rounded-full h-10 w-10 border-4 border-stone-300 border-t-amber-600"></div>
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="animate-spin rounded-full h-10 w-10 border-4 border-primary border-t-transparent"></div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-amber-50 via-white to-stone-50">
-      <div className="bg-white border-b border-stone-100 sticky top-0 z-30">
+    <div className="min-h-screen bg-background">
+      {/* Header */}
+      <div className="bg-card border-b sticky top-0 z-30">
         <div className="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">
           <div className="flex items-center gap-4">
             <Link to="/MyListings">
-              <button className="p-2 -m-2 rounded-full hover:bg-stone-100 transition">
-                <ArrowLeft className="w-5 h-5 text-stone-600" />
-              </button>
+              <Button variant="ghost" size="icon" className="rounded-full">
+                <ArrowLeft className="w-5 h-5" />
+              </Button>
             </Link>
-            <h1 className="text-xl font-bold text-stone-800">Seller Dashboard</h1>
+            <h1 className="text-xl font-bold">Seller Dashboard</h1>
           </div>
         </div>
       </div>
 
       <div className="max-w-7xl mx-auto px-4 py-6 space-y-6">
-        {/* Stats Grid - Consistent spacing: gap-5 */}
+        {/* Stats Grid */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
-          <StatCard title="Total Listings" value={totalListings} icon={Package} color="bg-amber-500" />
-          <StatCard title="Active Listings" value={activeListings} icon={TrendingUp} color="bg-green-500" />
-          <StatCard title="Total Views" value={totalViews} icon={Eye} color="bg-blue-500" />
-          <StatCard title="Total Likes" value={totalLikes} icon={Heart} color="bg-rose-500" />
+          <StatCard
+            title="Total Listings"
+            value={totalListings}
+            icon={Package}
+            color="bg-amber-500"
+          />
+          <StatCard
+            title="Active Listings"
+            value={activeListings}
+            icon={TrendingUp}
+            color="bg-green-500"
+            subtitle={`${soldListings} sold`}
+          />
+          <StatCard
+            title="Total Views"
+            value={totalViews}
+            icon={Eye}
+            color="bg-blue-500"
+          />
+          <StatCard
+            title="Total Likes"
+            value={totalLikes}
+            icon={Heart}
+            color="bg-rose-500"
+          />
         </div>
 
-        {/* Sales Summary - Consistent spacing: gap-5 */}
+        {/* Revenue Summary */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-          <div className="bg-white rounded-xl border border-stone-100 p-5 shadow-sm">
-            <h3 className="text-base font-bold text-stone-800 mb-4 flex items-center gap-2">
-              <DollarSign className="w-4 h-4 text-green-600" />
-              Revenue Summary
-            </h3>
-            <div className="space-y-3">
-              <div className="flex justify-between py-2 border-b border-stone-100">
-                <span className="text-sm text-stone-500">Total Inventory Value</span>
-                <span className="font-semibold text-stone-800">R {totalValue.toLocaleString()}</span>
+          <Card>
+            <CardContent className="p-5">
+              <h3 className="text-base font-semibold mb-4 flex items-center gap-2">
+                <DollarSign className="w-4 h-4 text-green-600" />
+                Revenue Summary
+              </h3>
+              <div className="space-y-3">
+                <div className="flex justify-between py-2 border-b">
+                  <span className="text-sm text-muted-foreground">Total Inventory Value</span>
+                  <span className="font-semibold">R {totalValue.toLocaleString()}</span>
+                </div>
+                <div className="flex justify-between py-2 border-b">
+                  <span className="text-sm text-muted-foreground">Sold Value</span>
+                  <span className="font-semibold text-green-600">R {soldValue.toLocaleString()}</span>
+                </div>
+                <div className="flex justify-between py-2">
+                  <span className="text-sm text-muted-foreground">Active Value</span>
+                  <span className="font-semibold text-amber-600">R {(totalValue - soldValue).toLocaleString()}</span>
+                </div>
               </div>
-              <div className="flex justify-between py-2 border-b border-stone-100">
-                <span className="text-sm text-stone-500">Sold Value</span>
-                <span className="font-semibold text-green-600">R {soldValue.toLocaleString()}</span>
-              </div>
-              <div className="flex justify-between py-2">
-                <span className="text-sm text-stone-500">Active Value</span>
-                <span className="font-semibold text-amber-600">R {(totalValue - soldValue).toLocaleString()}</span>
-              </div>
-            </div>
-          </div>
+            </CardContent>
+          </Card>
 
-          <div className="bg-white rounded-xl border border-stone-100 p-5 shadow-sm">
-            <h3 className="text-base font-bold text-stone-800 mb-4">Quick Stats</h3>
-            <div className="space-y-3">
-              <div className="flex justify-between py-2 border-b border-stone-100">
-                <span className="text-sm text-stone-500">Sold Animals</span>
-                <span className="font-semibold text-stone-800">{soldListings}</span>
+          <Card>
+            <CardContent className="p-5">
+              <h3 className="text-base font-semibold mb-4">Quick Stats</h3>
+              <div className="space-y-3">
+                <div className="flex justify-between py-2 border-b">
+                  <span className="text-sm text-muted-foreground">Sold Animals</span>
+                  <span className="font-semibold">{soldListings}</span>
+                </div>
+                <div className="flex justify-between py-2 border-b">
+                  <span className="text-sm text-muted-foreground">Average Price</span>
+                  <span className="font-semibold">
+                    R {soldListings > 0 ? Math.round(soldValue / soldListings).toLocaleString() : '0'}
+                  </span>
+                </div>
+                <div className="flex justify-between py-2">
+                  <span className="text-sm text-muted-foreground">Conversion Rate</span>
+                  <span className="font-semibold">
+                    {totalViews > 0 ? Math.round((soldListings / totalViews) * 100) : 0}%
+                  </span>
+                </div>
               </div>
-              <div className="flex justify-between py-2 border-b border-stone-100">
-                <span className="text-sm text-stone-500">Average Price</span>
-                <span className="font-semibold text-stone-800">
-                  R {soldListings > 0 ? Math.round(soldValue / soldListings).toLocaleString() : '0'}
-                </span>
-              </div>
-              <div className="flex justify-between py-2">
-                <span className="text-sm text-stone-500">Conversion Rate</span>
-                <span className="font-semibold text-stone-800">
-                  {totalViews > 0 ? Math.round((soldListings / totalViews) * 100) : 0}%
-                </span>
-              </div>
-            </div>
-          </div>
+            </CardContent>
+          </Card>
         </div>
 
-        {/* Performance Table - Consistent spacing */}
-        <div className="bg-white rounded-xl border border-stone-100 overflow-hidden shadow-sm">
-          <div className="p-5 border-b border-stone-100">
-            <h3 className="text-base font-bold text-stone-800">Listing Performance</h3>
-          </div>
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead>
-                <tr className="border-b border-stone-100 bg-stone-50">
-                  <th className="text-left p-4 text-sm font-semibold text-stone-600">Name</th>
-                  <th className="text-left p-4 text-sm font-semibold text-stone-600">Breed</th>
-                  <th className="text-left p-4 text-sm font-semibold text-stone-600">Price</th>
-                  <th className="text-left p-4 text-sm font-semibold text-stone-600">Views</th>
-                  <th className="text-left p-4 text-sm font-semibold text-stone-600">Likes</th>
-                  <th className="text-left p-4 text-sm font-semibold text-stone-600">Status</th>
-                </tr>
-              </thead>
-              <tbody>
-                {performanceData.map((item) => (
-                  <tr key={item.id} className="border-b border-stone-50 hover:bg-stone-50/50 transition">
-                    <td className="p-4 text-sm font-medium text-stone-800">{item.name}</td>
-                    <td className="p-4 text-sm text-stone-600">{item.breed || '-'}</td>
-                    <td className="p-4 text-sm text-stone-800">R {Number(item.price).toLocaleString()}</td>
-                    <td className="p-4 text-sm">
-                      <span className="flex items-center gap-1">
-                        <Eye className="w-3 h-3 text-blue-500" />
-                        {item.views}
-                      </span>
-                    </td>
-                    <td className="p-4 text-sm">
-                      <span className="flex items-center gap-1">
-                        <Heart className="w-3 h-3 text-rose-500" />
-                        {item.likes}
-                      </span>
-                    </td>
-                    <td className="p-4">
-                      <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${item.status === 'sold' ? 'bg-stone-100 text-stone-600' : 'bg-green-100 text-green-700'
-                        }`}>
-                        {item.status || 'active'}
-                      </span>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-          {performanceData.length === 0 && (
-            <div className="text-center py-12">
-              <p className="text-stone-400 text-sm">No listings yet</p>
-              <Link to="/SellerUpload">
-                <button className="mt-4 text-amber-600 text-sm underline">Create your first listing</button>
-              </Link>
+        {/* Performance Table */}
+        <Card>
+          <CardContent className="p-0">
+            <div className="p-5 border-b">
+              <h3 className="text-base font-semibold">Listing Performance</h3>
             </div>
-          )}
-        </div>
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Name</TableHead>
+                    <TableHead>Breed</TableHead>
+                    <TableHead>Price</TableHead>
+                    <TableHead>Views</TableHead>
+                    <TableHead>Likes</TableHead>
+                    <TableHead>Status</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {performanceData.map((item) => (
+                    <TableRow key={item.id}>
+                      <TableCell className="font-medium">{item.name}</TableCell>
+                      <TableCell>{item.breed || '-'}</TableCell>
+                      <TableCell>R {Number(item.price).toLocaleString()}</TableCell>
+                      <TableCell>
+                        <span className="flex items-center gap-1">
+                          <Eye className="w-3 h-3 text-muted-foreground" />
+                          {item.views}
+                        </span>
+                      </TableCell>
+                      <TableCell>
+                        <span className="flex items-center gap-1">
+                          <Heart className="w-3 h-3 text-muted-foreground" />
+                          {item.likes}
+                        </span>
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant={item.status === 'sold' ? 'secondary' : 'default'}>
+                          {item.status || 'active'}
+                        </Badge>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+              {performanceData.length === 0 && (
+                <div className="text-center py-12">
+                  <p className="text-muted-foreground text-sm">No listings yet</p>
+                  <Link to="/SellerUpload">
+                    <Button variant="link" className="mt-2">Create your first listing</Button>
+                  </Link>
+                </div>
+              )}
+            </div>
+          </CardContent>
+        </Card>
       </div>
     </div>
   );

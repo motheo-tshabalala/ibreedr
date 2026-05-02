@@ -1,7 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { ArrowLeft, MapPin, Heart, Eye, Package, Hash, Bookmark, MessageCircle } from 'lucide-react';
+import { ArrowLeft, MapPin, Heart, Eye, Package, Hash, Bookmark, MessageCircle, Info, Calendar, Weight, Users, Baby, CheckCircle } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { supabase } from './supabaseClient';
+import { Card, CardContent } from "./components/ui/card";
+import { Button } from "./components/ui/button";
+import { Badge } from "./components/ui/Badge";
+import { Separator } from "./components/ui/separator";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "./components/ui/tabs";
 
 export default function BundleDetails() {
   const urlParams = new URLSearchParams(window.location.search);
@@ -15,6 +20,7 @@ export default function BundleDetails() {
   const [conversationId, setConversationId] = useState(null);
   const [lightboxOpen, setLightboxOpen] = useState(false);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
+  const [activeTab, setActiveTab] = useState('details');
 
   useEffect(() => {
     const getUser = async () => {
@@ -115,21 +121,19 @@ export default function BundleDetails() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-amber-50 via-white to-stone-50 flex items-center justify-center">
-        <div className="animate-spin rounded-full h-10 w-10 border-4 border-stone-300 border-t-amber-600"></div>
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="animate-spin rounded-full h-10 w-10 border-4 border-primary border-t-transparent"></div>
       </div>
     );
   }
 
   if (!bundle) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-amber-50 via-white to-stone-50 flex items-center justify-center">
+      <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-center">
-          <h2 className="text-lg font-bold text-stone-800 mb-2">Bundle not found</h2>
+          <h2 className="text-lg font-semibold mb-2">Bundle not found</h2>
           <Link to="/Browse">
-            <button className="bg-amber-500 hover:bg-amber-600 text-white rounded-full px-4 py-2 text-sm transition">
-              Back to Browse
-            </button>
+            <Button>Back to Browse</Button>
           </Link>
         </div>
       </div>
@@ -137,21 +141,22 @@ export default function BundleDetails() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-amber-50 via-white to-stone-50">
-      <div className="bg-white border-b border-stone-100 sticky top-0 z-30">
+    <div className="min-h-screen bg-background">
+      {/* Header */}
+      <div className="bg-card border-b sticky top-0 z-30">
         <div className="max-w-4xl mx-auto px-4 py-3 flex items-center gap-3">
           <Link to="/Browse">
-            <button className="p-1.5 -m-1.5 rounded-full hover:bg-stone-100 transition">
-              <ArrowLeft className="w-5 h-5 text-stone-600" />
-            </button>
+            <Button variant="ghost" size="icon" className="rounded-full">
+              <ArrowLeft className="w-5 h-5" />
+            </Button>
           </Link>
-          <h1 className="text-lg font-bold text-stone-800">Bundle Details</h1>
+          <h1 className="text-lg font-semibold">Bundle Details</h1>
         </div>
       </div>
 
       <div className="max-w-4xl mx-auto px-4 py-6 space-y-5">
         {/* Image Section */}
-        <div className="bg-white rounded-xl border border-stone-100 overflow-hidden">
+        <Card className="overflow-hidden rounded-xl">
           {bundle.video_url ? (
             <video
               src={bundle.video_url}
@@ -170,14 +175,14 @@ export default function BundleDetails() {
               }}
             />
           ) : (
-            <div className="h-80 bg-gradient-to-br from-green-100 to-green-200 flex items-center justify-center">
-              <Package className="w-16 h-16 text-white/50" />
+            <div className="h-80 bg-muted flex items-center justify-center">
+              <Package className="w-16 h-16 text-muted-foreground" />
             </div>
           )}
 
           {bundle.images && bundle.images.length > 1 && (
-            <div className="p-4 border-t border-stone-100">
-              <p className="text-sm text-stone-500 mb-2">Additional photos</p>
+            <div className="p-4 border-t">
+              <p className="text-sm text-muted-foreground mb-2">Additional photos</p>
               <div className="flex gap-2 overflow-x-auto">
                 {bundle.images.slice(1).map((img, idx) => (
                   <img
@@ -194,155 +199,184 @@ export default function BundleDetails() {
               </div>
             </div>
           )}
-        </div>
+        </Card>
 
         {/* Main Info Card */}
-        <div className="bg-white rounded-xl border border-stone-100 p-5 space-y-4">
-          <div className="flex items-start justify-between">
-            <div>
-              <div className="flex items-center gap-2 mb-1">
-                <Hash className="w-4 h-4 text-stone-400" />
-                <span className="text-xs text-stone-400">Ref: #{bundle.id}</span>
+        <Card>
+          <CardContent className="p-5 space-y-4">
+            <div className="flex items-start justify-between">
+              <div>
+                <div className="flex items-center gap-2 mb-1">
+                  <Hash className="w-4 h-4 text-muted-foreground" />
+                  <span className="text-xs text-muted-foreground">Bundle #{bundle.id}</span>
+                </div>
+                <h2 className="text-2xl font-bold mb-1">{bundle.bundle_name}</h2>
+                <div className="flex items-center gap-1 text-muted-foreground text-sm">
+                  <MapPin className="w-3 h-3" />
+                  <span>{bundle.location}</span>
+                </div>
               </div>
-              <h2 className="text-2xl font-bold text-stone-800 mb-1">{bundle.bundle_name}</h2>
-              <div className="flex items-center gap-1 text-stone-500 text-sm">
-                <MapPin className="w-3 h-3" />
-                <span>{bundle.location}</span>
+              <div className="flex gap-1">
+                <Button variant="ghost" size="icon" onClick={toggleWishlist} className="rounded-full">
+                  <Bookmark className={`w-5 h-5 ${isInWishlist ? 'fill-primary text-primary' : ''}`} />
+                </Button>
+                <Button variant="ghost" size="icon" onClick={toggleLike} className="rounded-full">
+                  <Heart className={`w-5 h-5 ${hasLiked ? 'fill-destructive text-destructive' : ''}`} />
+                </Button>
               </div>
             </div>
-            <div className="flex gap-1">
-              <button onClick={toggleWishlist} className="p-2 rounded-full hover:bg-stone-100 transition">
-                <Bookmark className={`w-5 h-5 ${isInWishlist ? 'text-amber-500 fill-amber-500' : 'text-stone-400'}`} />
-              </button>
-              <button onClick={toggleLike} className="p-2 rounded-full hover:bg-stone-100 transition">
-                <Heart className={`w-5 h-5 ${hasLiked ? 'text-rose-500 fill-rose-500' : 'text-stone-400'}`} />
-              </button>
-            </div>
-          </div>
 
-          <div className="flex flex-wrap gap-3 pt-3 border-t border-stone-100">
-            <div className="flex items-center gap-1.5 bg-blue-50 rounded-full px-3 py-1">
-              <Eye className="w-3.5 h-3.5 text-blue-500" />
-              <span className="font-medium text-blue-700 text-xs">0 views</span>
+            <div className="flex flex-wrap gap-3 pt-3 border-t">
+              <Badge variant="secondary" className="gap-1 bg-blue-50 text-blue-700">
+                <Eye className="w-3 h-3" />
+                0 views
+              </Badge>
+              <Badge variant="secondary" className="gap-1 bg-purple-50 text-purple-700">
+                <Package className="w-3 h-3" />
+                {bundle.quantity || 1} animals
+              </Badge>
             </div>
-            <div className="flex items-center gap-1.5 bg-purple-50 rounded-full px-3 py-1">
-              <Package className="w-3.5 h-3.5 text-purple-500" />
-              <span className="font-medium text-purple-700 text-xs">{bundle.quantity || 1} animals</span>
-            </div>
-          </div>
 
-          <div className="pt-3 border-t border-stone-100">
-            <div className="flex items-baseline gap-2">
-              <span className="text-2xl font-bold text-green-600">R {Math.round(pricePerHead).toLocaleString()}<span className="text-sm">/head</span></span>
+            <div className="pt-3 border-t">
+              <div className="flex items-baseline gap-2">
+                <span className="text-2xl font-bold text-green-600">R {Math.round(pricePerHead).toLocaleString()}<span className="text-sm">/head</span></span>
+              </div>
+              <p className="text-xs text-muted-foreground mt-0.5">Total: R {Math.round(totalPrice).toLocaleString()} for {bundle.quantity} animals</p>
             </div>
-            <p className="text-xs text-stone-500 mt-0.5">Total: R {Math.round(totalPrice).toLocaleString()} for {bundle.quantity} animals</p>
-          </div>
-        </div>
+          </CardContent>
+        </Card>
 
-        {/* Specifications */}
-        {(bundle.breed_type || bundle.pure_cross || bundle.age_display || bundle.weight_display || bundle.pregnancy_status) && (
-          <div className="bg-white rounded-xl border border-stone-100 p-5">
-            <h3 className="text-base font-bold text-stone-800 mb-3">Specifications</h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              {bundle.breed_type && (
-                <div className="p-2.5 bg-stone-50 rounded-lg">
-                  <p className="text-xs text-stone-400">Breed</p>
-                  <p className="font-medium text-stone-700 text-sm">{bundle.breed_type}</p>
+        {/* Tabs for Details and Description */}
+        <Tabs>
+          <TabsList className="w-full">
+            <TabsTrigger active={activeTab === 'details'} onClick={() => setActiveTab('details')}>Details</TabsTrigger>
+            <TabsTrigger active={activeTab === 'description'} onClick={() => setActiveTab('description')}>Description</TabsTrigger>
+            <TabsTrigger active={activeTab === 'seller'} onClick={() => setActiveTab('seller')}>Seller</TabsTrigger>
+          </TabsList>
+
+          <TabsContent active={activeTab === 'details'} className="space-y-4">
+            <Card>
+              <CardContent className="p-5">
+                <h3 className="text-base font-semibold mb-3">Specifications</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  {bundle.breed_type && (
+                    <div className="flex items-center gap-2 p-2.5 bg-muted rounded-lg">
+                      <Info className="w-4 h-4 text-muted-foreground" />
+                      <div>
+                        <p className="text-xs text-muted-foreground">Breed</p>
+                        <p className="font-medium text-sm">{bundle.breed_type}</p>
+                      </div>
+                    </div>
+                  )}
+                  {bundle.pure_cross && (
+                    <div className="flex items-center gap-2 p-2.5 bg-muted rounded-lg">
+                      <CheckCircle className="w-4 h-4 text-muted-foreground" />
+                      <div>
+                        <p className="text-xs text-muted-foreground">Pure / Cross</p>
+                        <p className="font-medium text-sm capitalize">{bundle.pure_cross}</p>
+                      </div>
+                    </div>
+                  )}
+                  {bundle.age_display && (
+                    <div className="flex items-center gap-2 p-2.5 bg-muted rounded-lg">
+                      <Calendar className="w-4 h-4 text-muted-foreground" />
+                      <div>
+                        <p className="text-xs text-muted-foreground">Age</p>
+                        <p className="font-medium text-sm">{bundle.age_display}</p>
+                      </div>
+                    </div>
+                  )}
+                  {bundle.weight_display && (
+                    <div className="flex items-center gap-2 p-2.5 bg-muted rounded-lg">
+                      <Weight className="w-4 h-4 text-muted-foreground" />
+                      <div>
+                        <p className="text-xs text-muted-foreground">Weight</p>
+                        <p className="font-medium text-sm">{bundle.weight_display}</p>
+                      </div>
+                    </div>
+                  )}
+                  {bundle.pregnancy_status && bundle.pregnancy_status !== 'n/a' && (
+                    <div className="flex items-center gap-2 p-2.5 bg-pink-50 rounded-lg">
+                      <Baby className="w-4 h-4 text-pink-500" />
+                      <div>
+                        <p className="text-xs text-muted-foreground">Pregnancy Status</p>
+                        <p className="font-medium text-sm text-pink-600 capitalize">{bundle.pregnancy_status}</p>
+                      </div>
+                    </div>
+                  )}
                 </div>
-              )}
-              {bundle.pure_cross && (
-                <div className="p-2.5 bg-stone-50 rounded-lg">
-                  <p className="text-xs text-stone-400">Pure / Cross</p>
-                  <p className="font-medium text-stone-700 text-sm capitalize">{bundle.pure_cross}</p>
-                </div>
-              )}
-              {bundle.age_display && (
-                <div className="p-2.5 bg-stone-50 rounded-lg">
-                  <p className="text-xs text-stone-400">Age</p>
-                  <p className="font-medium text-stone-700 text-sm">{bundle.age_display}</p>
-                </div>
-              )}
-              {bundle.weight_display && (
-                <div className="p-2.5 bg-stone-50 rounded-lg">
-                  <p className="text-xs text-stone-400">Weight</p>
-                  <p className="font-medium text-stone-700 text-sm">{bundle.weight_display}</p>
-                </div>
-              )}
-              {bundle.pregnancy_status && bundle.pregnancy_status !== 'n/a' && (
-                <div className="p-2.5 bg-pink-50 rounded-lg">
-                  <p className="text-xs text-stone-400">Pregnancy Status</p>
-                  <p className="font-medium text-pink-600 text-sm capitalize">{bundle.pregnancy_status}</p>
-                </div>
-              )}
-            </div>
-          </div>
-        )}
+              </CardContent>
+            </Card>
+          </TabsContent>
 
-        {/* Description */}
-        {bundle.bundle_description && (
-          <div className="bg-white rounded-xl border border-stone-100 p-5">
-            <h3 className="text-base font-bold text-stone-800 mb-2">Description</h3>
-            <p className="text-stone-600 text-sm leading-relaxed">{bundle.bundle_description}</p>
-          </div>
-        )}
+          <TabsContent active={activeTab === 'description'} className="space-y-4">
+            <Card>
+              <CardContent className="p-5">
+                {bundle.bundle_description ? (
+                  <>
+                    <h3 className="text-base font-semibold mb-2">About this bundle</h3>
+                    <p className="text-muted-foreground text-sm leading-relaxed">{bundle.bundle_description}</p>
+                  </>
+                ) : (
+                  <p className="text-center text-muted-foreground text-sm py-8">No description provided</p>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
 
-        {/* Contact Seller - Hidden until login */}
-        <div className="bg-white rounded-xl border border-stone-100 p-5">
-          <h3 className="text-base font-bold text-stone-800 mb-3">Contact Seller</h3>
-
-          {!user ? (
-            <div className="text-center py-6">
-              <p className="text-stone-500 text-sm mb-3">Login to contact the seller</p>
-              <Link to="/login">
-                <button className="bg-amber-500 hover:bg-amber-600 text-white rounded-lg px-5 py-2 text-sm transition">
-                  Login to Message
-                </button>
-              </Link>
-            </div>
-          ) : (
-            <div>
-              {user.id !== bundle.user_id && conversationId ? (
-                <Link to={`/ChatRoom?conversation=${conversationId}&livestock=${bundle.id}`}>
-                  <button className="w-full bg-amber-500 hover:bg-amber-600 text-white rounded-lg h-10 text-sm font-medium flex items-center justify-center gap-1.5 transition">
-                    <MessageCircle className="w-4 h-4" />
-                    Message Seller
-                  </button>
-                </Link>
-              ) : user.id === bundle.user_id ? (
-                <button className="w-full bg-stone-100 text-stone-400 rounded-lg h-10 text-sm font-medium cursor-not-allowed">
-                  This is your bundle
-                </button>
-              ) : (
-                <button className="w-full bg-stone-100 text-stone-400 rounded-lg h-10 text-sm font-medium cursor-not-allowed">
-                  Loading...
-                </button>
-              )}
-            </div>
-          )}
-        </div>
+          <TabsContent active={activeTab === 'seller'} className="space-y-4">
+            <Card>
+              <CardContent className="p-5 space-y-4">
+                {!user ? (
+                  <div className="text-center py-6">
+                    <p className="text-muted-foreground text-sm mb-3">Login to contact the seller</p>
+                    <Link to="/login">
+                      <Button>Login to Message</Button>
+                    </Link>
+                  </div>
+                ) : (
+                  <>
+                    {user.id !== bundle.user_id && conversationId ? (
+                      <Button className="w-full gap-2" asChild>
+                        <Link to={`/ChatRoom?conversation=${conversationId}&livestock=${bundle.id}`}>
+                          <MessageCircle className="w-4 h-4" />
+                          Message Seller
+                        </Link>
+                      </Button>
+                    ) : user.id === bundle.user_id ? (
+                      <Button className="w-full" variant="outline" disabled>This is your bundle</Button>
+                    ) : (
+                      <Button className="w-full" variant="outline" disabled>Loading...</Button>
+                    )}
+                  </>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+        </Tabs>
       </div>
 
       {/* Lightbox */}
       {lightboxOpen && (
         <div className="fixed inset-0 bg-black/95 z-50 flex items-center justify-center" onClick={() => setLightboxOpen(false)}>
-          <button className="absolute top-4 right-4 text-white text-3xl z-50 hover:scale-110 transition" onClick={() => setLightboxOpen(false)}>
+          <Button variant="ghost" size="icon" className="absolute top-4 right-4 text-white hover:bg-white/20 rounded-full" onClick={() => setLightboxOpen(false)}>
             ✕
-          </button>
+          </Button>
           <img src={bundle.images[currentImageIndex]} alt={bundle.bundle_name} className="max-w-full max-h-full object-contain" onClick={(e) => e.stopPropagation()} />
           {bundle.images && bundle.images.length > 1 && (
             <>
-              <button className="absolute left-4 top-1/2 -translate-y-1/2 text-white text-3xl bg-black/50 hover:bg-black/70 rounded-full w-10 h-10 flex items-center justify-center transition" onClick={(e) => {
+              <Button variant="ghost" size="icon" className="absolute left-4 top-1/2 -translate-y-1/2 bg-black/50 hover:bg-black/70 rounded-full w-10 h-10 text-white" onClick={(e) => {
                 e.stopPropagation();
                 setCurrentImageIndex((prev) => (prev > 0 ? prev - 1 : bundle.images.length - 1));
               }}>
                 ←
-              </button>
-              <button className="absolute right-4 top-1/2 -translate-y-1/2 text-white text-3xl bg-black/50 hover:bg-black/70 rounded-full w-10 h-10 flex items-center justify-center transition" onClick={(e) => {
+              </Button>
+              <Button variant="ghost" size="icon" className="absolute right-4 top-1/2 -translate-y-1/2 bg-black/50 hover:bg-black/70 rounded-full w-10 h-10 text-white" onClick={(e) => {
                 e.stopPropagation();
                 setCurrentImageIndex((prev) => (prev < bundle.images.length - 1 ? prev + 1 : 0));
               }}>
                 →
-              </button>
+              </Button>
               <div className="absolute bottom-4 left-0 right-0 flex justify-center gap-1.5">
                 {bundle.images.map((_, idx) => (
                   <div key={idx} className={`w-1.5 h-1.5 rounded-full transition ${idx === currentImageIndex ? 'bg-white' : 'bg-white/50'}`} />

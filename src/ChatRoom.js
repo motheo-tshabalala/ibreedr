@@ -1,7 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Send } from 'lucide-react';
+import { ArrowLeft, Send, User } from 'lucide-react';
 import { supabase } from './supabaseClient';
+import { Button } from "./components/ui/button";
+import { Card } from "./components/ui/card";
 
 export default function ChatRoom() {
   const urlParams = new URLSearchParams(window.location.search);
@@ -11,13 +13,11 @@ export default function ChatRoom() {
   const [user, setUser] = useState(null);
   const [messages, setMessages] = useState([]);
   const [newMessage, setNewMessage] = useState('');
-  const [livestock, setLivestock] = useState(null);
-  const [otherPerson, setOtherPerson] = useState(null);
-  const [, setIsTyping] = useState(false);
+  const [livestockName, setLivestockName] = useState('');
+  const [otherPerson, setOtherPerson] = useState('');
   const [otherIsTyping, setOtherIsTyping] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const messagesEndRef = useRef(null);
-  const typingTimeoutRef = useRef(null);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -37,12 +37,7 @@ export default function ChatRoom() {
 
       const { data: convo, error: convoError } = await supabase
         .from('conversations')
-        .select(`
-          *,
-          livestock:livestock_id (name, images),
-          buyer:buyer_id (email, full_name),
-          seller:seller_id (email, full_name)
-        `)
+        .select('*')
         .eq('id', conversationId)
         .single();
 
@@ -52,21 +47,46 @@ export default function ChatRoom() {
         return;
       }
 
-      setLivestock(convo.livestock);
+      // Get livestock name
+      if (convo.livestock_id) {
+        const { data: livestockData } = await supabase
+          .from('livestock')
+          .select('name')
+          .eq('id', convo.livestock_id)
+          .single();
+        if (livestockData) setLivestockName(livestockData.name);
+      }
 
-      const other = convo.buyer_id === user.id ? convo.seller : convo.buyer;
-      setOtherPerson(other);
+      // Get other person's name
+      const otherUserId = convo.buyer_id === user.id ? convo.seller_id : convo.buyer_id;
+      if (otherUserId) {
+        // Try profiles first
+        let { data: profileData } = await supabase
+          .from('profiles')
+          .select('email, full_name')
+          .eq('id', otherUserId)
+          .maybeSingle();
 
-      const { data: messagesData, error: msgError } = await supabase
+        if (profileData?.full_name) {
+          setOtherPerson(profileData.full_name);
+        } else if (profileData?.email) {
+          setOtherPerson(profileData.email.split('@')[0]);
+        } else {
+          // Fallback to email from auth
+          setOtherPerson('Farmer');
+        }
+      }
+
+      // Load messages
+      const { data: messagesData } = await supabase
         .from('messages')
         .select('*')
         .eq('conversation_id', conversationId)
         .order('created_at', { ascending: true });
 
-      if (!msgError) {
-        setMessages(messagesData || []);
-      }
+      setMessages(messagesData || []);
 
+      // Mark unread messages as read
       await supabase
         .from('messages')
         .update({ is_read: true })
@@ -79,6 +99,7 @@ export default function ChatRoom() {
     loadData();
   }, [user, conversationId, navigate]);
 
+  // Real-time subscription for new messages
   useEffect(() => {
     if (!conversationId) return;
 
@@ -107,6 +128,7 @@ export default function ChatRoom() {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
+  // Typing indicator
   useEffect(() => {
     if (!conversationId || !user) return;
 
@@ -126,22 +148,11 @@ export default function ChatRoom() {
 
   const sendTypingIndicator = () => {
     if (!conversationId || !user) return;
-
     supabase.channel(`typing-${conversationId}`).send({
       type: 'broadcast',
       event: 'typing',
       payload: { user_id: user.id }
     });
-  };
-
-  const handleTyping = () => {
-    setIsTyping(true);
-    sendTypingIndicator();
-
-    if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
-    typingTimeoutRef.current = setTimeout(() => {
-      setIsTyping(false);
-    }, 1000);
   };
 
   const sendMessage = async () => {
@@ -166,57 +177,65 @@ export default function ChatRoom() {
         .eq('id', conversationId);
 
       setNewMessage('');
-      setIsTyping(false);
     }
   };
 
   if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-4 border-amber-500"></div>
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="animate-spin rounded-full h-10 w-10 border-4 border-primary border-t-transparent"></div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-amber-50 to-stone-100 flex flex-col">
-      <div className="bg-white border-b sticky top-0 z-30">
+    <div className="min-h-screen bg-background flex flex-col">
+      {/* Header */}
+      <div className="bg-card border-b sticky top-0 z-30">
         <div className="max-w-2xl mx-auto px-4 py-4 flex items-center gap-3">
           <Link to="/ChatList">
-            <ArrowLeft className="w-6 h-6 text-stone-800 cursor-pointer" />
+            <Button variant="ghost" size="icon" className="rounded-full">
+              <ArrowLeft className="w-5 h-5" />
+            </Button>
           </Link>
           <div className="flex-1">
-            <h1 className="font-semibold text-stone-800">{livestock?.name || 'Chat'}</h1>
-            <p className="text-xs text-stone-500">{otherPerson?.email?.split('@')[0] || 'Seller'}</p>
+            <h1 className="font-semibold text-base">{otherPerson || 'Farmer'}</h1>
+            <p className="text-xs text-muted-foreground">Re: {livestockName || 'Livestock'}</p>
           </div>
           <Link to={`/BreedDetails?id=${livestockId}`}>
-            <button className="text-sm text-amber-600">View Listing</button>
+            <Button variant="outline" size="sm">
+              View Listing
+            </Button>
           </Link>
         </div>
       </div>
 
+      {/* Messages */}
       <div className="flex-1 max-w-2xl mx-auto w-full px-4 py-4 overflow-y-auto">
         <div className="space-y-3">
-          {messages.map((msg) => (
-            <div key={msg.id} className={`flex ${msg.sender_id === user.id ? 'justify-end' : 'justify-start'}`}>
-              <div className={`max-w-[75%] rounded-2xl px-4 py-2 ${msg.sender_id === user.id
-                  ? 'bg-amber-500 text-white rounded-br-sm'
-                  : 'bg-white text-stone-800 rounded-bl-sm shadow-sm'
-                }`}>
-                <p className="text-sm">{msg.message}</p>
-                <p className={`text-xs mt-1 ${msg.sender_id === user.id ? 'text-amber-100' : 'text-stone-400'}`}>
-                  {new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                  {msg.sender_id === user.id && msg.is_read && (
-                    <span className="ml-1">✓✓</span>
-                  )}
-                </p>
+          {messages.map((msg) => {
+            const isOwn = msg.sender_id === user.id;
+            return (
+              <div key={msg.id} className={`flex ${isOwn ? 'justify-end' : 'justify-start'}`}>
+                <div className={`max-w-[75%] ${isOwn ? 'order-1' : 'order-2'}`}>
+                  <div className={`rounded-2xl px-4 py-2 ${isOwn
+                      ? 'bg-primary text-primary-foreground rounded-br-sm'
+                      : 'bg-muted text-foreground rounded-bl-sm'
+                    }`}>
+                    <p className="text-sm">{msg.message}</p>
+                  </div>
+                  <p className={`text-xs text-muted-foreground mt-1 ${isOwn ? 'text-right' : 'text-left'}`}>
+                    {new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                    {isOwn && msg.is_read && <span className="ml-1">✓✓</span>}
+                  </p>
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
           {otherIsTyping && (
             <div className="flex justify-start">
-              <div className="bg-white rounded-2xl px-4 py-2 shadow-sm">
-                <p className="text-sm text-stone-400">Typing...</p>
+              <div className="bg-muted rounded-2xl px-4 py-2">
+                <p className="text-sm text-muted-foreground">Typing...</p>
               </div>
             </div>
           )}
@@ -224,24 +243,26 @@ export default function ChatRoom() {
         </div>
       </div>
 
-      <div className="bg-white border-t sticky bottom-0">
+      {/* Input */}
+      <div className="bg-card border-t sticky bottom-0">
         <div className="max-w-2xl mx-auto px-4 py-3 flex gap-2">
           <input
             type="text"
             value={newMessage}
             onChange={(e) => setNewMessage(e.target.value)}
             onKeyPress={(e) => e.key === 'Enter' && sendMessage()}
-            onKeyDown={handleTyping}
+            onKeyDown={sendTypingIndicator}
             placeholder="Type a message..."
-            className="flex-1 border border-stone-200 rounded-full px-4 py-2 focus:outline-none focus:border-amber-400"
+            className="flex-1 rounded-full border border-input bg-background px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
           />
-          <button
+          <Button
             onClick={sendMessage}
             disabled={!newMessage.trim()}
-            className="bg-amber-500 text-white rounded-full p-2 disabled:opacity-50"
+            size="icon"
+            className="rounded-full"
           >
-            <Send className="w-5 h-5" />
-          </button>
+            <Send className="w-4 h-4" />
+          </Button>
         </div>
       </div>
     </div>

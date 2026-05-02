@@ -1,5 +1,10 @@
 import React, { useState } from 'react';
+import { Link } from 'react-router-dom';
 import { supabase } from './supabaseClient';
+import { Card, CardContent } from "./components/ui/card";
+import { Button } from "./components/ui/button";
+import { Input } from "./components/ui/input";
+import { Label } from "./components/ui/label";
 
 export default function Auth() {
   const [email, setEmail] = useState('');
@@ -8,20 +13,36 @@ export default function Auth() {
   const [isLogin, setIsLogin] = useState(true);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [resetMode, setResetMode] = useState(false);
+  const [message, setMessage] = useState('');
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
     setError('');
+    setMessage('');
+
+    if (resetMode) {
+      // Password reset
+      const { error } = await supabase.auth.resetPasswordForEmail(email);
+      if (error) {
+        setError(error.message);
+      } else {
+        setMessage('Check your email for the password reset link');
+        setTimeout(() => setResetMode(false), 3000);
+      }
+      setLoading(false);
+      return;
+    }
 
     if (isLogin) {
       // Login
-      const { error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      });
-      if (error) setError(error.message);
-      else window.location.href = '/';
+      const { error } = await supabase.auth.signInWithPassword({ email, password });
+      if (error) {
+        setError(error.message);
+      } else {
+        window.location.href = '/Browse';
+      }
     } else {
       // Signup
       const { data, error } = await supabase.auth.signUp({
@@ -31,95 +52,156 @@ export default function Auth() {
           data: { full_name: fullName },
         },
       });
-      if (error) setError(error.message);
-      else {
-        // Create profile entry
-        if (data.user) {
-          await supabase.from('profiles').insert([
-            { id: data.user.id, email, full_name: fullName }
-          ]);
-        }
-        alert('Check your email for confirmation!');
-        setIsLogin(true);
+      if (error) {
+        setError(error.message);
+      } else {
+        setMessage('Check your email for confirmation!');
+        setTimeout(() => setIsLogin(true), 3000);
       }
     }
     setLoading(false);
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-amber-50 via-white to-stone-50 flex items-center justify-center p-4">
-      <div className="bg-white rounded-2xl shadow-xl p-8 max-w-md w-full">
-        <h1 className="text-3xl font-bold text-amber-600 text-center mb-2">iBreedr</h1>
-        <p className="text-center text-stone-500 mb-8">
-          {isLogin ? 'Welcome back!' : 'Create your account'}
-        </p>
+    <div className="min-h-screen bg-background flex items-center justify-center p-4">
+      <Card className="w-full max-w-md">
+        <CardContent className="p-6">
+          {/* Header */}
+          <div className="text-center mb-6">
+            <Link to="/">
+              <h1 className="text-3xl font-bold text-primary mb-2">iBreedr</h1>
+            </Link>
+            <p className="text-sm text-muted-foreground">
+              {resetMode
+                ? 'Reset your password'
+                : isLogin
+                  ? 'Welcome back!'
+                  : 'Create your account'}
+            </p>
+          </div>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          {!isLogin && (
-            <div>
-              <label className="block text-sm font-medium text-stone-700 mb-1">
-                Full Name
-              </label>
-              <input
-                type="text"
-                value={fullName}
-                onChange={(e) => setFullName(e.target.value)}
-                className="w-full border-2 border-stone-200 rounded-xl p-3 focus:border-amber-400 outline-none"
-                required={!isLogin}
-              />
+          {/* Error / Message */}
+          {error && (
+            <div className="mb-4 p-3 rounded-lg bg-destructive/10 text-destructive text-sm text-center">
+              {error}
+            </div>
+          )}
+          {message && (
+            <div className="mb-4 p-3 rounded-lg bg-green-100 text-green-700 text-sm text-center">
+              {message}
             </div>
           )}
 
-          <div>
-            <label className="block text-sm font-medium text-stone-700 mb-1">
-              Email
-            </label>
-            <input
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className="w-full border-2 border-stone-200 rounded-xl p-3 focus:border-amber-400 outline-none"
-              required
-            />
+          {/* Form */}
+          <form onSubmit={handleSubmit} className="space-y-4">
+            {!isLogin && !resetMode && (
+              <div>
+                <Label htmlFor="fullName">Full Name</Label>
+                <Input
+                  id="fullName"
+                  type="text"
+                  value={fullName}
+                  onChange={(e) => setFullName(e.target.value)}
+                  placeholder="John Farmer"
+                  className="mt-1"
+                  required={!isLogin}
+                />
+              </div>
+            )}
+
+            <div>
+              <Label htmlFor="email">Email</Label>
+              <Input
+                id="email"
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="you@example.com"
+                className="mt-1"
+                required
+              />
+            </div>
+
+            {!resetMode && (
+              <div>
+                <Label htmlFor="password">Password</Label>
+                <Input
+                  id="password"
+                  type="password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="••••••••"
+                  className="mt-1"
+                  required
+                  minLength={6}
+                />
+              </div>
+            )}
+
+            <Button
+              type="submit"
+              disabled={loading}
+              className="w-full"
+            >
+              {loading
+                ? 'Loading...'
+                : resetMode
+                  ? 'Send Reset Link'
+                  : isLogin
+                    ? 'Login'
+                    : 'Sign Up'}
+            </Button>
+          </form>
+
+          {/* Footer Links */}
+          <div className="mt-6 text-center text-sm space-y-2">
+            {!resetMode ? (
+              <>
+                <p className="text-muted-foreground">
+                  {isLogin ? "Don't have an account? " : "Already have an account? "}
+                  <button
+                    onClick={() => {
+                      setIsLogin(!isLogin);
+                      setError('');
+                    }}
+                    className="text-primary hover:underline font-medium"
+                  >
+                    {isLogin ? 'Sign Up' : 'Login'}
+                  </button>
+                </p>
+                {isLogin && (
+                  <button
+                    onClick={() => {
+                      setResetMode(true);
+                      setError('');
+                    }}
+                    className="text-muted-foreground hover:text-primary text-xs"
+                  >
+                    Forgot password?
+                  </button>
+                )}
+              </>
+            ) : (
+              <button
+                onClick={() => {
+                  setResetMode(false);
+                  setError('');
+                }}
+                className="text-primary hover:underline font-medium"
+              >
+                Back to Login
+              </button>
+            )}
           </div>
 
-          <div>
-            <label className="block text-sm font-medium text-stone-700 mb-1">
-              Password
-            </label>
-            <input
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="w-full border-2 border-stone-200 rounded-xl p-3 focus:border-amber-400 outline-none"
-              required
-              minLength={6}
-            />
+          {/* Trust Badge */}
+          <div className="mt-6 pt-4 border-t text-center">
+            <p className="text-xs text-muted-foreground">
+              By continuing, you agree to our Terms of Service
+            </p>
           </div>
-
-          {error && (
-            <p className="text-red-500 text-sm text-center">{error}</p>
-          )}
-
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full bg-amber-500 hover:bg-amber-600 text-white font-semibold py-3 rounded-xl transition disabled:opacity-50"
-          >
-            {loading ? 'Loading...' : (isLogin ? 'Login' : 'Sign Up')}
-          </button>
-        </form>
-
-        <p className="text-center text-stone-500 mt-6">
-          {isLogin ? "Don't have an account? " : "Already have an account? "}
-          <button
-            onClick={() => setIsLogin(!isLogin)}
-            className="text-amber-600 hover:underline"
-          >
-            {isLogin ? 'Sign Up' : 'Login'}
-          </button>
-        </p>
-      </div>
+        </CardContent>
+      </Card>
     </div>
   );
 }

@@ -1,11 +1,14 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Search, SlidersHorizontal, X, Heart, Bookmark, MessageCircle, HelpCircle } from 'lucide-react';
+import { Search, SlidersHorizontal, X, Heart, Bookmark, MessageCircle, HelpCircle, MapPin } from 'lucide-react';
 import { motion, useMotionValue, useTransform, AnimatePresence } from 'framer-motion';
 import { Link } from 'react-router-dom';
 import { supabase } from './supabaseClient';
 import { useHelp } from './HelpContext';
+import { Card, CardContent } from "./components/ui/card";
+import { Badge } from "./components/ui/Badge";
+import { Button } from "./components/ui/button";
 
-// Livestock Card
+// Livestock Card with shadcn/ui
 function LivestockCard({ livestock, onWishlist, isInWishlist }) {
   const [isVideo, setIsVideo] = useState(false);
   const [mediaUrl, setMediaUrl] = useState('');
@@ -20,24 +23,12 @@ function LivestockCard({ livestock, onWishlist, isInWishlist }) {
     }
   }, [livestock]);
 
-  if (!livestock) {
-    return (
-      <div className="bg-white rounded-2xl shadow-md overflow-hidden">
-        <div className="h-80 bg-gray-100 flex items-center justify-center">
-          <span className="text-6xl">🐄</span>
-        </div>
-      </div>
-    );
-  }
+  if (!livestock) return null;
 
   const getWeightDisplay = () => {
-    if (livestock.weight_min && livestock.weight_max) {
-      return `${livestock.weight_min} - ${livestock.weight_max} KG`;
-    } else if (livestock.weight_min) {
-      return `${livestock.weight_min} KG`;
-    } else if (livestock.weight_max) {
-      return `Up to ${livestock.weight_max} KG`;
-    }
+    if (livestock.weight_min && livestock.weight_max) return `${livestock.weight_min} - ${livestock.weight_max} kg`;
+    if (livestock.weight_min) return `${livestock.weight_min} kg`;
+    if (livestock.weight_max) return `Up to ${livestock.weight_max} kg`;
     return null;
   };
 
@@ -51,12 +42,13 @@ function LivestockCard({ livestock, onWishlist, isInWishlist }) {
     return null;
   };
 
-  const weightDisplay = getWeightDisplay();
+  const price = livestock.price ? `R ${livestock.price.toLocaleString()}` : 'Price on request';
   const ageDisplay = getAgeDisplay();
+  const weightDisplay = getWeightDisplay();
 
   return (
-    <div className="bg-white rounded-2xl shadow-md overflow-hidden cursor-pointer relative">
-      <div className="h-80 bg-gradient-to-br from-amber-100 to-amber-200 flex items-center justify-center relative">
+    <Card className="overflow-hidden cursor-pointer rounded-2xl border shadow-lg hover:shadow-xl transition-all">
+      <div className="relative h-64 bg-gray-100">
         {isVideo ? (
           <video
             src={mediaUrl}
@@ -68,75 +60,70 @@ function LivestockCard({ livestock, onWishlist, isInWishlist }) {
         ) : mediaUrl ? (
           <img src={mediaUrl} alt={livestock.name} className="w-full h-full object-cover" />
         ) : (
-          <span className="text-6xl">🐄</span>
+          <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-amber-100 to-amber-200">
+            <span className="text-6xl">🐄</span>
+          </div>
         )}
+
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            onWishlist(livestock);
+          }}
+          className="absolute top-3 right-3 bg-white/80 backdrop-blur-sm rounded-full p-2 shadow-sm transition hover:scale-105"
+        >
+          <Bookmark className={`w-4 h-4 ${isInWishlist ? 'fill-amber-500 text-amber-500' : 'text-gray-500'}`} />
+        </button>
       </div>
 
-      <button
-        onClick={(e) => {
-          e.stopPropagation();
-          onWishlist(livestock);
-        }}
-        className="absolute top-3 right-3 bg-white/90 hover:bg-white rounded-full p-2 shadow-md transition z-10"
-      >
-        <Bookmark className={`w-5 h-5 ${isInWishlist ? 'fill-amber-500 text-amber-500' : 'text-stone-500'}`} />
-      </button>
-
-      <div className="p-4">
+      <CardContent className="p-4 space-y-2">
         <div className="flex justify-between items-start">
           <div>
-            <h2 className="text-lg font-bold text-stone-800">{livestock.name || 'Unnamed'}</h2>
-            <p className="text-xs text-stone-400 mt-0.5">Ref: {livestock.reference_number || 'N/A'}</p>
+            <h3 className="font-bold text-lg text-gray-900">{livestock.name}</h3>
+            <div className="flex items-center gap-1 text-gray-500 text-xs mt-0.5">
+              <MapPin className="w-3 h-3" />
+              <span>{livestock.location?.split(',')[0] || 'Location'}</span>
+            </div>
           </div>
-          <p className="text-amber-600 font-bold text-lg">R{livestock.price ? Number(livestock.price).toLocaleString() : '0'}</p>
-        </div>
-
-        <div className="mt-2 space-y-1">
-          <p className="text-stone-600 text-sm">{livestock.breed_type} • {livestock.animal_type}</p>
-          <p className="text-stone-500 text-sm">{livestock.location}</p>
-
-          <div className="flex flex-wrap gap-1 mt-2">
-            {livestock.pure_cross && (
-              <span className="text-xs bg-stone-100 px-2 py-0.5 rounded-full">
-                {livestock.pure_cross === 'pure' ? 'Pure Breed' : 'Cross Breed'}
-              </span>
-            )}
-            {ageDisplay && (
-              <span className="text-xs bg-stone-100 px-2 py-0.5 rounded-full">
-                {ageDisplay}
-              </span>
-            )}
-            {weightDisplay && (
-              <span className="text-xs bg-stone-100 px-2 py-0.5 rounded-full">
-                {weightDisplay}
-              </span>
-            )}
-            {livestock.pregnancy_status && livestock.pregnancy_status !== 'n/a' && (
-              <span className="text-xs bg-pink-100 text-pink-700 px-2 py-0.5 rounded-full">
-                {livestock.pregnancy_status === 'pregnant' ? '🤰 Pregnant' : livestock.pregnancy_status}
-              </span>
-            )}
+          <div className="text-right">
+            <p className="font-bold text-amber-600 text-lg">{price}</p>
+            <p className="text-gray-400 text-xs capitalize">{livestock.animal_type}</p>
           </div>
         </div>
-      </div>
-    </div>
+
+        <p className="text-sm text-gray-600">{livestock.breed_type}</p>
+
+        <div className="flex flex-wrap gap-1 pt-1">
+          {livestock.pure_cross && (
+            <Badge variant="secondary" className="text-xs bg-gray-100 text-gray-700">
+              {livestock.pure_cross === 'pure' ? 'Pure Breed' : 'Cross Breed'}
+            </Badge>
+          )}
+          {ageDisplay && <Badge variant="outline" className="text-xs">{ageDisplay}</Badge>}
+          {weightDisplay && <Badge variant="outline" className="text-xs">{weightDisplay}</Badge>}
+          {livestock.pregnancy_status && livestock.pregnancy_status !== 'n/a' && (
+            <Badge className="bg-pink-100 text-pink-700 hover:bg-pink-100 text-xs">
+              {livestock.pregnancy_status === 'pregnant' ? '🤰 Pregnant' : livestock.pregnancy_status}
+            </Badge>
+          )}
+        </div>
+
+        <p className="text-xs text-gray-400 pt-1">Ref: {livestock.reference_number || 'N/A'}</p>
+      </CardContent>
+    </Card>
   );
 }
 
+// Bundle Card with shadcn/ui
 function BundleCard({ bundle }) {
-  if (!bundle) {
-    return (
-      <div className="bg-white rounded-2xl shadow-md overflow-hidden">
-        <div className="h-80 bg-gray-100 flex items-center justify-center">
-          <span className="text-6xl">📦</span>
-        </div>
-      </div>
-    );
-  }
+  if (!bundle) return null;
+
+  const totalPrice = bundle.bundle_price || (bundle.price_per_head * bundle.quantity);
+  const pricePerHead = bundle.price_per_head || (totalPrice / bundle.quantity);
 
   return (
-    <div className="bg-white rounded-2xl shadow-md overflow-hidden cursor-pointer">
-      <div className="h-80 bg-gradient-to-br from-green-100 to-green-200 flex items-center justify-center relative">
+    <Card className="overflow-hidden cursor-pointer rounded-2xl border shadow-lg hover:shadow-xl transition-all">
+      <div className="relative h-64 bg-gray-100">
         {bundle.video_url ? (
           <video
             src={bundle.video_url}
@@ -147,72 +134,95 @@ function BundleCard({ bundle }) {
         ) : bundle.images && bundle.images[0] ? (
           <img src={bundle.images[0]} alt={bundle.bundle_name} className="w-full h-full object-cover" />
         ) : (
-          <span className="text-6xl">📦</span>
+          <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-green-100 to-green-200">
+            <span className="text-6xl">📦</span>
+          </div>
         )}
+        <div className="absolute bottom-3 left-3">
+          <Badge className="bg-amber-500 text-white">Bundle</Badge>
+        </div>
       </div>
-      <div className="p-4">
-        <h2 className="text-lg font-bold">{bundle.bundle_name || 'Bundle'}</h2>
-        <p className="text-amber-600 font-semibold text-lg">R{bundle.bundle_price ? Number(bundle.bundle_price).toLocaleString() : '0'}</p>
-        <p className="text-stone-500 text-sm mt-1">{bundle.location || 'No location'}</p>
+
+      <CardContent className="p-4 space-y-2">
+        <div className="flex justify-between items-start">
+          <div>
+            <h3 className="font-bold text-lg text-gray-900">{bundle.bundle_name}</h3>
+            <div className="flex items-center gap-1 text-gray-500 text-xs mt-0.5">
+              <MapPin className="w-3 h-3" />
+              <span>{bundle.location?.split(',')[0] || 'Location'}</span>
+            </div>
+          </div>
+          <div className="text-right">
+            <p className="font-bold text-amber-600 text-lg">R {Math.round(pricePerHead).toLocaleString()}<span className="text-xs">/head</span></p>
+            <p className="text-gray-400 text-xs">Total: R {Math.round(totalPrice).toLocaleString()}</p>
+          </div>
+        </div>
+
+        <p className="text-sm text-gray-600">{bundle.quantity} animals</p>
+
         {bundle.bundle_description && (
-          <p className="text-stone-600 text-sm mt-2 line-clamp-2">{bundle.bundle_description}</p>
+          <p className="text-sm text-gray-500 line-clamp-2">{bundle.bundle_description}</p>
         )}
-      </div>
-    </div>
+
+        <div className="flex flex-wrap gap-1 pt-1">
+          {bundle.breed_type && <Badge variant="secondary" className="text-xs bg-gray-100">{bundle.breed_type}</Badge>}
+          {bundle.pure_cross && <Badge variant="outline" className="text-xs">{bundle.pure_cross === 'pure' ? 'Pure' : 'Cross'}</Badge>}
+          {bundle.age_display && <Badge variant="outline" className="text-xs">{bundle.age_display}</Badge>}
+        </div>
+      </CardContent>
+    </Card>
   );
 }
 
+// Filter Panel
 function FilterPanel({ isOpen, onClose, onApply, initialFilters }) {
   const [filters, setFilters] = useState(initialFilters);
 
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-40 z-50 flex justify-end">
+    <div className="fixed inset-0 bg-black/50 z-50 flex justify-end">
       <div className="bg-white w-full max-w-sm h-full p-6 overflow-y-auto">
         <div className="flex justify-between items-center mb-6">
-          <h2 className="text-xl font-bold text-stone-800">Filters</h2>
-          <button onClick={onClose} className="p-2 -m-2 rounded-full hover:bg-stone-100">
-            <X className="w-5 h-5 text-stone-500" />
+          <h2 className="text-xl font-bold">Filters</h2>
+          <button onClick={onClose} className="p-2 -m-2 rounded-full hover:bg-gray-100">
+            <X className="w-5 h-5" />
           </button>
         </div>
         <div className="space-y-5">
           <div>
-            <label className="block font-semibold text-stone-700 mb-2">Min Price (R)</label>
+            <label className="text-sm font-medium mb-2 block">Min Price (R)</label>
             <input
               type="number"
-              className="w-full border border-stone-200 rounded-xl p-3 focus:border-amber-400 focus:ring-2 focus:ring-amber-100 outline-none transition"
+              className="w-full rounded-lg border p-3 text-sm"
               value={filters.priceMin}
               onChange={(e) => setFilters({ ...filters, priceMin: e.target.value })}
               placeholder="0"
             />
           </div>
           <div>
-            <label className="block font-semibold text-stone-700 mb-2">Max Price (R)</label>
+            <label className="text-sm font-medium mb-2 block">Max Price (R)</label>
             <input
               type="number"
-              className="w-full border border-stone-200 rounded-xl p-3 focus:border-amber-400 focus:ring-2 focus:ring-amber-100 outline-none transition"
+              className="w-full rounded-lg border p-3 text-sm"
               value={filters.priceMax}
               onChange={(e) => setFilters({ ...filters, priceMax: e.target.value })}
               placeholder="Any"
             />
           </div>
           <div>
-            <label className="block font-semibold text-stone-700 mb-2">Location</label>
+            <label className="text-sm font-medium mb-2 block">Location</label>
             <input
               type="text"
-              className="w-full border border-stone-200 rounded-xl p-3 focus:border-amber-400 focus:ring-2 focus:ring-amber-100 outline-none transition"
+              className="w-full rounded-lg border p-3 text-sm"
               placeholder="City or town"
               value={filters.location}
               onChange={(e) => setFilters({ ...filters, location: e.target.value })}
             />
           </div>
-          <button
-            onClick={() => { onApply(filters); onClose(); }}
-            className="w-full bg-amber-500 hover:bg-amber-600 text-white py-3 rounded-xl font-semibold transition mt-4"
-          >
+          <Button onClick={() => { onApply(filters); onClose(); }} className="w-full bg-amber-500 hover:bg-amber-600">
             Apply Filters
-          </button>
+          </Button>
         </div>
       </div>
     </div>
@@ -222,11 +232,7 @@ function FilterPanel({ isOpen, onClose, onApply, initialFilters }) {
 export default function Browse() {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [searchQuery, setSearchQuery] = useState('');
-  const [filters, setFilters] = useState({
-    location: '',
-    priceMin: '',
-    priceMax: ''
-  });
+  const [filters, setFilters] = useState({ location: '', priceMin: '', priceMax: '' });
   const [viewMode, setViewMode] = useState('both');
   const [isFilterOpen, setIsFilterOpen] = useState(false);
   const [currentItem, setCurrentItem] = useState(null);
@@ -403,21 +409,18 @@ export default function Browse() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-amber-50 to-stone-100">
       {/* Header */}
-      <div className="bg-white border-b border-stone-100 sticky top-0 z-30">
+      <div className="bg-white border-b sticky top-0 z-30">
         <div className="max-w-md mx-auto px-4 py-4 space-y-3">
-          {/* Logo and Mobile Scrollable Buttons */}
           <div className="flex items-center justify-between">
             <Link to="/">
               <h1 className="text-2xl font-bold text-amber-600">iBreedr</h1>
             </Link>
-
-            {/* Horizontal scrollable buttons for mobile */}
             <div className="flex gap-1 overflow-x-auto pb-1 no-scrollbar">
               <button
                 onClick={toggleHelpMode}
                 className={`rounded-full p-2 border transition flex-shrink-0 ${helpMode
-                    ? 'bg-amber-500 border-amber-500 text-white'
-                    : 'border-stone-200 text-stone-500 hover:border-amber-300'
+                  ? 'bg-amber-500 border-amber-500 text-white'
+                  : 'border-stone-200 text-stone-500 hover:border-amber-300'
                   }`}
               >
                 <HelpCircle className="w-4 h-4" />
@@ -600,8 +603,7 @@ export default function Browse() {
           </div>
         ) : (
           <div className="relative">
-            {/* Card Container */}
-            <div className="h-[500px] mb-6">
+            <div className="h-[550px] mb-6">
               <AnimatePresence>
                 <motion.div
                   key={currentItem?.id || currentItem?.bundle_name}
@@ -625,7 +627,6 @@ export default function Browse() {
               </AnimatePresence>
             </div>
 
-            {/* Action Buttons */}
             <div className="flex justify-center gap-6">
               <button
                 onClick={(e) => {

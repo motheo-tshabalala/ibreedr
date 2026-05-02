@@ -16,6 +16,8 @@ import ChatList from './ChatList';
 import ChatRoom from './ChatRoom';
 import { HelpProvider } from './HelpContext';
 import HelpModal from './HelpModal';
+import EditListing from './EditListing';
+
 
 function App() {
   return (
@@ -35,6 +37,7 @@ function App() {
           <Route path="/logout" element={<Logout />} />
           <Route path="/ChatList" element={<ChatList />} />
           <Route path="/ChatRoom" element={<ChatRoom />} />
+          <Route path="/EditListing" element={<EditListing />} />
         </Routes>
       </Router>
       <HelpModal />
