@@ -5,8 +5,8 @@ import { supabase } from './supabaseClient';
 import { Card, CardContent } from "./components/ui/card";
 import { Button } from "./components/ui/button";
 import { Badge } from "./components/ui/Badge";
+import { Avatar, AvatarFallback } from "./components/ui/avatar";
 import { Separator } from "./components/ui/separator";
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "./components/ui/tabs";
 
 export default function BundleDetails() {
   const urlParams = new URLSearchParams(window.location.search);
@@ -246,114 +246,151 @@ export default function BundleDetails() {
           </CardContent>
         </Card>
 
-        {/* Tabs for Details and Description */}
-        <Tabs>
-          <TabsList className="w-full">
-            <TabsTrigger active={activeTab === 'details'} onClick={() => setActiveTab('details')}>Details</TabsTrigger>
-            <TabsTrigger active={activeTab === 'description'} onClick={() => setActiveTab('description')}>Description</TabsTrigger>
-            <TabsTrigger active={activeTab === 'seller'} onClick={() => setActiveTab('seller')}>Seller</TabsTrigger>
-          </TabsList>
+        {/* Pill-shaped Tabs */}
+        <div className="flex gap-2 bg-stone-100 p-1 rounded-xl">
+          <button
+            onClick={() => setActiveTab('details')}
+            className={`flex-1 py-2 rounded-lg text-sm font-medium transition-all ${activeTab === 'details'
+                ? 'bg-white shadow-sm text-amber-600'
+                : 'text-stone-500 hover:text-stone-700'
+              }`}
+          >
+            Details
+          </button>
+          <button
+            onClick={() => setActiveTab('description')}
+            className={`flex-1 py-2 rounded-lg text-sm font-medium transition-all ${activeTab === 'description'
+                ? 'bg-white shadow-sm text-amber-600'
+                : 'text-stone-500 hover:text-stone-700'
+              }`}
+          >
+            Description
+          </button>
+          <button
+            onClick={() => setActiveTab('seller')}
+            className={`flex-1 py-2 rounded-lg text-sm font-medium transition-all ${activeTab === 'seller'
+                ? 'bg-white shadow-sm text-amber-600'
+                : 'text-stone-500 hover:text-stone-700'
+              }`}
+          >
+            Seller
+          </button>
+        </div>
 
-          <TabsContent active={activeTab === 'details'} className="space-y-4">
-            <Card>
-              <CardContent className="p-5">
-                <h3 className="text-base font-semibold mb-3">Specifications</h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                  {bundle.breed_type && (
-                    <div className="flex items-center gap-2 p-2.5 bg-muted rounded-lg">
-                      <Info className="w-4 h-4 text-muted-foreground" />
-                      <div>
-                        <p className="text-xs text-muted-foreground">Breed</p>
-                        <p className="font-medium text-sm">{bundle.breed_type}</p>
-                      </div>
+        {/* Details Tab Content */}
+        {activeTab === 'details' && (
+          <Card>
+            <CardContent className="p-5">
+              <h3 className="text-base font-semibold mb-3">Specifications</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                {bundle.breed_type && (
+                  <div className="flex items-center gap-2 p-2.5 bg-muted rounded-lg">
+                    <Info className="w-4 h-4 text-muted-foreground" />
+                    <div>
+                      <p className="text-xs text-muted-foreground">Breed</p>
+                      <p className="font-medium text-sm">{bundle.breed_type}</p>
                     </div>
-                  )}
-                  {bundle.pure_cross && (
-                    <div className="flex items-center gap-2 p-2.5 bg-muted rounded-lg">
-                      <CheckCircle className="w-4 h-4 text-muted-foreground" />
-                      <div>
-                        <p className="text-xs text-muted-foreground">Pure / Cross</p>
-                        <p className="font-medium text-sm capitalize">{bundle.pure_cross}</p>
-                      </div>
-                    </div>
-                  )}
-                  {bundle.age_display && (
-                    <div className="flex items-center gap-2 p-2.5 bg-muted rounded-lg">
-                      <Calendar className="w-4 h-4 text-muted-foreground" />
-                      <div>
-                        <p className="text-xs text-muted-foreground">Age</p>
-                        <p className="font-medium text-sm">{bundle.age_display}</p>
-                      </div>
-                    </div>
-                  )}
-                  {bundle.weight_display && (
-                    <div className="flex items-center gap-2 p-2.5 bg-muted rounded-lg">
-                      <Weight className="w-4 h-4 text-muted-foreground" />
-                      <div>
-                        <p className="text-xs text-muted-foreground">Weight</p>
-                        <p className="font-medium text-sm">{bundle.weight_display}</p>
-                      </div>
-                    </div>
-                  )}
-                  {bundle.pregnancy_status && bundle.pregnancy_status !== 'n/a' && (
-                    <div className="flex items-center gap-2 p-2.5 bg-pink-50 rounded-lg">
-                      <Baby className="w-4 h-4 text-pink-500" />
-                      <div>
-                        <p className="text-xs text-muted-foreground">Pregnancy Status</p>
-                        <p className="font-medium text-sm text-pink-600 capitalize">{bundle.pregnancy_status}</p>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          <TabsContent active={activeTab === 'description'} className="space-y-4">
-            <Card>
-              <CardContent className="p-5">
-                {bundle.bundle_description ? (
-                  <>
-                    <h3 className="text-base font-semibold mb-2">About this bundle</h3>
-                    <p className="text-muted-foreground text-sm leading-relaxed">{bundle.bundle_description}</p>
-                  </>
-                ) : (
-                  <p className="text-center text-muted-foreground text-sm py-8">No description provided</p>
-                )}
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          <TabsContent active={activeTab === 'seller'} className="space-y-4">
-            <Card>
-              <CardContent className="p-5 space-y-4">
-                {!user ? (
-                  <div className="text-center py-6">
-                    <p className="text-muted-foreground text-sm mb-3">Login to contact the seller</p>
-                    <Link to="/login">
-                      <Button>Login to Message</Button>
-                    </Link>
                   </div>
-                ) : (
-                  <>
-                    {user.id !== bundle.user_id && conversationId ? (
-                      <Button className="w-full gap-2" asChild>
-                        <Link to={`/ChatRoom?conversation=${conversationId}&livestock=${bundle.id}`}>
-                          <MessageCircle className="w-4 h-4" />
-                          Message Seller
-                        </Link>
-                      </Button>
-                    ) : user.id === bundle.user_id ? (
-                      <Button className="w-full" variant="outline" disabled>This is your bundle</Button>
-                    ) : (
-                      <Button className="w-full" variant="outline" disabled>Loading...</Button>
-                    )}
-                  </>
                 )}
-              </CardContent>
-            </Card>
-          </TabsContent>
-        </Tabs>
+                {bundle.pure_cross && (
+                  <div className="flex items-center gap-2 p-2.5 bg-muted rounded-lg">
+                    <CheckCircle className="w-4 h-4 text-muted-foreground" />
+                    <div>
+                      <p className="text-xs text-muted-foreground">Pure / Cross</p>
+                      <p className="font-medium text-sm capitalize">{bundle.pure_cross}</p>
+                    </div>
+                  </div>
+                )}
+                {bundle.age_display && (
+                  <div className="flex items-center gap-2 p-2.5 bg-muted rounded-lg">
+                    <Calendar className="w-4 h-4 text-muted-foreground" />
+                    <div>
+                      <p className="text-xs text-muted-foreground">Age</p>
+                      <p className="font-medium text-sm">{bundle.age_display}</p>
+                    </div>
+                  </div>
+                )}
+                {bundle.weight_display && (
+                  <div className="flex items-center gap-2 p-2.5 bg-muted rounded-lg">
+                    <Weight className="w-4 h-4 text-muted-foreground" />
+                    <div>
+                      <p className="text-xs text-muted-foreground">Weight</p>
+                      <p className="font-medium text-sm">{bundle.weight_display}</p>
+                    </div>
+                  </div>
+                )}
+                {bundle.pregnancy_status && bundle.pregnancy_status !== 'n/a' && (
+                  <div className="flex items-center gap-2 p-2.5 bg-pink-50 rounded-lg">
+                    <Baby className="w-4 h-4 text-pink-500" />
+                    <div>
+                      <p className="text-xs text-muted-foreground">Pregnancy Status</p>
+                      <p className="font-medium text-sm text-pink-600 capitalize">{bundle.pregnancy_status}</p>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Description Tab Content */}
+        {activeTab === 'description' && (
+          <Card>
+            <CardContent className="p-5">
+              {bundle.bundle_description ? (
+                <>
+                  <h3 className="text-base font-semibold mb-2">About this bundle</h3>
+                  <p className="text-muted-foreground text-sm leading-relaxed">{bundle.bundle_description}</p>
+                </>
+              ) : (
+                <p className="text-center text-muted-foreground text-sm py-6">No description provided</p>
+              )}
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Seller Tab Content */}
+        {activeTab === 'seller' && (
+          <Card>
+            <CardContent className="p-5 space-y-4">
+              {!user ? (
+                <div className="text-center py-6">
+                  <p className="text-muted-foreground text-sm mb-3">Login to see seller contact information</p>
+                  <Link to="/login">
+                    <Button>Login to View</Button>
+                  </Link>
+                </div>
+              ) : (
+                <>
+                  <div className="flex items-center gap-3">
+                    <Avatar>
+                      <AvatarFallback>{bundle.seller_name?.charAt(0) || 'S'}</AvatarFallback>
+                    </Avatar>
+                    <div>
+                      <p className="font-medium">{bundle.seller_name || 'Anonymous'}</p>
+                      <p className="text-xs text-muted-foreground">Seller</p>
+                    </div>
+                  </div>
+
+                  <Separator />
+
+                  {user.id !== bundle.user_id && conversationId ? (
+                    <Button className="w-full gap-2" asChild>
+                      <Link to={`/ChatRoom?conversation=${conversationId}&livestock=${bundle.id}`}>
+                        <MessageCircle className="w-4 h-4" />
+                        Message Seller
+                      </Link>
+                    </Button>
+                  ) : user.id === bundle.user_id ? (
+                    <Button className="w-full" variant="outline" disabled>This is your bundle</Button>
+                  ) : (
+                    <Button className="w-full" variant="outline" disabled>Loading...</Button>
+                  )}
+                </>
+              )}
+            </CardContent>
+          </Card>
+        )}
       </div>
 
       {/* Lightbox */}

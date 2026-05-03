@@ -9,7 +9,6 @@ import { Avatar, AvatarFallback } from "./components/ui/avatar";
 import { Separator } from "./components/ui/separator";
 import { Textarea } from "./components/ui/textarea";
 import { Label } from "./components/ui/label";
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "./components/ui/tabs";
 
 export default function BreedDetails() {
   const urlParams = new URLSearchParams(window.location.search);
@@ -374,181 +373,201 @@ export default function BreedDetails() {
           </CardContent>
         </Card>
 
-        {/* Tabs for Details, Health, Seller */}
-        <Tabs>
-          <TabsList className="w-full">
-            <TabsTrigger active={activeTab === 'details'} onClick={() => setActiveTab('details')}>Details</TabsTrigger>
-            <TabsTrigger active={activeTab === 'health'} onClick={() => setActiveTab('health')}>Health</TabsTrigger>
-            <TabsTrigger active={activeTab === 'seller'} onClick={() => setActiveTab('seller')}>Seller</TabsTrigger>
-          </TabsList>
+        {/* Pill-shaped Tabs - More Obvious */}
+        <div className="flex gap-2 bg-stone-100 p-1 rounded-xl">
+          <button
+            onClick={() => setActiveTab('details')}
+            className={`flex-1 py-2 rounded-lg text-sm font-medium transition-all ${activeTab === 'details'
+                ? 'bg-white shadow-sm text-amber-600'
+                : 'text-stone-500 hover:text-stone-700'
+              }`}
+          >
+            Details
+          </button>
+          <button
+            onClick={() => setActiveTab('health')}
+            className={`flex-1 py-2 rounded-lg text-sm font-medium transition-all ${activeTab === 'health'
+                ? 'bg-white shadow-sm text-amber-600'
+                : 'text-stone-500 hover:text-stone-700'
+              }`}
+          >
+            Health
+          </button>
+          <button
+            onClick={() => setActiveTab('seller')}
+            className={`flex-1 py-2 rounded-lg text-sm font-medium transition-all ${activeTab === 'seller'
+                ? 'bg-white shadow-sm text-amber-600'
+                : 'text-stone-500 hover:text-stone-700'
+              }`}
+          >
+            Seller
+          </button>
+        </div>
 
-          <TabsContent active={activeTab === 'details'} className="space-y-4">
-            <Card>
-              <CardContent className="p-5">
-                <h3 className="text-base font-semibold mb-3">Specifications</h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                  {livestock.breed_type && (
-                    <div className="flex items-center gap-2 p-2.5 bg-muted rounded-lg">
-                      <Info className="w-4 h-4 text-muted-foreground" />
-                      <div>
-                        <p className="text-xs text-muted-foreground">Breed</p>
-                        <p className="font-medium text-sm">{livestock.breed_type}</p>
-                      </div>
-                    </div>
-                  )}
-                  {livestock.pure_cross && (
-                    <div className="flex items-center gap-2 p-2.5 bg-muted rounded-lg">
-                      <Users className="w-4 h-4 text-muted-foreground" />
-                      <div>
-                        <p className="text-xs text-muted-foreground">Pure / Cross</p>
-                        <p className="font-medium text-sm capitalize">{livestock.pure_cross === 'pure' ? 'Pure Breed' : 'Cross Breed'}</p>
-                      </div>
-                    </div>
-                  )}
+        {/* Details Tab Content */}
+        {activeTab === 'details' && (
+          <Card>
+            <CardContent className="p-5">
+              <h3 className="text-base font-semibold mb-3">Specifications</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                {livestock.breed_type && (
                   <div className="flex items-center gap-2 p-2.5 bg-muted rounded-lg">
-                    <Calendar className="w-4 h-4 text-muted-foreground" />
+                    <Info className="w-4 h-4 text-muted-foreground" />
                     <div>
-                      <p className="text-xs text-muted-foreground">Age</p>
-                      <p className="font-medium text-sm">{getAgeDisplay()}</p>
+                      <p className="text-xs text-muted-foreground">Breed</p>
+                      <p className="font-medium text-sm">{livestock.breed_type}</p>
                     </div>
                   </div>
-                  {weightDisplay && (
-                    <div className="flex items-center gap-2 p-2.5 bg-muted rounded-lg">
-                      <Weight className="w-4 h-4 text-muted-foreground" />
-                      <div>
-                        <p className="text-xs text-muted-foreground">Weight</p>
-                        <p className="font-medium text-sm">{weightDisplay}</p>
-                      </div>
+                )}
+                {livestock.pure_cross && (
+                  <div className="flex items-center gap-2 p-2.5 bg-muted rounded-lg">
+                    <Users className="w-4 h-4 text-muted-foreground" />
+                    <div>
+                      <p className="text-xs text-muted-foreground">Pure / Cross</p>
+                      <p className="font-medium text-sm capitalize">{livestock.pure_cross === 'pure' ? 'Pure Breed' : 'Cross Breed'}</p>
                     </div>
-                  )}
-                  {livestock.pregnancy_status && livestock.pregnancy_status !== 'n/a' && (
-                    <div className="flex items-center gap-2 p-2.5 bg-pink-50 rounded-lg">
-                      <Baby className="w-4 h-4 text-pink-500" />
-                      <div>
-                        <p className="text-xs text-muted-foreground">Pregnancy Status</p>
-                        <p className="font-medium text-sm text-pink-600 capitalize">{livestock.pregnancy_status}</p>
-                      </div>
-                    </div>
-                  )}
-                  {livestock.sire_used && (
-                    <div className="flex items-center gap-2 p-2.5 bg-muted rounded-lg">
-                      <Users className="w-4 h-4 text-muted-foreground" />
-                      <div>
-                        <p className="text-xs text-muted-foreground">Sire Used</p>
-                        <p className="font-medium text-sm">{livestock.sire_used}</p>
-                      </div>
-                    </div>
-                  )}
+                  </div>
+                )}
+                <div className="flex items-center gap-2 p-2.5 bg-muted rounded-lg">
+                  <Calendar className="w-4 h-4 text-muted-foreground" />
+                  <div>
+                    <p className="text-xs text-muted-foreground">Age</p>
+                    <p className="font-medium text-sm">{getAgeDisplay()}</p>
+                  </div>
                 </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
+                {weightDisplay && (
+                  <div className="flex items-center gap-2 p-2.5 bg-muted rounded-lg">
+                    <Weight className="w-4 h-4 text-muted-foreground" />
+                    <div>
+                      <p className="text-xs text-muted-foreground">Weight</p>
+                      <p className="font-medium text-sm">{weightDisplay}</p>
+                    </div>
+                  </div>
+                )}
+                {livestock.pregnancy_status && livestock.pregnancy_status !== 'n/a' && (
+                  <div className="flex items-center gap-2 p-2.5 bg-pink-50 rounded-lg">
+                    <Baby className="w-4 h-4 text-pink-500" />
+                    <div>
+                      <p className="text-xs text-muted-foreground">Pregnancy Status</p>
+                      <p className="font-medium text-sm text-pink-600 capitalize">{livestock.pregnancy_status}</p>
+                    </div>
+                  </div>
+                )}
+                {livestock.sire_used && (
+                  <div className="flex items-center gap-2 p-2.5 bg-muted rounded-lg">
+                    <Users className="w-4 h-4 text-muted-foreground" />
+                    <div>
+                      <p className="text-xs text-muted-foreground">Sire Used</p>
+                      <p className="font-medium text-sm">{livestock.sire_used}</p>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
-          <TabsContent active={activeTab === 'health'} className="space-y-4">
-            {livestock.health_info && (
-              <Card>
-                <CardContent className="p-5">
+        {/* Health Tab Content */}
+        {activeTab === 'health' && (
+          <Card>
+            <CardContent className="p-5">
+              {livestock.health_info ? (
+                <>
                   <h3 className="text-base font-semibold mb-2">Health & Vaccination</h3>
                   <p className="text-muted-foreground text-sm leading-relaxed">{livestock.health_info}</p>
-                </CardContent>
-              </Card>
-            )}
-            {livestock.notes && (
-              <Card>
-                <CardContent className="p-5">
-                  <h3 className="text-base font-semibold mb-2">Additional Information</h3>
+                </>
+              ) : (
+                <p className="text-center text-muted-foreground text-sm py-6">No health information provided</p>
+              )}
+              {livestock.notes && (
+                <div className="mt-4 pt-4 border-t">
+                  <h3 className="text-base font-semibold mb-2">Additional Notes</h3>
                   <p className="text-muted-foreground text-sm leading-relaxed">{livestock.notes}</p>
-                </CardContent>
-              </Card>
-            )}
-            {!livestock.health_info && !livestock.notes && (
-              <Card>
-                <CardContent className="p-8 text-center text-muted-foreground">
-                  No health information provided
-                </CardContent>
-              </Card>
-            )}
-          </TabsContent>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        )}
 
-          <TabsContent active={activeTab === 'seller'} className="space-y-4">
-            <Card>
-              <CardContent className="p-5 space-y-4">
-                {!user ? (
-                  <div className="text-center py-6">
-                    <p className="text-muted-foreground text-sm mb-3">Login to see seller contact information</p>
-                    <Link to="/login">
-                      <Button>Login to View</Button>
-                    </Link>
+        {/* Seller Tab Content */}
+        {activeTab === 'seller' && (
+          <Card>
+            <CardContent className="p-5 space-y-4">
+              {!user ? (
+                <div className="text-center py-6">
+                  <p className="text-muted-foreground text-sm mb-3">Login to see seller contact information</p>
+                  <Link to="/login">
+                    <Button>Login to View</Button>
+                  </Link>
+                </div>
+              ) : (
+                <>
+                  <div className="flex items-center gap-3">
+                    <Avatar>
+                      <AvatarFallback>{livestock.seller_name?.charAt(0) || seller?.full_name?.charAt(0) || 'S'}</AvatarFallback>
+                    </Avatar>
+                    <div>
+                      <p className="font-medium">{livestock.seller_name || seller?.full_name || 'Anonymous'}</p>
+                      <p className="text-xs text-muted-foreground">Member since {seller?.created_at ? new Date(seller.created_at).getFullYear() : '2024'}</p>
+                    </div>
                   </div>
-                ) : (
-                  <>
-                    <div className="flex items-center gap-3">
-                      <Avatar>
-                        <AvatarFallback>{livestock.seller_name?.charAt(0) || seller?.full_name?.charAt(0) || 'S'}</AvatarFallback>
-                      </Avatar>
-                      <div>
-                        <p className="font-medium">{livestock.seller_name || seller?.full_name || 'Anonymous'}</p>
-                        <p className="text-xs text-muted-foreground">Member since {seller?.created_at ? new Date(seller.created_at).getFullYear() : '2024'}</p>
+
+                  <Separator />
+
+                  {livestock.seller_phone && (
+                    <div>
+                      <p className="text-xs text-muted-foreground mb-1">Phone</p>
+                      <a href={`tel:${livestock.seller_phone}`} className="flex items-center gap-2 text-sm hover:text-primary transition">
+                        <Phone className="w-4 h-4" />
+                        {livestock.seller_phone}
+                      </a>
+                    </div>
+                  )}
+
+                  {(livestock.facebook_url || livestock.instagram_url || livestock.whatsapp_number || livestock.website_url) && (
+                    <div>
+                      <p className="text-xs text-muted-foreground mb-2">Social Media</p>
+                      <div className="flex flex-wrap gap-2">
+                        {livestock.facebook_url && (
+                          <a href={livestock.facebook_url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 px-2 py-1 bg-blue-50 text-blue-600 rounded-full text-xs hover:bg-blue-100 transition">
+                            📘 Facebook
+                          </a>
+                        )}
+                        {livestock.instagram_url && (
+                          <a href={livestock.instagram_url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 px-2 py-1 bg-pink-50 text-pink-600 rounded-full text-xs hover:bg-pink-100 transition">
+                            📷 Instagram
+                          </a>
+                        )}
+                        {livestock.whatsapp_number && (
+                          <a href={`https://wa.me/${livestock.whatsapp_number.replace(/\D/g, '')}`} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 px-2 py-1 bg-green-50 text-green-600 rounded-full text-xs hover:bg-green-100 transition">
+                            💬 WhatsApp
+                          </a>
+                        )}
+                        {livestock.website_url && (
+                          <a href={livestock.website_url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 px-2 py-1 bg-gray-100 text-gray-600 rounded-full text-xs hover:bg-gray-200 transition">
+                            🌐 Website
+                          </a>
+                        )}
                       </div>
                     </div>
+                  )}
 
-                    <Separator />
-
-                    {livestock.seller_phone && (
-                      <div>
-                        <p className="text-xs text-muted-foreground mb-1">Phone</p>
-                        <a href={`tel:${livestock.seller_phone}`} className="flex items-center gap-2 text-sm hover:text-primary transition">
-                          <Phone className="w-4 h-4" />
-                          {livestock.seller_phone}
-                        </a>
-                      </div>
-                    )}
-
-                    {(livestock.facebook_url || livestock.instagram_url || livestock.whatsapp_number || livestock.website_url) && (
-                      <div>
-                        <p className="text-xs text-muted-foreground mb-2">Social Media</p>
-                        <div className="flex flex-wrap gap-2">
-                          {livestock.facebook_url && (
-                            <a href={livestock.facebook_url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 px-2 py-1 bg-blue-50 text-blue-600 rounded-full text-xs hover:bg-blue-100 transition">
-                              📘 Facebook
-                            </a>
-                          )}
-                          {livestock.instagram_url && (
-                            <a href={livestock.instagram_url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 px-2 py-1 bg-pink-50 text-pink-600 rounded-full text-xs hover:bg-pink-100 transition">
-                              📷 Instagram
-                            </a>
-                          )}
-                          {livestock.whatsapp_number && (
-                            <a href={`https://wa.me/${livestock.whatsapp_number.replace(/\D/g, '')}`} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 px-2 py-1 bg-green-50 text-green-600 rounded-full text-xs hover:bg-green-100 transition">
-                              💬 WhatsApp
-                            </a>
-                          )}
-                          {livestock.website_url && (
-                            <a href={livestock.website_url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 px-2 py-1 bg-gray-100 text-gray-600 rounded-full text-xs hover:bg-gray-200 transition">
-                              🌐 Website
-                            </a>
-                          )}
-                        </div>
-                      </div>
-                    )}
-
-                    {user.id !== livestock.user_id && conversationId && (
-                      <Button className="w-full gap-2" asChild>
-                        <Link to={`/ChatRoom?conversation=${conversationId}&livestock=${livestock.id}`}>
-                          <MessageCircle className="w-4 h-4" />
-                          Message Seller
-                        </Link>
-                      </Button>
-                    )}
-                    {user.id === livestock.user_id && (
-                      <Button className="w-full" variant="outline" disabled>This is your listing</Button>
-                    )}
-                  </>
-                )}
-              </CardContent>
-            </Card>
-          </TabsContent>
-        </Tabs>
+                  {user.id !== livestock.user_id && conversationId && (
+                    <Button className="w-full gap-2" asChild>
+                      <Link to={`/ChatRoom?conversation=${conversationId}&livestock=${livestock.id}`}>
+                        <MessageCircle className="w-4 h-4" />
+                        Message Seller
+                      </Link>
+                    </Button>
+                  )}
+                  {user.id === livestock.user_id && (
+                    <Button className="w-full" variant="outline" disabled>This is your listing</Button>
+                  )}
+                </>
+              )}
+            </CardContent>
+          </Card>
+        )}
 
         {/* Reviews Section */}
         <Card>
