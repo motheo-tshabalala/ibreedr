@@ -9,6 +9,7 @@ import { Avatar, AvatarFallback } from "./components/ui/avatar";
 import { Separator } from "./components/ui/separator";
 import { Textarea } from "./components/ui/textarea";
 import { Label } from "./components/ui/label";
+import LocationMap from './components/LocationMap';
 
 export default function BreedDetails() {
   const urlParams = new URLSearchParams(window.location.search);
@@ -373,7 +374,7 @@ export default function BreedDetails() {
           </CardContent>
         </Card>
 
-        {/* Pill-shaped Tabs - More Obvious */}
+        {/* Pill-shaped Tabs - Details, Health, Seller, Location */}
         <div className="flex gap-2 bg-stone-100 p-1 rounded-xl">
           <button
             onClick={() => setActiveTab('details')}
@@ -401,6 +402,15 @@ export default function BreedDetails() {
               }`}
           >
             Seller
+          </button>
+          <button
+            onClick={() => setActiveTab('location')}
+            className={`flex-1 py-2 rounded-lg text-sm font-medium transition-all ${activeTab === 'location'
+                ? 'bg-white shadow-sm text-amber-600'
+                : 'text-stone-500 hover:text-stone-700'
+              }`}
+          >
+            Location
           </button>
         </div>
 
@@ -564,6 +574,37 @@ export default function BreedDetails() {
                     <Button className="w-full" variant="outline" disabled>This is your listing</Button>
                   )}
                 </>
+              )}
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Location Tab Content */}
+        {activeTab === 'location' && (
+          <Card>
+            <CardContent className="p-5">
+              {!user ? (
+                <div className="text-center py-6">
+                  <p className="text-muted-foreground text-sm mb-3">Login to see farm location</p>
+                  <Link to="/login">
+                    <Button>Login to View</Button>
+                  </Link>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {livestock.gps_latitude && livestock.gps_longitude ? (
+                    <LocationMap
+                      latitude={livestock.gps_latitude}
+                      longitude={livestock.gps_longitude}
+                      locationName={livestock.location}
+                    />
+                  ) : (
+                    <div className="text-center py-6">
+                      <p className="text-muted-foreground text-sm">Seller hasn't shared exact location.</p>
+                      <p className="text-xs text-muted-foreground mt-2">📍 {livestock.location || 'Location not specified'}</p>
+                    </div>
+                  )}
+                </div>
               )}
             </CardContent>
           </Card>

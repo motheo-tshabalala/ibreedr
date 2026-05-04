@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { ArrowLeft, Upload, X, Video, ChevronRight, ChevronLeft, Check, TrendingUp } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { supabase } from './supabaseClient';
@@ -7,6 +7,13 @@ import { Button } from "./components/ui/button";
 import { Input } from "./components/ui/input";
 import { Label } from "./components/ui/label";
 import { Textarea } from "./components/ui/textarea";
+import usePlacesAutocomplete, {
+  getGeocode,
+  getLatLng,
+} from "use-places-autocomplete";
+import {
+  LoadScript,
+} from "@react-google-maps/api";
 
 const ANIMAL_TYPES = [
   { value: 'cattle', label: 'Cattle' },
@@ -19,6 +26,60 @@ const ANIMAL_TYPES = [
   { value: 'rabbits', label: 'Rabbits' }
 ];
 
+// Autocomplete component
+function PlacesAutocomplete({ onPlaceSelect, placeholder }) {
+  const {
+    ready,
+    value,
+    suggestions: { status, data },
+    setValue,
+    clearSuggestions,
+  } = usePlacesAutocomplete({
+    requestOptions: {
+      componentRestrictions: { country: "za" },
+    },
+    debounce: 300,
+  });
+
+  const handleSelect = async (address) => {
+    setValue(address, false);
+    clearSuggestions();
+
+    try {
+      const results = await getGeocode({ address });
+      const { lat, lng } = await getLatLng(results[0]);
+      onPlaceSelect(address, lat, lng);
+    } catch (error) {
+      console.error("Error: ", error);
+    }
+  };
+
+  return (
+    <div className="relative">
+      <input
+        value={value}
+        onChange={(e) => setValue(e.target.value)}
+        disabled={!ready}
+        placeholder={placeholder}
+        className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+      />
+      {status === "OK" && (
+        <ul className="absolute z-50 w-full bg-white border border-gray-200 rounded-lg shadow-lg mt-1 max-h-60 overflow-y-auto">
+          {data.map((suggestion) => (
+            <li
+              key={suggestion.place_id}
+              onClick={() => handleSelect(suggestion.description)}
+              className="px-3 py-2 hover:bg-gray-100 cursor-pointer text-sm"
+            >
+              {suggestion.description}
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
+
 export default function SellerUpload() {
   const [user, setUser] = useState(null);
   const [currentStep, setCurrentStep] = useState(1);
@@ -28,6 +89,7 @@ export default function SellerUpload() {
   const [listingType, setListingType] = useState('');
   const [marketSuggestion, setMarketSuggestion] = useState(null);
   const [showPriceSuggestion, setShowPriceSuggestion] = useState(false);
+  const [scriptsLoaded, setScriptsLoaded] = useState(false);
 
   const [formData, setFormData] = useState({
     name: '',
@@ -52,7 +114,9 @@ export default function SellerUpload() {
     facebook_url: '',
     instagram_url: '',
     whatsapp_number: '',
-    website_url: ''
+    website_url: '',
+    gps_latitude: '',
+    gps_longitude: ''
   });
 
   const totalSteps = 8;
@@ -74,7 +138,7 @@ export default function SellerUpload() {
   }, []);
 
   // Fetch market price suggestion
-  const fetchPriceSuggestion = async () => {
+  const fetchPriceSuggestion = useCallback(async () => {
     const animalType = formData.animal_type;
     const weightMin = parseFloat(formData.weight_min);
     const weightMax = parseFloat(formData.weight_max);
@@ -82,7 +146,6 @@ export default function SellerUpload() {
 
     if (!animalType) return;
 
-    // Call the RPC function
     const { data, error } = await supabase
       .rpc('get_price_suggestion', {
         p_animal_type: animalType,
@@ -98,17 +161,24 @@ export default function SellerUpload() {
       setMarketSuggestion(null);
       setShowPriceSuggestion(false);
     }
-  };
+  }, [formData.animal_type, formData.weight_min, formData.weight_max]);
 
-  // Call when animal_type or weight changes
   useEffect(() => {
     if (formData.animal_type && (formData.weight_min || formData.weight_max)) {
       fetchPriceSuggestion();
     } else if (formData.animal_type && !formData.weight_min && !formData.weight_max) {
-      // Still fetch with default weight range
       fetchPriceSuggestion();
     }
-  }, [formData.animal_type, formData.weight_min, formData.weight_max]);
+  }, [formData.animal_type, formData.weight_min, formData.weight_max, fetchPriceSuggestion]);
+
+  const handlePlaceSelect = (address, lat, lng) => {
+    setFormData({
+      ...formData,
+      location: address,
+      gps_latitude: lat,
+      gps_longitude: lng
+    });
+  };
 
   const handleImageUpload = async (e) => {
     const files = Array.from(e.target.files);
@@ -232,6 +302,8 @@ export default function SellerUpload() {
         instagram_url: formData.instagram_url,
         whatsapp_number: formData.whatsapp_number,
         website_url: formData.website_url,
+        gps_latitude: formData.gps_latitude ? parseFloat(formData.gps_latitude) : null,
+        gps_longitude: formData.gps_longitude ? parseFloat(formData.gps_longitude) : null,
         status: 'active',
         likes_count: 0,
         views_count: 0
@@ -434,8 +506,51 @@ export default function SellerUpload() {
           <div className="space-y-4">
             <h2 className="text-xl font-semibold text-center">Location & Price</h2>
             <div>
-              <Label>Location *</Label>
-              <Input value={formData.location} onChange={(e) => setFormData({ ...formData, location: e.target.value })} placeholder="City or province" className="mt-1" />
+              <Label>Farm Location *</Label>
+              <LoadScript
+                googleMapsApiKey={process.env.REACT_APP_GOOGLE_MAPS_API_KEY}
+                libraries={["places"]}
+                onLoad={() => setScriptsLoaded(true)}
+              >
+                {scriptsLoaded && (
+                  <PlacesAutocomplete
+                    onPlaceSelect={handlePlaceSelect}
+                    placeholder="Start typing your farm address..."
+                  />
+                )}
+              </LoadScript>
+
+              {/* GPS Capture Button */}
+              <button
+                type="button"
+                onClick={() => {
+                  if (navigator.geolocation) {
+                    navigator.geolocation.getCurrentPosition(
+                      (position) => {
+                        setFormData({
+                          ...formData,
+                          gps_latitude: position.coords.latitude,
+                          gps_longitude: position.coords.longitude,
+                          location: formData.location || "📍 Location captured"
+                        });
+                        alert("Location captured! Map will now show this location.");
+                      },
+                      () => alert("Could not get your location. Please type your address.")
+                    );
+                  } else {
+                    alert("Your browser doesn't support location. Please type your address.");
+                  }
+                }}
+                className="w-full mt-2 py-2 border border-amber-500 rounded-lg text-amber-600 text-sm hover:bg-amber-50 transition"
+              >
+                📍 Use my current location
+              </button>
+
+              {formData.gps_latitude && (
+                <p className="text-xs text-green-600 mt-2">
+                  ✓ Location pinned on map
+                </p>
+              )}
             </div>
             <div>
               <Label>Price (R) *</Label>
