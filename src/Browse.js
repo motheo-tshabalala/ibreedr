@@ -1,15 +1,14 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Search, SlidersHorizontal, X, Heart, Bookmark, MessageCircle, HelpCircle, MapPin, Menu, Filter, RotateCcw } from 'lucide-react';
+import { Search, X, Heart, Bookmark, MessageCircle, HelpCircle, MapPin, Menu, Filter, RotateCcw } from 'lucide-react';
 import { motion, useMotionValue, useTransform, AnimatePresence } from 'framer-motion';
 import { Link } from 'react-router-dom';
 import { supabase } from './supabaseClient';
-import { useHelp } from './HelpContext';
 import { Card, CardContent } from "./components/ui/card";
 import { Badge } from "./components/ui/Badge";
 import { Button } from "./components/ui/button";
 
 // Mobile Menu Component
-function MobileMenu({ user, toggleHelpMode, helpMode, showHelp }) {
+function MobileMenu({ user, onOpenHelpCenter }) {
   const [isOpen, setIsOpen] = useState(false);
 
   return (
@@ -17,6 +16,7 @@ function MobileMenu({ user, toggleHelpMode, helpMode, showHelp }) {
       <button
         onClick={() => setIsOpen(!isOpen)}
         className="rounded-full p-2 border border-stone-200 text-stone-500 hover:border-amber-300"
+        data-tour-target="menu-button"
       >
         <Menu className="w-5 h-5" />
       </button>
@@ -34,99 +34,44 @@ function MobileMenu({ user, toggleHelpMode, helpMode, showHelp }) {
             <div className="space-y-4">
               <button
                 onClick={() => {
-                  toggleHelpMode();
                   setIsOpen(false);
+                  onOpenHelpCenter();
                 }}
-                className={`w-full text-left px-3 py-2 rounded-lg transition ${helpMode ? 'bg-amber-100 text-amber-600' : 'hover:bg-stone-100'
-                  }`}
+                className="w-full text-left px-3 py-2 rounded-lg hover:bg-stone-100"
               >
                 <HelpCircle className="w-4 h-4 inline mr-2" />
-                {helpMode ? 'Exit Help Mode' : 'Help Mode'}
+                Help Center
               </button>
-              <Link
-                to="/ChatList"
-                onClick={(e) => {
-                  if (helpMode) {
-                    e.preventDefault();
-                    showHelp('chat');
-                    setIsOpen(false);
-                  }
-                }}
-              >
+              <Link to="/ChatList" onClick={() => setIsOpen(false)}>
                 <div className="px-3 py-2 rounded-lg hover:bg-stone-100">
                   <MessageCircle className="w-4 h-4 inline mr-2" />
                   Messages
                 </div>
               </Link>
-              <Link
-                to="/Wishlist"
-                onClick={(e) => {
-                  if (helpMode) {
-                    e.preventDefault();
-                    showHelp('wishlist');
-                    setIsOpen(false);
-                  }
-                }}
-              >
+              <Link to="/Wishlist" onClick={() => setIsOpen(false)}>
                 <div className="px-3 py-2 rounded-lg hover:bg-stone-100">
                   <Bookmark className="w-4 h-4 inline mr-2" />
                   Wishlist
                 </div>
               </Link>
-              <Link
-                to="/MyListings"
-                onClick={(e) => {
-                  if (helpMode) {
-                    e.preventDefault();
-                    showHelp('myListings');
-                    setIsOpen(false);
-                  }
-                }}
-              >
+              <Link to="/MyListings" onClick={() => setIsOpen(false)}>
                 <div className="px-3 py-2 rounded-lg hover:bg-stone-100">
                   My Listings
                 </div>
               </Link>
-              <Link
-                to="/Dashboard"
-                onClick={(e) => {
-                  if (helpMode) {
-                    e.preventDefault();
-                    showHelp('dashboard');
-                    setIsOpen(false);
-                  }
-                }}
-              >
+              <Link to="/Dashboard" onClick={() => setIsOpen(false)}>
                 <div className="px-3 py-2 rounded-lg hover:bg-stone-100">
                   Dashboard
                 </div>
               </Link>
               {user ? (
-                <Link
-                  to="/logout"
-                  onClick={(e) => {
-                    if (helpMode) {
-                      e.preventDefault();
-                      showHelp('logout');
-                      setIsOpen(false);
-                    }
-                  }}
-                >
+                <Link to="/logout" onClick={() => setIsOpen(false)}>
                   <div className="px-3 py-2 rounded-lg hover:bg-red-50 text-red-600">
                     Logout
                   </div>
                 </Link>
               ) : (
-                <Link
-                  to="/login"
-                  onClick={(e) => {
-                    if (helpMode) {
-                      e.preventDefault();
-                      showHelp('login');
-                      setIsOpen(false);
-                    }
-                  }}
-                >
+                <Link to="/login" onClick={() => setIsOpen(false)}>
                   <div className="px-3 py-2 rounded-lg hover:bg-blue-50 text-blue-600">
                     Login
                   </div>
@@ -141,7 +86,7 @@ function MobileMenu({ user, toggleHelpMode, helpMode, showHelp }) {
 }
 
 // Filter Panel
-function FilterPanel({ isOpen, onClose, onApply, initialFilters, helpMode, showHelp }) {
+function FilterPanel({ isOpen, onClose, onApply, initialFilters }) {
   const [filters, setFilters] = useState(initialFilters);
 
   const resetFilters = () => {
@@ -156,23 +101,6 @@ function FilterPanel({ isOpen, onClose, onApply, initialFilters, helpMode, showH
   };
 
   if (!isOpen) return null;
-
-  const handleApply = () => {
-    if (helpMode) {
-      showHelp('filter');
-    } else {
-      onApply(filters);
-      onClose();
-    }
-  };
-
-  const handleReset = () => {
-    if (helpMode) {
-      showHelp('filter');
-    } else {
-      resetFilters();
-    }
-  };
 
   return (
     <div className="fixed inset-0 bg-black/50 z-50 flex justify-end">
@@ -263,10 +191,10 @@ function FilterPanel({ isOpen, onClose, onApply, initialFilters, helpMode, showH
           </div>
 
           <div className="flex gap-3 pt-4">
-            <button onClick={handleApply} className="flex-1 bg-amber-500 hover:bg-amber-600 text-white py-3 rounded-lg font-semibold transition">
+            <button onClick={() => { onApply(filters); onClose(); }} className="flex-1 bg-amber-500 hover:bg-amber-600 text-white py-3 rounded-lg font-semibold transition">
               Apply Filters
             </button>
-            <button onClick={handleReset} className="px-4 py-3 border border-stone-300 rounded-lg hover:bg-stone-50 transition flex items-center gap-2">
+            <button onClick={resetFilters} className="px-4 py-3 border border-stone-300 rounded-lg hover:bg-stone-50 transition flex items-center gap-2">
               <RotateCcw className="w-4 h-4" />
               Reset
             </button>
@@ -278,7 +206,7 @@ function FilterPanel({ isOpen, onClose, onApply, initialFilters, helpMode, showH
 }
 
 // Livestock Card
-function LivestockCard({ livestock, onWishlist, isInWishlist, onLike, hasLiked, helpMode, showHelp }) {
+function LivestockCard({ livestock, onWishlist, isInWishlist, onLike, hasLiked }) {
   const [isVideo, setIsVideo] = useState(false);
   const [mediaUrl, setMediaUrl] = useState('');
 
@@ -317,43 +245,29 @@ function LivestockCard({ livestock, onWishlist, isInWishlist, onLike, hasLiked, 
 
   const handleWishlistClick = (e) => {
     e.stopPropagation();
-    if (helpMode) {
-      showHelp('wishlist');
-    } else {
-      onWishlist(livestock);
-    }
+    onWishlist(livestock);
   };
 
   const handleLikeClick = (e) => {
     e.stopPropagation();
-    if (helpMode) {
-      showHelp('like');
-    } else {
-      onLike();
-    }
-  };
-
-  const handleCardClick = () => {
-    if (helpMode) {
-      showHelp('tapCard');
-    }
+    onLike();
   };
 
   return (
-    <Card className="overflow-hidden rounded-2xl border shadow-lg hover:shadow-xl transition-all" onClick={handleCardClick}>
-      <div className="relative bg-muted">
+    <Card className="overflow-hidden rounded-2xl border shadow-lg hover:shadow-xl transition-all" data-tour-target="card">
+      <div className="relative h-64 bg-muted">
         {isVideo ? (
           <video
             src={mediaUrl}
-            className="w-full h-auto max-h-80 object-contain"
+            className="w-full h-full object-cover"
             poster={livestock.images?.[0]}
             controls
             onClick={(e) => e.stopPropagation()}
           />
         ) : mediaUrl ? (
-          <img src={mediaUrl} alt={livestock.name} className="w-full h-auto max-h-80 object-contain" />
+          <img src={mediaUrl} alt={livestock.name} className="w-full h-full object-cover" />
         ) : (
-          <div className="w-full h-48 flex items-center justify-center bg-gradient-to-br from-amber-100 to-amber-200">
+          <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-amber-100 to-amber-200">
             <span className="text-6xl">🐄</span>
           </div>
         )}
@@ -361,12 +275,13 @@ function LivestockCard({ livestock, onWishlist, isInWishlist, onLike, hasLiked, 
         <button
           onClick={handleWishlistClick}
           className="absolute top-3 right-3 bg-white/80 backdrop-blur-sm rounded-full p-2 shadow-sm transition hover:scale-105"
+          data-tour-target="wishlist-button"
         >
           <Bookmark className={`w-4 h-4 ${isInWishlist ? 'fill-amber-500 text-amber-500' : 'text-gray-500'}`} />
         </button>
       </div>
 
-      <CardContent className="p-4 space-y-2">
+      <CardContent className="p-4 space-y-2 pb-16">
         <div className="flex justify-between items-start">
           <div>
             <h3 className="font-bold text-lg text-gray-900">{livestock.name}</h3>
@@ -404,6 +319,7 @@ function LivestockCard({ livestock, onWishlist, isInWishlist, onLike, hasLiked, 
       <button
         onClick={handleLikeClick}
         className="absolute bottom-3 left-1/2 -translate-x-1/2 w-10 h-10 rounded-full bg-white shadow-md flex items-center justify-center transition active:scale-95 border border-stone-100 z-10"
+        data-tour-target="like-button"
       >
         <Heart className={`w-5 h-5 ${hasLiked ? 'fill-amber-500 text-amber-500' : 'text-gray-400'}`} />
       </button>
@@ -418,19 +334,19 @@ function BundleCard({ bundle }) {
   const pricePerHead = bundle.price_per_head || (totalPrice / bundle.quantity);
 
   return (
-    <Card className="overflow-hidden rounded-2xl border shadow-lg hover:shadow-xl transition-all">
-      <div className="relative bg-muted">
+    <Card className="overflow-hidden cursor-pointer rounded-2xl border shadow-lg hover:shadow-xl transition-all">
+      <div className="relative h-64 bg-muted">
         {bundle.video_url ? (
           <video
             src={bundle.video_url}
-            className="w-full h-auto max-h-80 object-contain"
+            className="w-full h-full object-cover"
             controls
             onClick={(e) => e.stopPropagation()}
           />
         ) : bundle.images && bundle.images[0] ? (
-          <img src={bundle.images[0]} alt={bundle.bundle_name} className="w-full h-auto max-h-80 object-contain" />
+          <img src={bundle.images[0]} alt={bundle.bundle_name} className="w-full h-full object-cover" />
         ) : (
-          <div className="w-full h-48 flex items-center justify-center bg-gradient-to-br from-green-100 to-green-200">
+          <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-green-100 to-green-200">
             <span className="text-6xl">📦</span>
           </div>
         )}
@@ -470,7 +386,7 @@ function BundleCard({ bundle }) {
   );
 }
 
-export default function Browse() {
+export default function Browse({ setShowHelpCenter, setShowTour }) {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [searchQuery, setSearchQuery] = useState('');
   const [filters, setFilters] = useState({
@@ -490,8 +406,6 @@ export default function Browse() {
   const [user, setUser] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [wishlistIds, setWishlistIds] = useState([]);
-
-  const { helpMode, toggleHelpMode, showHelp } = useHelp();
 
   const x = useMotionValue(0);
   const rotate = useTransform(x, [-200, 200], [-15, 15]);
@@ -646,9 +560,7 @@ export default function Browse() {
   };
 
   const handleSwipeRight = () => {
-    if (helpMode) {
-      showHelp('swipeRight');
-    } else if (currentIndex < displayItems.length - 1) {
+    if (currentIndex < displayItems.length - 1) {
       setCurrentIndex(prev => prev + 1);
     } else {
       setCurrentIndex(displayItems.length);
@@ -656,17 +568,13 @@ export default function Browse() {
   };
 
   const handleSwipeLeft = () => {
-    if (helpMode) {
-      showHelp('swipeLeft');
-    } else if (currentIndex > 0) {
+    if (currentIndex > 0) {
       setCurrentIndex(prev => prev - 1);
     }
   };
 
   const handleCardClick = () => {
-    if (helpMode) {
-      showHelp('tapCard');
-    } else if (currentItem) {
+    if (currentItem) {
       if (currentItem.listing_type === 'bundle') {
         window.location.href = `/BundleDetails?id=${currentItem.id}`;
       } else {
@@ -675,50 +583,10 @@ export default function Browse() {
     }
   };
 
-  const toggleLike = () => {
-    if (helpMode) {
-      showHelp('like');
-    } else {
-      setHasLiked(!hasLiked);
-    }
-  };
-
-  const handleFilterClick = () => {
-    if (helpMode) {
-      showHelp('filter');
-    } else {
-      setIsFilterOpen(true);
-    }
-  };
-
-  const handleLeftArrowClick = () => {
-    if (helpMode) {
-      showHelp('swipeLeft');
-    } else if (currentIndex > 0) {
-      setCurrentIndex(prev => prev - 1);
-    }
-  };
-
-  const handleRightArrowClick = () => {
-    if (helpMode) {
-      showHelp('swipeRight');
-    } else if (currentIndex < displayItems.length - 1) {
-      setCurrentIndex(prev => prev + 1);
-    }
-  };
-
-  const handleSearchClick = () => {
-    if (helpMode) {
-      showHelp('search');
-    }
-  };
+  const toggleLike = () => setHasLiked(!hasLiked);
 
   const handleUploadClick = () => {
-    if (helpMode) {
-      showHelp('upload');
-    } else {
-      window.location.href = '/SellerUpload';
-    }
+    window.location.href = '/SellerUpload';
   };
 
   if (isLoading && allItems.length === 0) {
@@ -733,22 +601,21 @@ export default function Browse() {
     <div className="min-h-screen bg-gradient-to-br from-amber-50 to-stone-100">
       {/* Header */}
       <div className="bg-white border-b sticky top-0 z-30">
-        <div className="max-w-md mx-auto px-3 sm:px-4 py-4 space-y-3">
+        <div className="max-w-md mx-auto px-4 py-4 space-y-3">
           <div className="text-center">
             <Link to="/">
               <h1 className="text-2xl font-bold text-amber-600">iBreedr</h1>
             </Link>
           </div>
 
-          <div className="flex items-center gap-2">
+          {/* Search and Filter area */}
+          <div className="flex items-center gap-2" data-tour-target="search-filter">
             <MobileMenu
               user={user}
-              toggleHelpMode={toggleHelpMode}
-              helpMode={helpMode}
-              showHelp={showHelp}
+              onOpenHelpCenter={() => setShowHelpCenter(true)}
             />
 
-            <div className="flex-1 relative" onClick={handleSearchClick}>
+            <div className="flex-1 relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-stone-400" />
               <input
                 placeholder="Search livestock, breeds..."
@@ -764,7 +631,7 @@ export default function Browse() {
             </div>
 
             <button
-              onClick={handleFilterClick}
+              onClick={() => setIsFilterOpen(true)}
               className="w-10 h-10 rounded-full bg-white border border-stone-200 flex items-center justify-center hover:bg-stone-50 transition"
             >
               <Filter className="w-4 h-4 text-stone-600" />
@@ -798,29 +665,27 @@ export default function Browse() {
       </div>
 
       {/* Main Card Area with Side Arrows */}
-      <div className="relative max-w-md mx-auto px-3 sm:px-4 pt-4 sm:pt-6 pb-32">
-        {/* Left Arrow - previous card */}
+      <div className="relative max-w-md mx-auto px-4 pt-6 pb-32" data-tour-target="swipe-area">
         {currentIndex > 0 && (
           <button
-            onClick={handleLeftArrowClick}
-            className="fixed left-1 sm:left-2 top-1/2 -translate-y-1/2 w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-white shadow-md flex items-center justify-center text-lg sm:text-xl text-gray-500 hover:text-red-500 transition z-20"
+            onClick={handleSwipeLeft}
+            className="fixed left-2 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-white shadow-md flex items-center justify-center text-xl text-gray-500 hover:text-red-500 transition z-20"
           >
             &lt;
           </button>
         )}
 
-        {/* Right Arrow - next card */}
         {currentIndex < displayItems.length - 1 && (
           <button
-            onClick={handleRightArrowClick}
-            className="fixed right-1 sm:right-2 top-1/2 -translate-y-1/2 w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-white shadow-md flex items-center justify-center text-lg sm:text-xl text-gray-500 hover:text-green-500 transition z-20"
+            onClick={handleSwipeRight}
+            className="fixed right-2 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-white shadow-md flex items-center justify-center text-xl text-gray-500 hover:text-green-500 transition z-20"
           >
             &gt;
           </button>
         )}
 
         {displayItems.length === 0 ? (
-          <div className="flex flex-col items-center justify-center h-[60vh] text-center">
+          <div className="flex flex-col items-center justify-center h-[500px] text-center">
             <div className="w-16 h-16 bg-amber-100 rounded-full flex items-center justify-center mb-4">
               <Search className="w-8 h-8 text-amber-500" />
             </div>
@@ -833,14 +698,14 @@ export default function Browse() {
               Clear all filters
             </button>
             <button
-              onClick={() => window.location.href = '/SellerUpload'}
+              onClick={handleUploadClick}
               className="bg-amber-500 hover:bg-amber-600 text-white px-5 py-2 rounded-full text-sm mt-6 transition"
             >
               + Add Your First Listing
             </button>
           </div>
         ) : currentIndex >= displayItems.length ? (
-          <div className="flex flex-col items-center justify-center h-[60vh] text-center">
+          <div className="flex flex-col items-center justify-center h-[500px] text-center">
             <div className="w-16 h-16 bg-stone-100 rounded-full flex items-center justify-center mb-4">
               <span className="text-3xl">✨</span>
             </div>
@@ -855,7 +720,7 @@ export default function Browse() {
           </div>
         ) : (
           <>
-            <div className="mb-4">
+            <div className="h-[550px] mb-6">
               <AnimatePresence>
                 <motion.div
                   key={currentItem?.id || currentItem?.bundle_name}
@@ -864,7 +729,7 @@ export default function Browse() {
                   onDragEnd={handleDragEnd}
                   style={{ x, rotate, opacity }}
                   onClick={handleCardClick}
-                  className="cursor-pointer w-full"
+                  className="cursor-pointer absolute w-full"
                 >
                   {currentItem?.listing_type === 'bundle' ? (
                     <BundleCard bundle={currentItem} />
@@ -875,8 +740,6 @@ export default function Browse() {
                       isInWishlist={wishlistIds.includes(currentItem?.id)}
                       onLike={toggleLike}
                       hasLiked={hasLiked}
-                      helpMode={helpMode}
-                      showHelp={showHelp}
                     />
                   )}
                 </motion.div>
@@ -884,7 +747,7 @@ export default function Browse() {
             </div>
 
             {/* Heart Button - centered below card */}
-            <div className="flex justify-center mt-2 sm:mt-4">
+            <div className="flex justify-center">
               <button
                 onClick={toggleLike}
                 className="w-10 h-10 rounded-full bg-white shadow-md flex items-center justify-center transition active:scale-95 border border-stone-100"
@@ -902,14 +765,13 @@ export default function Browse() {
         onClose={() => setIsFilterOpen(false)}
         onApply={setFilters}
         initialFilters={filters}
-        helpMode={helpMode}
-        showHelp={showHelp}
       />
 
       {/* FAB - Upload */}
       <button
         onClick={handleUploadClick}
         className="fixed bottom-6 right-6 w-12 h-12 bg-amber-500 hover:bg-amber-600 text-white rounded-full shadow-lg text-2xl transition active:scale-95 flex items-center justify-center"
+        data-tour-target="upload-button"
       >
         +
       </button>
