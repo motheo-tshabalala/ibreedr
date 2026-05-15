@@ -10,6 +10,7 @@ export default function Auth() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [fullName, setFullName] = useState('');
+  const [farmName, setFarmName] = useState('');  // ← NEW
   const [isLogin, setIsLogin] = useState(true);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -44,12 +45,15 @@ export default function Auth() {
         window.location.href = '/Browse';
       }
     } else {
-      // Signup
+      // Signup - with farm name
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
         options: {
-          data: { full_name: fullName },
+          data: {
+            full_name: fullName,
+            farm_name: farmName  // ← ADDED
+          },
         },
       });
       if (error) {
@@ -95,18 +99,35 @@ export default function Auth() {
           {/* Form */}
           <form onSubmit={handleSubmit} className="space-y-4">
             {!isLogin && !resetMode && (
-              <div>
-                <Label htmlFor="fullName">Full Name</Label>
-                <Input
-                  id="fullName"
-                  type="text"
-                  value={fullName}
-                  onChange={(e) => setFullName(e.target.value)}
-                  placeholder="John Farmer"
-                  className="mt-1"
-                  required={!isLogin}
-                />
-              </div>
+              <>
+                <div>
+                  <Label htmlFor="fullName">Full Name</Label>
+                  <Input
+                    id="fullName"
+                    type="text"
+                    value={fullName}
+                    onChange={(e) => setFullName(e.target.value)}
+                    placeholder="John Farmer"
+                    className="mt-1"
+                    required={!isLogin}
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="farmName">Farm/Business Name *</Label>
+                  <Input
+                    id="farmName"
+                    type="text"
+                    value={farmName}
+                    onChange={(e) => setFarmName(e.target.value)}
+                    placeholder="Green Valley Farm"
+                    className="mt-1"
+                    required={!isLogin}
+                  />
+                  <p className="text-xs text-muted-foreground mt-1">
+                    This name will appear on all your listings
+                  </p>
+                </div>
+              </>
             )}
 
             <div>

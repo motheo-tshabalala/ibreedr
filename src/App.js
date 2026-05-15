@@ -17,19 +17,18 @@ import ChatRoom from './ChatRoom';
 import EditListing from './EditListing';
 import HelpCenter from './HelpCenter';
 import InteractiveTour from './InteractiveTour';
+import Profile from './Profile';
+import PublicProfile from './PublicProfile';
+import TransactionStatus from './TransactionStatus';
 
 function App() {
   const [showHelpCenter, setShowHelpCenter] = useState(false);
   const [showTour, setShowTour] = useState(false);
 
-  // Check if user has seen the tour before
   useEffect(() => {
     const hasSeenTour = localStorage.getItem('ibreedr_tour_completed');
     if (!hasSeenTour) {
-      // Show tour after a short delay for first-time users
-      const timer = setTimeout(() => {
-        setShowTour(true);
-      }, 1000);
+      const timer = setTimeout(() => setShowTour(true), 1000);
       return () => clearTimeout(timer);
     }
   }, []);
@@ -51,28 +50,17 @@ function App() {
         <Route path="/ChatList" element={<ChatList />} />
         <Route path="/ChatRoom" element={<ChatRoom />} />
         <Route path="/EditListing" element={<EditListing />} />
+        <Route path="/Profile" element={<Profile />} />
+        <Route path="/farm/:userId" element={<PublicProfile />} />
+        <Route path="/transaction/:id" element={<TransactionStatus />} />
       </Routes>
 
-      {/* Help Center Modal */}
       {showHelpCenter && (
-        <HelpCenter
-          onClose={() => setShowHelpCenter(false)}
-          onStartTour={() => {
-            setShowHelpCenter(false);
-            setShowTour(true);
-          }}
-        />
+        <HelpCenter onClose={() => setShowHelpCenter(false)} onStartTour={() => { setShowHelpCenter(false); setShowTour(true); }} />
       )}
 
-      {/* Interactive Tour */}
       {showTour && (
-        <InteractiveTour
-          onComplete={() => {
-            localStorage.setItem('ibreedr_tour_completed', 'true');
-            setShowTour(false);
-          }}
-          onSkip={() => setShowTour(false)}
-        />
+        <InteractiveTour onComplete={() => { localStorage.setItem('ibreedr_tour_completed', 'true'); setShowTour(false); }} onSkip={() => setShowTour(false)} />
       )}
     </Router>
   );

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ArrowLeft, MapPin, Heart, Star, Phone, Bookmark, Calendar, Weight, Info, Users, Baby, Hash, Eye, MessageCircle } from 'lucide-react';
+import { ArrowLeft, MapPin, Heart, Star, Phone, Bookmark, Calendar, Weight, Info, Users, Baby, Hash, Eye, MessageCircle, Image, X, Shield, Truck } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { supabase } from './supabaseClient';
 import { Card, CardContent } from "./components/ui/card";
@@ -10,6 +10,7 @@ import { Separator } from "./components/ui/separator";
 import { Textarea } from "./components/ui/textarea";
 import { Label } from "./components/ui/label";
 import LocationMap from './components/LocationMap';
+import PayModal from './PayModal';
 
 export default function BreedDetails() {
   const urlParams = new URLSearchParams(window.location.search);
@@ -30,6 +31,7 @@ export default function BreedDetails() {
   const [lightboxOpen, setLightboxOpen] = useState(false);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [activeTab, setActiveTab] = useState('details');
+  const [showPayModal, setShowPayModal] = useState(false);
 
   useEffect(() => {
     const getUser = async () => {
@@ -58,13 +60,8 @@ export default function BreedDetails() {
 
       setLivestock(livestockData);
 
-      if (livestockData) {
-        await supabase
-          .from('livestock')
-          .update({ views_count: (livestockData.views_count || 0) + 1 })
-          .eq('id', livestockId);
-        setLivestock({ ...livestockData, views_count: (livestockData.views_count || 0) + 1 });
-      }
+      await supabase.rpc('increment_views', { p_livestock_id: parseInt(livestockId) });
+      setLivestock(prev => prev ? { ...prev, views_count: (prev.views_count || 0) + 1 } : null);
 
       if (livestockData.user_id) {
         const { data: sellerData } = await supabase
@@ -111,27 +108,16 @@ export default function BreedDetails() {
       if (!user || !livestock) return;
       if (user.id === livestock.user_id) return;
 
-      const { data: existing } = await supabase
+      const { data } = await supabase
         .from('conversations')
-        .select('id')
-        .eq('livestock_id', livestock.id)
-        .eq('buyer_id', user.id)
-        .maybeSingle();
+        .upsert(
+          [{ livestock_id: livestock.id, buyer_id: user.id, seller_id: livestock.user_id }],
+          { onConflict: 'livestock_id,buyer_id' }
+        )
+        .select()
+        .single();
 
-      if (existing) {
-        setConversationId(existing.id);
-      } else {
-        const { data: newConvo } = await supabase
-          .from('conversations')
-          .insert([{
-            livestock_id: livestock.id,
-            buyer_id: user.id,
-            seller_id: livestock.user_id
-          }])
-          .select()
-          .single();
-        if (newConvo) setConversationId(newConvo.id);
-      }
+      if (data) setConversationId(data.id);
     };
     getOrCreateConversation();
   }, [user, livestock]);
@@ -142,16 +128,13 @@ export default function BreedDetails() {
       window.location.href = '/login';
       return;
     }
-    if (hasLiked) {
-      await supabase.from('likes').delete().eq('livestock_id', livestockId).eq('user_id', user.id);
-      await supabase.from('livestock').update({ likes_count: (livestock.likes_count || 1) - 1 }).eq('id', livestockId);
-      setHasLiked(false);
-      setLivestock({ ...livestock, likes_count: (livestock.likes_count || 1) - 1 });
-    } else {
-      await supabase.from('likes').insert([{ livestock_id: livestockId, user_id: user.id }]);
-      await supabase.from('livestock').update({ likes_count: (livestock.likes_count || 0) + 1 }).eq('id', livestockId);
-      setHasLiked(true);
-      setLivestock({ ...livestock, likes_count: (livestock.likes_count || 0) + 1 });
+    const { data } = await supabase.rpc('toggle_like', {
+      p_livestock_id: parseInt(livestockId),
+      p_user_id: user.id
+    });
+    if (data) {
+      setHasLiked(data[0].liked);
+      setLivestock(prev => prev ? { ...prev, likes_count: Number(data[0].new_count) } : null);
     }
   };
 
@@ -169,7 +152,7 @@ export default function BreedDetails() {
       await supabase.from('wishlist').insert([{
         livestock_id: livestockId,
         user_id: user.id,
-        livestock_name: livestock.name,
+        livestock_name: livestock.farm_name || livestock.breed_type || 'Livestock',
         original_price: livestock.price
       }]);
       setIsInWishlist(true);
@@ -182,23 +165,17 @@ export default function BreedDetails() {
       alert('Please enter your name');
       return;
     }
-    const { data, error } = await supabase
-      .from('reviews')
-      .insert([{
-        livestock_id: parseInt(livestockId),
-        rating,
-        comment,
-        reviewer_name: reviewerName,
-        user_id: user?.id || null
-      }])
-      .select();
+    const { data, error } = await supabase.rpc('submit_review', {
+      p_livestock_id: parseInt(livestockId),
+      p_user_id: user?.id || null,
+      p_rating: rating,
+      p_comment: comment,
+      p_reviewer_name: reviewerName
+    });
     if (error) {
       console.error('Review error:', error);
       alert('Failed to submit review');
-    } else {
-      const allRatings = [...reviews, { rating }];
-      const avgRating = allRatings.reduce((sum, r) => sum + r.rating, 0) / allRatings.length;
-      await supabase.from('livestock').update({ average_rating: avgRating }).eq('id', livestockId);
+    } else if (data) {
       setReviews([data[0], ...reviews]);
       setShowReviewForm(false);
       setComment('');
@@ -219,13 +196,9 @@ export default function BreedDetails() {
   };
 
   const getWeightDisplay = () => {
-    if (livestock?.weight_min && livestock?.weight_max) {
-      return `${livestock.weight_min} - ${livestock.weight_max} kg`;
-    } else if (livestock?.weight_min) {
-      return `${livestock.weight_min} kg`;
-    } else if (livestock?.weight_max) {
-      return `Up to ${livestock.weight_max} kg`;
-    }
+    if (livestock?.weight_min && livestock?.weight_max) return `${livestock.weight_min} - ${livestock.weight_max} kg`;
+    if (livestock?.weight_min) return `${livestock.weight_min} kg`;
+    if (livestock?.weight_max) return `Up to ${livestock.weight_max} kg`;
     return null;
   };
 
@@ -236,7 +209,7 @@ export default function BreedDetails() {
   if (isLoading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="animate-spin rounded-full h-10 w-10 border-4 border-primary border-t-transparent"></div>
+        <div className="animate-spin rounded-full h-10 w-10 border-4 border-primary border-t-transparent" />
       </div>
     );
   }
@@ -245,16 +218,18 @@ export default function BreedDetails() {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-center">
-          <h2 className="text-lg font-semibold mb-2">Livestock not found</h2>
-          <Link to="/Browse">
-            <Button>Back to Browse</Button>
-          </Link>
+          <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mx-auto mb-4">
+            <Info className="w-8 h-8 text-muted-foreground" />
+          </div>
+          <h2 className="text-lg font-semibold mb-2">Listing not found</h2>
+          <Link to="/Browse"><Button>Back to Browse</Button></Link>
         </div>
       </div>
     );
   }
 
   const weightDisplay = getWeightDisplay();
+  const titleDisplay = livestock.farm_name || livestock.breed_type || 'Livestock';
 
   return (
     <div className="min-h-screen bg-background">
@@ -266,7 +241,7 @@ export default function BreedDetails() {
               <ArrowLeft className="w-5 h-5" />
             </Button>
           </Link>
-          <h1 className="text-lg font-semibold">Livestock Details</h1>
+          <h1 className="text-lg font-semibold truncate">{titleDisplay}</h1>
         </div>
       </div>
 
@@ -274,43 +249,20 @@ export default function BreedDetails() {
         {/* Image Section */}
         <Card className="overflow-hidden rounded-xl">
           {livestock.video_url ? (
-            <video
-              src={livestock.video_url}
-              className="w-full h-80 object-cover"
-              controls
-              poster={livestock.images?.[0]}
-            />
+            <video src={livestock.video_url} className="w-full h-80 object-cover" controls poster={livestock.images?.[0]} />
           ) : livestock.images && livestock.images[0] ? (
-            <img
-              src={livestock.images[0]}
-              alt={livestock.name}
-              className="w-full h-80 object-cover cursor-pointer"
-              onClick={() => {
-                setCurrentImageIndex(0);
-                setLightboxOpen(true);
-              }}
-            />
+            <img src={livestock.images[0]} alt={titleDisplay} className="w-full h-80 object-cover cursor-pointer" onClick={() => { setCurrentImageIndex(0); setLightboxOpen(true); }} />
           ) : (
-            <div className="h-80 bg-muted flex items-center justify-center">
-              <span className="text-7xl">🐄</span>
+            <div className="h-80 bg-gradient-to-br from-amber-50 to-amber-100 flex items-center justify-center">
+              <Image className="w-16 h-16 text-amber-300" />
             </div>
           )}
-
           {livestock.images && livestock.images.length > 1 && (
             <div className="p-4 border-t">
               <p className="text-sm text-muted-foreground mb-2">Additional photos</p>
               <div className="flex gap-2 overflow-x-auto">
                 {livestock.images.slice(1).map((img, idx) => (
-                  <img
-                    key={idx}
-                    src={img}
-                    alt={`${livestock.name} ${idx + 2}`}
-                    className="w-16 h-16 rounded-lg object-cover cursor-pointer hover:opacity-80 transition"
-                    onClick={() => {
-                      setCurrentImageIndex(idx + 1);
-                      setLightboxOpen(true);
-                    }}
-                  />
+                  <img key={idx} src={img} alt={`${titleDisplay} ${idx + 2}`} className="w-16 h-16 rounded-lg object-cover cursor-pointer hover:opacity-80 transition" onClick={() => { setCurrentImageIndex(idx + 1); setLightboxOpen(true); }} />
                 ))}
               </div>
             </div>
@@ -326,283 +278,142 @@ export default function BreedDetails() {
                   <Hash className="w-4 h-4 text-muted-foreground" />
                   <span className="text-xs text-muted-foreground">Ref: {livestock.reference_number || 'N/A'}</span>
                 </div>
-                <h2 className="text-2xl font-bold mb-1">{livestock.name}</h2>
+                <h2 className="text-2xl font-bold mb-1">{titleDisplay}</h2>
                 <div className="flex items-center gap-2 text-muted-foreground text-sm mb-2">
                   <span className="font-medium">{livestock.breed_type}</span>
-                  <span>•</span>
+                  <span className="text-stone-300">•</span>
                   <span className="capitalize">{livestock.animal_type}</span>
                 </div>
                 <div className="flex items-center gap-1 text-muted-foreground text-sm">
-                  <MapPin className="w-3 h-3" />
-                  <span>{livestock.location}</span>
+                  <MapPin className="w-3 h-3" /><span>{livestock.location}</span>
                 </div>
               </div>
-
               {user && (
                 <div className="flex gap-1">
                   <Button variant="ghost" size="icon" onClick={toggleWishlist} className="rounded-full">
                     <Bookmark className={`w-5 h-5 ${isInWishlist ? 'fill-primary text-primary' : ''}`} />
                   </Button>
                   <Button variant="ghost" size="icon" onClick={toggleLike} className="rounded-full">
-                    <Heart className={`w-5 h-5 ${hasLiked ? 'fill-destructive text-destructive' : ''}`} />
+                    <Heart className={`w-5 h-5 ${hasLiked ? 'fill-rose-500 text-rose-500' : ''}`} />
                   </Button>
                 </div>
               )}
             </div>
 
             <div className="flex flex-wrap gap-3 pt-3 border-t">
-              <Badge variant="secondary" className="gap-1">
-                <Star className="w-3 h-3" />
-                {avgRating > 0 ? avgRating : 'No reviews'}
-              </Badge>
-              <Badge variant="secondary" className="gap-1 bg-rose-50 text-rose-700">
-                <Heart className="w-3 h-3" />
-                {livestock.likes_count || 0} likes
-              </Badge>
-              <Badge variant="secondary" className="gap-1 bg-blue-50 text-blue-700">
-                <Eye className="w-3 h-3" />
-                {livestock.views_count || 0} views
-              </Badge>
+              <Badge variant="secondary" className="gap-1"><Star className="w-3 h-3" />{avgRating > 0 ? avgRating : 'No reviews'}</Badge>
+              <Badge variant="secondary" className="gap-1 bg-rose-50 text-rose-700"><Heart className="w-3 h-3" />{livestock.likes_count || 0} likes</Badge>
+              <Badge variant="secondary" className="gap-1 bg-blue-50 text-blue-700"><Eye className="w-3 h-3" />{livestock.views_count || 0} views</Badge>
             </div>
 
             {livestock.price && (
               <div className="pt-3 border-t">
                 <p className="text-xs text-muted-foreground mb-0.5">Price</p>
-                <p className="text-2xl font-bold text-primary">R {Number(livestock.price).toLocaleString()}</p>
+                <div className="flex items-center justify-between">
+                  <p className="text-2xl font-bold text-primary">R {Number(livestock.price).toLocaleString()}</p>
+                  {user && user.id !== livestock.user_id && (
+                    <Button onClick={() => setShowPayModal(true)} className="gap-2">
+                      <Shield className="w-4 h-4" /> Pay Now
+                    </Button>
+                  )}
+                </div>
+                {livestock.transport_responsibility && (
+                  <p className="text-xs text-muted-foreground mt-1 flex items-center gap-1">
+                    <Truck className="w-3 h-3" />
+                    Transport: {livestock.transport_responsibility === 'seller' ? 'Seller delivers' : livestock.transport_responsibility === 'buyer' ? 'Buyer arranges' : 'To be discussed'}
+                  </p>
+                )}
               </div>
             )}
           </CardContent>
         </Card>
 
-        {/* Pill-shaped Tabs - Details, Health, Seller, Location */}
+        {/* Tabs */}
         <div className="flex gap-2 bg-stone-100 p-1 rounded-xl">
-          <button
-            onClick={() => setActiveTab('details')}
-            className={`flex-1 py-2 rounded-lg text-sm font-medium transition-all ${activeTab === 'details'
-                ? 'bg-white shadow-sm text-amber-600'
-                : 'text-stone-500 hover:text-stone-700'
-              }`}
-          >
-            Details
-          </button>
-          <button
-            onClick={() => setActiveTab('health')}
-            className={`flex-1 py-2 rounded-lg text-sm font-medium transition-all ${activeTab === 'health'
-                ? 'bg-white shadow-sm text-amber-600'
-                : 'text-stone-500 hover:text-stone-700'
-              }`}
-          >
-            Health
-          </button>
-          <button
-            onClick={() => setActiveTab('seller')}
-            className={`flex-1 py-2 rounded-lg text-sm font-medium transition-all ${activeTab === 'seller'
-                ? 'bg-white shadow-sm text-amber-600'
-                : 'text-stone-500 hover:text-stone-700'
-              }`}
-          >
-            Seller
-          </button>
-          <button
-            onClick={() => setActiveTab('location')}
-            className={`flex-1 py-2 rounded-lg text-sm font-medium transition-all ${activeTab === 'location'
-                ? 'bg-white shadow-sm text-amber-600'
-                : 'text-stone-500 hover:text-stone-700'
-              }`}
-          >
-            Location
-          </button>
+          {['details', 'health', 'seller', 'location'].map(tab => (
+            <button key={tab} onClick={() => setActiveTab(tab)} className={`flex-1 py-2 rounded-lg text-sm font-medium transition-all capitalize ${activeTab === tab ? 'bg-white shadow-sm text-amber-600' : 'text-stone-500 hover:text-stone-700'}`}>{tab}</button>
+          ))}
         </div>
 
-        {/* Details Tab Content */}
+        {/* Details Tab */}
         {activeTab === 'details' && (
           <Card>
             <CardContent className="p-5">
               <h3 className="text-base font-semibold mb-3">Specifications</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                {livestock.breed_type && (
-                  <div className="flex items-center gap-2 p-2.5 bg-muted rounded-lg">
-                    <Info className="w-4 h-4 text-muted-foreground" />
-                    <div>
-                      <p className="text-xs text-muted-foreground">Breed</p>
-                      <p className="font-medium text-sm">{livestock.breed_type}</p>
-                    </div>
-                  </div>
-                )}
-                {livestock.pure_cross && (
-                  <div className="flex items-center gap-2 p-2.5 bg-muted rounded-lg">
-                    <Users className="w-4 h-4 text-muted-foreground" />
-                    <div>
-                      <p className="text-xs text-muted-foreground">Pure / Cross</p>
-                      <p className="font-medium text-sm capitalize">{livestock.pure_cross === 'pure' ? 'Pure Breed' : 'Cross Breed'}</p>
-                    </div>
-                  </div>
-                )}
-                <div className="flex items-center gap-2 p-2.5 bg-muted rounded-lg">
-                  <Calendar className="w-4 h-4 text-muted-foreground" />
-                  <div>
-                    <p className="text-xs text-muted-foreground">Age</p>
-                    <p className="font-medium text-sm">{getAgeDisplay()}</p>
-                  </div>
-                </div>
-                {weightDisplay && (
-                  <div className="flex items-center gap-2 p-2.5 bg-muted rounded-lg">
-                    <Weight className="w-4 h-4 text-muted-foreground" />
-                    <div>
-                      <p className="text-xs text-muted-foreground">Weight</p>
-                      <p className="font-medium text-sm">{weightDisplay}</p>
-                    </div>
-                  </div>
-                )}
-                {livestock.pregnancy_status && livestock.pregnancy_status !== 'n/a' && (
-                  <div className="flex items-center gap-2 p-2.5 bg-pink-50 rounded-lg">
-                    <Baby className="w-4 h-4 text-pink-500" />
-                    <div>
-                      <p className="text-xs text-muted-foreground">Pregnancy Status</p>
-                      <p className="font-medium text-sm text-pink-600 capitalize">{livestock.pregnancy_status}</p>
-                    </div>
-                  </div>
-                )}
-                {livestock.sire_used && (
-                  <div className="flex items-center gap-2 p-2.5 bg-muted rounded-lg">
-                    <Users className="w-4 h-4 text-muted-foreground" />
-                    <div>
-                      <p className="text-xs text-muted-foreground">Sire Used</p>
-                      <p className="font-medium text-sm">{livestock.sire_used}</p>
-                    </div>
-                  </div>
-                )}
+                {livestock.breed_type && <div className="flex items-center gap-2 p-2.5 bg-muted rounded-lg"><Info className="w-4 h-4 text-muted-foreground" /><div><p className="text-xs text-muted-foreground">Breed</p><p className="font-medium text-sm">{livestock.breed_type}</p></div></div>}
+                {livestock.pure_cross && <div className="flex items-center gap-2 p-2.5 bg-muted rounded-lg"><Users className="w-4 h-4 text-muted-foreground" /><div><p className="text-xs text-muted-foreground">Pure / Cross</p><p className="font-medium text-sm capitalize">{livestock.pure_cross === 'pure' ? 'Pure Breed' : 'Cross Breed'}</p></div></div>}
+                <div className="flex items-center gap-2 p-2.5 bg-muted rounded-lg"><Calendar className="w-4 h-4 text-muted-foreground" /><div><p className="text-xs text-muted-foreground">Age</p><p className="font-medium text-sm">{getAgeDisplay()}</p></div></div>
+                {weightDisplay && <div className="flex items-center gap-2 p-2.5 bg-muted rounded-lg"><Weight className="w-4 h-4 text-muted-foreground" /><div><p className="text-xs text-muted-foreground">Weight</p><p className="font-medium text-sm">{weightDisplay}</p></div></div>}
+                {livestock.pregnancy_status && livestock.pregnancy_status !== 'n/a' && <div className="flex items-center gap-2 p-2.5 bg-pink-50 rounded-lg"><Baby className="w-4 h-4 text-pink-500" /><div><p className="text-xs text-muted-foreground">Pregnancy Status</p><p className="font-medium text-sm text-pink-600 capitalize">{livestock.pregnancy_status}</p></div></div>}
+                {livestock.sire_used && <div className="flex items-center gap-2 p-2.5 bg-muted rounded-lg"><Users className="w-4 h-4 text-muted-foreground" /><div><p className="text-xs text-muted-foreground">Sire Used</p><p className="font-medium text-sm">{livestock.sire_used}</p></div></div>}
               </div>
             </CardContent>
           </Card>
         )}
 
-        {/* Health Tab Content */}
+        {/* Health Tab */}
         {activeTab === 'health' && (
           <Card>
             <CardContent className="p-5">
               {livestock.health_info ? (
-                <>
-                  <h3 className="text-base font-semibold mb-2">Health & Vaccination</h3>
-                  <p className="text-muted-foreground text-sm leading-relaxed">{livestock.health_info}</p>
-                </>
+                <><h3 className="text-base font-semibold mb-2">Health & Vaccination</h3><p className="text-muted-foreground text-sm leading-relaxed">{livestock.health_info}</p></>
               ) : (
-                <p className="text-center text-muted-foreground text-sm py-6">No health information provided</p>
+                <div className="text-center py-6"><Info className="w-8 h-8 text-muted-foreground mx-auto mb-2" /><p className="text-muted-foreground text-sm">No health information provided</p></div>
               )}
               {livestock.notes && (
-                <div className="mt-4 pt-4 border-t">
-                  <h3 className="text-base font-semibold mb-2">Additional Notes</h3>
-                  <p className="text-muted-foreground text-sm leading-relaxed">{livestock.notes}</p>
-                </div>
+                <div className="mt-4 pt-4 border-t"><h3 className="text-base font-semibold mb-2">Additional Notes</h3><p className="text-muted-foreground text-sm leading-relaxed">{livestock.notes}</p></div>
               )}
             </CardContent>
           </Card>
         )}
 
-        {/* Seller Tab Content */}
+        {/* Seller Tab */}
         {activeTab === 'seller' && (
           <Card>
             <CardContent className="p-5 space-y-4">
               {!user ? (
-                <div className="text-center py-6">
-                  <p className="text-muted-foreground text-sm mb-3">Login to see seller contact information</p>
-                  <Link to="/login">
-                    <Button>Login to View</Button>
-                  </Link>
-                </div>
+                <div className="text-center py-6"><Users className="w-8 h-8 text-muted-foreground mx-auto mb-2" /><p className="text-muted-foreground text-sm mb-3">Login to see seller contact information</p><Link to="/login"><Button>Login to View</Button></Link></div>
               ) : (
                 <>
                   <div className="flex items-center gap-3">
-                    <Avatar>
-                      <AvatarFallback>{livestock.seller_name?.charAt(0) || seller?.full_name?.charAt(0) || 'S'}</AvatarFallback>
-                    </Avatar>
-                    <div>
-                      <p className="font-medium">{livestock.seller_name || seller?.full_name || 'Anonymous'}</p>
-                      <p className="text-xs text-muted-foreground">Member since {seller?.created_at ? new Date(seller.created_at).getFullYear() : '2024'}</p>
-                    </div>
+                    <Avatar><AvatarFallback>{seller?.farm_name?.charAt(0) || seller?.full_name?.charAt(0) || 'S'}</AvatarFallback></Avatar>
+                    <div><p className="font-medium">{seller?.farm_name || seller?.full_name || 'Anonymous'}</p><p className="text-xs text-muted-foreground">Member since {seller?.created_at ? new Date(seller.created_at).getFullYear() : '2024'}</p></div>
                   </div>
-
                   <Separator />
-
-                  {livestock.seller_phone && (
-                    <div>
-                      <p className="text-xs text-muted-foreground mb-1">Phone</p>
-                      <a href={`tel:${livestock.seller_phone}`} className="flex items-center gap-2 text-sm hover:text-primary transition">
-                        <Phone className="w-4 h-4" />
-                        {livestock.seller_phone}
-                      </a>
-                    </div>
-                  )}
-
+                  {livestock.seller_phone && <div><p className="text-xs text-muted-foreground mb-1">Phone</p><a href={`tel:${livestock.seller_phone}`} className="flex items-center gap-2 text-sm hover:text-primary transition"><Phone className="w-4 h-4" />{livestock.seller_phone}</a></div>}
                   {(livestock.facebook_url || livestock.instagram_url || livestock.whatsapp_number || livestock.website_url) && (
-                    <div>
-                      <p className="text-xs text-muted-foreground mb-2">Social Media</p>
+                    <div><p className="text-xs text-muted-foreground mb-2">Social Media</p>
                       <div className="flex flex-wrap gap-2">
-                        {livestock.facebook_url && (
-                          <a href={livestock.facebook_url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 px-2 py-1 bg-blue-50 text-blue-600 rounded-full text-xs hover:bg-blue-100 transition">
-                            📘 Facebook
-                          </a>
-                        )}
-                        {livestock.instagram_url && (
-                          <a href={livestock.instagram_url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 px-2 py-1 bg-pink-50 text-pink-600 rounded-full text-xs hover:bg-pink-100 transition">
-                            📷 Instagram
-                          </a>
-                        )}
-                        {livestock.whatsapp_number && (
-                          <a href={`https://wa.me/${livestock.whatsapp_number.replace(/\D/g, '')}`} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 px-2 py-1 bg-green-50 text-green-600 rounded-full text-xs hover:bg-green-100 transition">
-                            💬 WhatsApp
-                          </a>
-                        )}
-                        {livestock.website_url && (
-                          <a href={livestock.website_url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 px-2 py-1 bg-gray-100 text-gray-600 rounded-full text-xs hover:bg-gray-200 transition">
-                            🌐 Website
-                          </a>
-                        )}
+                        {livestock.facebook_url && <a href={livestock.facebook_url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 px-2 py-1 bg-blue-50 text-blue-600 rounded-full text-xs hover:bg-blue-100 transition">Facebook</a>}
+                        {livestock.instagram_url && <a href={livestock.instagram_url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 px-2 py-1 bg-pink-50 text-pink-600 rounded-full text-xs hover:bg-pink-100 transition">Instagram</a>}
+                        {livestock.whatsapp_number && <a href={`https://wa.me/${livestock.whatsapp_number.replace(/\D/g, '')}`} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 px-2 py-1 bg-green-50 text-green-600 rounded-full text-xs hover:bg-green-100 transition">WhatsApp</a>}
+                        {livestock.website_url && <a href={livestock.website_url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 px-2 py-1 bg-gray-100 text-gray-600 rounded-full text-xs hover:bg-gray-200 transition">Website</a>}
                       </div>
                     </div>
                   )}
-
                   {user.id !== livestock.user_id && conversationId && (
-                    <Button className="w-full gap-2" asChild>
-                      <Link to={`/ChatRoom?conversation=${conversationId}&livestock=${livestock.id}`}>
-                        <MessageCircle className="w-4 h-4" />
-                        Message Seller
-                      </Link>
-                    </Button>
+                    <Button className="w-full gap-2" asChild><Link to={`/ChatRoom?conversation=${conversationId}&livestock=${livestock.id}`}><MessageCircle className="w-4 h-4" />Message Seller</Link></Button>
                   )}
-                  {user.id === livestock.user_id && (
-                    <Button className="w-full" variant="outline" disabled>This is your listing</Button>
-                  )}
+                  {user.id === livestock.user_id && <Button className="w-full" variant="outline" disabled>This is your listing</Button>}
                 </>
               )}
             </CardContent>
           </Card>
         )}
 
-        {/* Location Tab Content */}
+        {/* Location Tab */}
         {activeTab === 'location' && (
           <Card>
             <CardContent className="p-5">
               {!user ? (
-                <div className="text-center py-6">
-                  <p className="text-muted-foreground text-sm mb-3">Login to see farm location</p>
-                  <Link to="/login">
-                    <Button>Login to View</Button>
-                  </Link>
-                </div>
+                <div className="text-center py-6"><MapPin className="w-8 h-8 text-muted-foreground mx-auto mb-2" /><p className="text-muted-foreground text-sm mb-3">Login to see farm location</p><Link to="/login"><Button>Login to View</Button></Link></div>
               ) : (
                 <div className="space-y-4">
                   {livestock.gps_latitude && livestock.gps_longitude ? (
-                    <LocationMap
-                      latitude={livestock.gps_latitude}
-                      longitude={livestock.gps_longitude}
-                      locationName={livestock.location}
-                    />
+                    <LocationMap latitude={livestock.gps_latitude} longitude={livestock.gps_longitude} locationName={livestock.location} />
                   ) : (
-                    <div className="text-center py-6">
-                      <p className="text-muted-foreground text-sm">Seller hasn't shared exact location.</p>
-                      <p className="text-xs text-muted-foreground mt-2">📍 {livestock.location || 'Location not specified'}</p>
-                    </div>
+                    <div className="text-center py-6"><MapPin className="w-8 h-8 text-muted-foreground mx-auto mb-2" /><p className="text-muted-foreground text-sm">Seller hasn't shared exact location.</p><p className="text-xs text-muted-foreground mt-2">{livestock.location || 'Location not specified'}</p></div>
                   )}
                 </div>
               )}
@@ -610,67 +421,29 @@ export default function BreedDetails() {
           </Card>
         )}
 
-        {/* Reviews Section */}
+        {/* Reviews */}
         <Card>
           <CardContent className="p-5">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-base font-semibold">Reviews ({reviews.length})</h3>
-              {user && (
-                <Button variant="outline" size="sm" onClick={() => setShowReviewForm(!showReviewForm)}>
-                  Write Review
-                </Button>
-              )}
+              {user && <Button variant="outline" size="sm" onClick={() => setShowReviewForm(!showReviewForm)}>Write Review</Button>}
             </div>
-
             {showReviewForm && (
               <div className="mb-4 p-4 bg-muted rounded-lg space-y-3">
-                <div>
-                  <Label htmlFor="reviewerName">Your Name</Label>
-                  <input
-                    id="reviewerName"
-                    value={reviewerName}
-                    onChange={(e) => setReviewerName(e.target.value)}
-                    placeholder="Enter your name"
-                    className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm mt-1"
-                  />
-                </div>
-                <div>
-                  <Label>Rating</Label>
-                  <div className="flex gap-1 mt-1">
-                    {[1, 2, 3, 4, 5].map(star => (
-                      <button key={star} onClick={() => setRating(star)} className="p-1">
-                        <Star className={`w-6 h-6 ${star <= rating ? 'fill-primary text-primary' : 'text-muted-foreground'}`} />
-                      </button>
-                    ))}
-                  </div>
-                </div>
-                <div>
-                  <Label htmlFor="comment">Comment</Label>
-                  <Textarea
-                    id="comment"
-                    value={comment}
-                    onChange={(e) => setComment(e.target.value)}
-                    placeholder="Share your experience..."
-                    className="mt-1"
-                    rows={3}
-                  />
-                </div>
+                <div><Label htmlFor="reviewerName">Your Name</Label><input id="reviewerName" value={reviewerName} onChange={(e) => setReviewerName(e.target.value)} placeholder="Enter your name" className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm mt-1" /></div>
+                <div><Label>Rating</Label><div className="flex gap-1 mt-1">{[1, 2, 3, 4, 5].map(star => <button key={star} onClick={() => setRating(star)} className="p-1"><Star className={`w-6 h-6 ${star <= rating ? 'fill-primary text-primary' : 'text-muted-foreground'}`} /></button>)}</div></div>
+                <div><Label htmlFor="comment">Comment</Label><Textarea id="comment" value={comment} onChange={(e) => setComment(e.target.value)} placeholder="Share your experience..." className="mt-1" rows={3} /></div>
                 <Button onClick={submitReview} className="w-full">Submit Review</Button>
               </div>
             )}
-
             <div className="space-y-3">
               {reviews.length === 0 ? (
-                <p className="text-center text-muted-foreground text-sm py-6">No reviews yet. Be the first to review!</p>
+                <div className="text-center py-6"><Star className="w-8 h-8 text-muted-foreground mx-auto mb-2" /><p className="text-muted-foreground text-sm">No reviews yet. Be the first to review!</p></div>
               ) : (
                 reviews.map(review => (
                   <div key={review.id} className="border-b pb-3 last:border-0">
                     <div className="flex items-center gap-2 mb-1">
-                      <div className="flex">
-                        {[...Array(5)].map((_, i) => (
-                          <Star key={i} className={`w-3 h-3 ${i < review.rating ? 'fill-primary text-primary' : 'text-muted-foreground'}`} />
-                        ))}
-                      </div>
+                      <div className="flex">{[...Array(5)].map((_, i) => <Star key={i} className={`w-3 h-3 ${i < review.rating ? 'fill-primary text-primary' : 'text-muted-foreground'}`} />)}</div>
                       <span className="font-medium text-sm">{review.reviewer_name}</span>
                       <span className="text-xs text-muted-foreground">{new Date(review.created_at).toLocaleDateString()}</span>
                     </div>
@@ -686,33 +459,20 @@ export default function BreedDetails() {
       {/* Lightbox */}
       {lightboxOpen && (
         <div className="fixed inset-0 bg-black/95 z-50 flex items-center justify-center" onClick={() => setLightboxOpen(false)}>
-          <Button variant="ghost" size="icon" className="absolute top-4 right-4 text-white hover:bg-white/20 rounded-full" onClick={() => setLightboxOpen(false)}>
-            ✕
-          </Button>
-          <img src={livestock.images[currentImageIndex]} alt={livestock.name} className="max-w-full max-h-full object-contain" onClick={(e) => e.stopPropagation()} />
+          <Button variant="ghost" size="icon" className="absolute top-4 right-4 text-white hover:bg-white/20 rounded-full" onClick={() => setLightboxOpen(false)}><X className="w-5 h-5" /></Button>
+          <img src={livestock.images[currentImageIndex]} alt={titleDisplay} className="max-w-full max-h-full object-contain" onClick={(e) => e.stopPropagation()} />
           {livestock.images && livestock.images.length > 1 && (
             <>
-              <Button variant="ghost" size="icon" className="absolute left-4 top-1/2 -translate-y-1/2 bg-black/50 hover:bg-black/70 rounded-full w-10 h-10 text-white" onClick={(e) => {
-                e.stopPropagation();
-                setCurrentImageIndex((prev) => (prev > 0 ? prev - 1 : livestock.images.length - 1));
-              }}>
-                ←
-              </Button>
-              <Button variant="ghost" size="icon" className="absolute right-4 top-1/2 -translate-y-1/2 bg-black/50 hover:bg-black/70 rounded-full w-10 h-10 text-white" onClick={(e) => {
-                e.stopPropagation();
-                setCurrentImageIndex((prev) => (prev < livestock.images.length - 1 ? prev + 1 : 0));
-              }}>
-                →
-              </Button>
-              <div className="absolute bottom-4 left-0 right-0 flex justify-center gap-1.5">
-                {livestock.images.map((_, idx) => (
-                  <div key={idx} className={`w-1.5 h-1.5 rounded-full transition ${idx === currentImageIndex ? 'bg-white' : 'bg-white/50'}`} />
-                ))}
-              </div>
+              <Button variant="ghost" size="icon" className="absolute left-4 top-1/2 -translate-y-1/2 bg-black/50 hover:bg-black/70 rounded-full w-10 h-10 text-white" onClick={(e) => { e.stopPropagation(); setCurrentImageIndex((prev) => (prev > 0 ? prev - 1 : livestock.images.length - 1)); }}><ArrowLeft className="w-5 h-5" /></Button>
+              <Button variant="ghost" size="icon" className="absolute right-4 top-1/2 -translate-y-1/2 bg-black/50 hover:bg-black/70 rounded-full w-10 h-10 text-white" onClick={(e) => { e.stopPropagation(); setCurrentImageIndex((prev) => (prev < livestock.images.length - 1 ? prev + 1 : 0)); }}><ArrowLeft className="w-5 h-5 rotate-180" /></Button>
+              <div className="absolute bottom-4 left-0 right-0 flex justify-center gap-1.5">{livestock.images.map((_, idx) => <div key={idx} className={`w-1.5 h-1.5 rounded-full transition ${idx === currentImageIndex ? 'bg-white' : 'bg-white/50'}`} />)}</div>
             </>
           )}
         </div>
       )}
+
+      {/* Pay Modal */}
+      {showPayModal && <PayModal listing={livestock} type="individual" user={user} onClose={() => setShowPayModal(false)} />}
     </div>
   );
 }
