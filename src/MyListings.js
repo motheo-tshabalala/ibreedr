@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ArrowLeft, Plus, Trash2, Eye, Heart, Package, Edit, Image } from 'lucide-react';
+import { ArrowLeft, Plus, Trash2, Eye, Heart, Package, Edit, Building2, MapPin, Users, Percent } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { supabase } from './supabaseClient';
 import { Card, CardContent } from "./components/ui/card";
@@ -8,46 +8,67 @@ import { Badge } from "./components/ui/Badge";
 
 export default function MyListings() {
   const [user, setUser] = useState(null);
+  const [profile, setProfile] = useState(null);
   const [myListings, setMyListings] = useState([]);
-  const [myBundles, setMyBundles] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    const getUser = async () => {
+    const getUserAndProfile = async () => {
       const { data: { user } } = await supabase.auth.getUser();
-      if (user) { setUser(user); loadListings(user.id); loadBundles(user.id); }
-      else { window.location.href = '/login'; }
+      if (user) {
+        setUser(user);
+
+        // Load profile for farm name
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('farm_name, full_name')
+          .eq('id', user.id)
+          .single();
+
+        if (profile) {
+          setProfile(profile);
+        }
+
+        loadListings(user.id);
+      } else {
+        window.location.href = '/login';
+      }
     };
-    getUser();
+    getUserAndProfile();
   }, []);
 
   const loadListings = async (userId) => {
-    const { data } = await supabase.from('livestock').select('*').eq('user_id', userId).order('created_at', { ascending: false });
-    if (data) setMyListings(data);
+    const { data, error } = await supabase
+      .from('livestock')
+      .select('*')
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false });
+    if (!error) setMyListings(data || []);
     setIsLoading(false);
   };
 
-  const loadBundles = async (userId) => {
-    const { data } = await supabase.from('bundles').select('*').eq('user_id', userId).order('created_at', { ascending: false });
-    if (data) setMyBundles(data);
-  };
-
-  const deleteListing = async (id, type) => {
+  const deleteListing = async (id) => {
     if (!window.confirm('Are you sure you want to delete this?')) return;
-    const table = type === 'bundle' ? 'bundles' : 'livestock';
-    const { error } = await supabase.from(table).delete().eq('id', id);
-    if (error) { alert('Failed to delete: ' + error.message); }
-    else {
-      if (type === 'bundle') setMyBundles(myBundles.filter(l => l.id !== id));
-      else setMyListings(myListings.filter(l => l.id !== id));
+    const { error } = await supabase.from('livestock').delete().eq('id', id);
+    if (error) {
+      alert('Failed to delete: ' + error.message);
+    } else {
+      setMyListings(myListings.filter(l => l.id !== id));
       alert('Deleted successfully');
     }
   };
 
   const updateStatus = async (id, newStatus) => {
-    const { error } = await supabase.from('livestock').update({ status: newStatus }).eq('id', id);
-    if (error) { alert('Failed to update: ' + error.message); }
-    else { setMyListings(myListings.map(l => l.id === id ? { ...l, status: newStatus } : l)); alert(`Listing marked as ${newStatus}`); }
+    const { error } = await supabase
+      .from('livestock')
+      .update({ status: newStatus })
+      .eq('id', id);
+    if (error) {
+      alert('Failed to update: ' + error.message);
+    } else {
+      setMyListings(myListings.map(l => l.id === id ? { ...l, status: newStatus } : l));
+      alert(`Listing marked as ${newStatus}`);
+    }
   };
 
   const displayAge = (livestock) => {
@@ -59,92 +80,182 @@ export default function MyListings() {
     return 'Age not specified';
   };
 
+  const farmName = profile?.farm_name || profile?.full_name || 'My Farm';
+
+  // Calculate pricing display
+  const getPriceDisplay = (listing) => {
+    const quantity = listing.quantity || 1;
+    const pricePerHead = listing.price || 0;
+    const isBundle = listing.is_bundle || false;
+    const discount = listing.bundle_discount || 0;
+    const totalPrice = isBundle
+      ? pricePerHead * quantity * (1 - discount / 100)
+      : pricePerHead * quantity;
+
+    if (quantity === 1) {
+      return {
+        display: `R ${Number(pricePerHead).toLocaleString()}`,
+        detail: null
+      };
+    }
+
+    if (isBundle && discount > 0) {
+      return {
+        display: `R ${Math.round(totalPrice).toLocaleString()}`,
+        detail: `${discount}% off bundle`
+      };
+    }
+
+    return {
+      display: `R ${Math.round(totalPrice).toLocaleString()}`,
+      detail: `${quantity} animals`
+    };
+  };
+
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="animate-spin rounded-full h-10 w-10 border-4 border-primary border-t-transparent" />
+      <div className="min-h-screen bg-warm-white flex items-center justify-center">
+        <div className="animate-spin rounded-full h-10 w-10 border-4 border-primary-green border-t-transparent"></div>
       </div>
     );
   }
 
-  const allItems = [...myListings, ...myBundles.map(b => ({ ...b, isBundle: true }))];
-
   return (
-    <div className="min-h-screen bg-background">
-      <div className="bg-card border-b sticky top-0 z-30">
+    <div className="min-h-screen bg-warm-white pb-20">
+      {/* Header */}
+      <div className="bg-white border-b sticky top-0 z-30">
         <div className="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">
           <div className="flex items-center gap-4">
-            <Link to="/Browse"><Button variant="ghost" size="icon" className="rounded-full"><ArrowLeft className="w-5 h-5" /></Button></Link>
-            <h1 className="text-xl font-bold">My Listings</h1>
+            <Link to="/farms">
+              <Button variant="ghost" size="icon" className="rounded-full">
+                <ArrowLeft className="w-5 h-5" />
+              </Button>
+            </Link>
+            <div>
+              <h1 className="text-xl font-bold">My Listings</h1>
+              <div className="flex items-center gap-2 text-sm text-gray-500">
+                <Building2 className="w-4 h-4" />
+                <span>{farmName}</span>
+                <span className="text-xs text-gray-400">• {myListings.length} listings</span>
+              </div>
+            </div>
           </div>
-          <Link to="/SellerUpload"><Button className="gap-2"><Plus className="w-4 h-4" />Add New</Button></Link>
+          <Link to="/SellerUpload">
+            <Button className="gap-2 bg-primary-green hover:bg-primary-green-dark">
+              <Plus className="w-4 h-4" />
+              Add New
+            </Button>
+          </Link>
         </div>
       </div>
 
       <div className="max-w-7xl mx-auto px-4 py-6">
-        {allItems.length === 0 ? (
+        {myListings.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-16 text-center">
-            <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mb-4">
-              <Package className="w-8 h-8 text-muted-foreground" />
-            </div>
+            <div className="text-5xl mb-4 opacity-50">📋</div>
             <h3 className="text-lg font-semibold mb-2">No listings yet</h3>
-            <p className="text-muted-foreground text-sm mb-6">Start by adding your first livestock</p>
-            <Link to="/SellerUpload"><Button>Create Listing</Button></Link>
+            <p className="text-gray-500 text-sm mb-6">Start by adding your first livestock</p>
+            <Link to="/SellerUpload">
+              <Button className="bg-primary-green hover:bg-primary-green-dark">Create Listing</Button>
+            </Link>
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {myListings.map(livestock => (
-              <Card key={livestock.id} className="overflow-hidden">
-                <div className="relative h-40 bg-muted">
-                  {livestock.images?.[0] ? (
-                    <img src={livestock.images[0]} alt={livestock.farm_name || livestock.breed_type} className="w-full h-full object-cover" />
-                  ) : (
-                    <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-amber-50 to-amber-100">
-                      <Image className="w-8 h-8 text-amber-300" />
+            {myListings.map(listing => {
+              const priceInfo = getPriceDisplay(listing);
+              const isBundle = listing.is_bundle || false;
+              const quantity = listing.quantity || 1;
+              const discount = listing.bundle_discount || 0;
+
+              return (
+                <Card key={listing.id} className="overflow-hidden">
+                  <div className="relative h-40 bg-gray-100">
+                    {listing.images?.[0] ? (
+                      <img src={listing.images[0]} alt={listing.name || listing.breed_type} className="w-full h-full object-cover" />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center">
+                        <span className="text-4xl opacity-30">🐄</span>
+                      </div>
+                    )}
+                    <div className="absolute top-3 right-3 flex gap-1.5">
+                      {isBundle && (
+                        <Badge className="bg-amber-500 text-white">Bundle</Badge>
+                      )}
+                      <Badge variant={listing.status === 'sold' ? 'secondary' : 'default'}>
+                        {listing.status || 'active'}
+                      </Badge>
                     </div>
-                  )}
-                  <div className="absolute top-3 right-3">
-                    <Badge variant={livestock.status === 'sold' ? 'secondary' : 'default'}>{livestock.status || 'active'}</Badge>
+                    {quantity > 1 && (
+                      <div className="absolute bottom-3 left-3">
+                        <Badge variant="secondary" className="bg-blue-100 text-blue-700">
+                          <Users className="w-3 h-3 mr-1" />
+                          {quantity} animals
+                        </Badge>
+                      </div>
+                    )}
+                    {isBundle && discount > 0 && (
+                      <div className="absolute bottom-3 left-3 ml-auto">
+                        <Badge variant="secondary" className="bg-green-100 text-green-700">
+                          <Percent className="w-3 h-3 mr-1" />
+                          {discount}% off
+                        </Badge>
+                      </div>
+                    )}
                   </div>
-                </div>
-                <CardContent className="p-4">
-                  <h3 className="font-bold text-base">{livestock.farm_name || livestock.breed_type || 'Unnamed'}</h3>
-                  <p className="text-sm text-muted-foreground mt-0.5">{livestock.breed_type} &bull; {displayAge(livestock)}</p>
-                  {livestock.price && <p className="text-lg font-bold text-primary mt-2">R {Number(livestock.price).toLocaleString()}</p>}
-                  <div className="flex gap-2 mt-4 pt-3 border-t">
-                    <Link to={`/EditListing?id=${livestock.id}&type=individual`} className="flex-1"><Button variant="outline" size="sm" className="w-full gap-1"><Edit className="w-3 h-3" />Edit</Button></Link>
-                    <Button variant="outline" size="sm" className="flex-1 gap-1" asChild><Link to={`/BreedDetails?id=${livestock.id}`}><Eye className="w-3 h-3" />View</Link></Button>
-                    {livestock.status === 'active' && <Button variant="outline" size="sm" onClick={() => updateStatus(livestock.id, 'sold')}>Mark Sold</Button>}
-                    <Button variant="outline" size="icon" className="text-destructive hover:text-destructive" onClick={() => deleteListing(livestock.id, 'individual')}><Trash2 className="w-4 h-4" /></Button>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-            {myBundles.map(bundle => (
-              <Card key={bundle.id} className="overflow-hidden">
-                <div className="relative h-40 bg-muted">
-                  {bundle.images?.[0] ? (
-                    <img src={bundle.images[0]} alt={bundle.bundle_name} className="w-full h-full object-cover" />
-                  ) : (
-                    <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-green-50 to-green-100">
-                      <Package className="w-8 h-8 text-green-300" />
+                  <CardContent className="p-4">
+                    {/* Farm name */}
+                    <div className="flex items-center gap-2 text-xs text-gray-500 mb-1">
+                      <Building2 className="w-3 h-3" />
+                      <span>{farmName}</span>
                     </div>
-                  )}
-                  <div className="absolute top-3 right-3"><Badge variant={bundle.status === 'sold' ? 'secondary' : 'default'}>{bundle.status || 'active'}</Badge></div>
-                  <div className="absolute top-3 left-3"><Badge variant="secondary" className="bg-purple-100 text-purple-700">Bundle</Badge></div>
-                </div>
-                <CardContent className="p-4">
-                  <h3 className="font-bold text-base">{bundle.bundle_name}</h3>
-                  <p className="text-sm text-muted-foreground mt-0.5">{bundle.location}</p>
-                  {bundle.bundle_price && <p className="text-lg font-bold text-primary mt-2">R {Number(bundle.bundle_price).toLocaleString()}</p>}
-                  <div className="flex gap-2 mt-4 pt-3 border-t">
-                    <Link to={`/EditListing?id=${bundle.id}&type=bundle`} className="flex-1"><Button variant="outline" size="sm" className="w-full gap-1"><Edit className="w-3 h-3" />Edit</Button></Link>
-                    <Button variant="outline" size="sm" className="flex-1 gap-1" asChild><Link to={`/BundleDetails?id=${bundle.id}`}><Eye className="w-3 h-3" />View</Link></Button>
-                    <Button variant="outline" size="icon" className="text-destructive hover:text-destructive" onClick={() => deleteListing(bundle.id, 'bundle')}><Trash2 className="w-4 h-4" /></Button>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
+
+                    <h3 className="font-bold text-base">
+                      {listing.name || `${listing.breed_type} x${quantity}`}
+                    </h3>
+                    <p className="text-sm text-gray-500 mt-0.5">{listing.breed_type} • {displayAge(listing)}</p>
+
+                    {/* Price */}
+                    <div className="mt-2">
+                      <p className="text-lg font-bold text-primary-green">{priceInfo.display}</p>
+                      {priceInfo.detail && (
+                        <p className="text-xs text-gray-500">{priceInfo.detail}</p>
+                      )}
+                      {quantity > 1 && !isBundle && (
+                        <p className="text-xs text-gray-500">R {Number(listing.price).toLocaleString()} per animal</p>
+                      )}
+                      {isBundle && discount > 0 && quantity > 1 && (
+                        <p className="text-xs text-gray-500">
+                          R {Number(listing.price).toLocaleString()}/head • {discount}% discount
+                        </p>
+                      )}
+                    </div>
+
+                    <div className="flex gap-2 mt-4 pt-3 border-t">
+                      <Link to={`/EditListing?id=${listing.id}&type=individual`} className="flex-1">
+                        <Button variant="outline" size="sm" className="w-full gap-1">
+                          <Edit className="w-3 h-3" />
+                          Edit
+                        </Button>
+                      </Link>
+                      <Button variant="outline" size="sm" className="flex-1 gap-1" asChild>
+                        <Link to={`/BreedDetails?id=${listing.id}`}>
+                          <Eye className="w-3 h-3" />
+                          View
+                        </Link>
+                      </Button>
+                      {listing.status === 'active' && (
+                        <Button variant="outline" size="sm" onClick={() => updateStatus(listing.id, 'sold')}>
+                          Mark Sold
+                        </Button>
+                      )}
+                      <Button variant="outline" size="icon" className="text-red-500 hover:text-red-700" onClick={() => deleteListing(listing.id)}>
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              );
+            })}
           </div>
         )}
       </div>

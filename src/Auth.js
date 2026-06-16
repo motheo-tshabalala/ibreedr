@@ -5,17 +5,18 @@ import { Card, CardContent } from "./components/ui/card";
 import { Button } from "./components/ui/button";
 import { Input } from "./components/ui/input";
 import { Label } from "./components/ui/label";
+import { Building2, Mail, Lock, User, ArrowRight, CheckCircle, AlertCircle } from 'lucide-react';
 
 export default function Auth() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [fullName, setFullName] = useState('');
-  const [farmName, setFarmName] = useState('');  // ← NEW
+  const [farmName, setFarmName] = useState('');
   const [isLogin, setIsLogin] = useState(true);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const [resetMode, setResetMode] = useState(false);
   const [message, setMessage] = useState('');
+  const [resetMode, setResetMode] = useState(false);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -25,7 +26,9 @@ export default function Auth() {
 
     if (resetMode) {
       // Password reset
-      const { error } = await supabase.auth.resetPasswordForEmail(email);
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: window.location.origin + '/login',
+      });
       if (error) {
         setError(error.message);
       } else {
@@ -42,24 +45,25 @@ export default function Auth() {
       if (error) {
         setError(error.message);
       } else {
-        window.location.href = '/Browse';
+        window.location.href = '/';
       }
     } else {
-      // Signup - with farm name
+      // Signup
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
         options: {
           data: {
             full_name: fullName,
-            farm_name: farmName  // ← ADDED
+            farm_name: farmName || fullName
           },
         },
       });
       if (error) {
         setError(error.message);
       } else {
-        setMessage('Check your email for confirmation!');
+        setMessage('Account created! Please check your email to confirm.');
+        // Auto-create profile is handled by trigger
         setTimeout(() => setIsLogin(true), 3000);
       }
     }
@@ -67,32 +71,37 @@ export default function Auth() {
   };
 
   return (
-    <div className="min-h-screen bg-background flex items-center justify-center p-4">
-      <Card className="w-full max-w-md">
-        <CardContent className="p-6">
+    <div className="min-h-screen bg-warm-white flex items-center justify-center p-4">
+      <Card className="w-full max-w-md border-0 shadow-xl">
+        <CardContent className="p-6 md:p-8">
           {/* Header */}
           <div className="text-center mb-6">
             <Link to="/">
-              <h1 className="text-3xl font-bold text-primary mb-2">iBreedr</h1>
+              <div className="flex items-center justify-center gap-2 mb-2">
+                <Building2 className="w-8 h-8 text-primary-green" />
+                <h1 className="text-3xl font-bold text-primary-green">iBreedr</h1>
+              </div>
             </Link>
-            <p className="text-sm text-muted-foreground">
+            <p className="text-sm text-gray-500">
               {resetMode
                 ? 'Reset your password'
                 : isLogin
-                  ? 'Welcome back!'
-                  : 'Create your account'}
+                  ? 'Welcome back to your farm network'
+                  : 'Join the livestock marketplace'}
             </p>
           </div>
 
           {/* Error / Message */}
           {error && (
-            <div className="mb-4 p-3 rounded-lg bg-destructive/10 text-destructive text-sm text-center">
-              {error}
+            <div className="mb-4 p-3 rounded-lg bg-red-50 border border-red-200 flex items-start gap-2">
+              <AlertCircle className="w-4 h-4 text-red-500 flex-shrink-0 mt-0.5" />
+              <span className="text-sm text-red-600">{error}</span>
             </div>
           )}
           {message && (
-            <div className="mb-4 p-3 rounded-lg bg-green-100 text-green-700 text-sm text-center">
-              {message}
+            <div className="mb-4 p-3 rounded-lg bg-green-50 border border-green-200 flex items-start gap-2">
+              <CheckCircle className="w-4 h-4 text-green-500 flex-shrink-0 mt-0.5" />
+              <span className="text-sm text-green-600">{message}</span>
             </div>
           )}
 
@@ -101,93 +110,122 @@ export default function Auth() {
             {!isLogin && !resetMode && (
               <>
                 <div>
-                  <Label htmlFor="fullName">Full Name</Label>
-                  <Input
-                    id="fullName"
-                    type="text"
-                    value={fullName}
-                    onChange={(e) => setFullName(e.target.value)}
-                    placeholder="John Farmer"
-                    className="mt-1"
-                    required={!isLogin}
-                  />
+                  <Label htmlFor="fullName" className="text-sm font-medium text-gray-700">
+                    Full Name
+                  </Label>
+                  <div className="relative mt-1">
+                    <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                    <Input
+                      id="fullName"
+                      type="text"
+                      value={fullName}
+                      onChange={(e) => setFullName(e.target.value)}
+                      placeholder="John Farmer"
+                      className="pl-10"
+                      required
+                    />
+                  </div>
                 </div>
+
                 <div>
-                  <Label htmlFor="farmName">Farm/Business Name *</Label>
-                  <Input
-                    id="farmName"
-                    type="text"
-                    value={farmName}
-                    onChange={(e) => setFarmName(e.target.value)}
-                    placeholder="Green Valley Farm"
-                    className="mt-1"
-                    required={!isLogin}
-                  />
-                  <p className="text-xs text-muted-foreground mt-1">
-                    This name will appear on all your listings
+                  <Label htmlFor="farmName" className="text-sm font-medium text-gray-700">
+                    Farm/Business Name <span className="text-gray-400 text-xs">(optional)</span>
+                  </Label>
+                  <div className="relative mt-1">
+                    <Building2 className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                    <Input
+                      id="farmName"
+                      type="text"
+                      value={farmName}
+                      onChange={(e) => setFarmName(e.target.value)}
+                      placeholder="Your farm name"
+                      className="pl-10"
+                    />
+                  </div>
+                  <p className="text-xs text-gray-400 mt-1">
+                    This will appear on all your listings. You can change it later.
                   </p>
                 </div>
               </>
             )}
 
             <div>
-              <Label htmlFor="email">Email</Label>
-              <Input
-                id="email"
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="you@example.com"
-                className="mt-1"
-                required
-              />
+              <Label htmlFor="email" className="text-sm font-medium text-gray-700">
+                Email Address
+              </Label>
+              <div className="relative mt-1">
+                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                <Input
+                  id="email"
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="you@example.com"
+                  className="pl-10"
+                  required
+                />
+              </div>
             </div>
 
             {!resetMode && (
               <div>
-                <Label htmlFor="password">Password</Label>
-                <Input
-                  id="password"
-                  type="password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder="••••••••"
-                  className="mt-1"
-                  required
-                  minLength={6}
-                />
+                <Label htmlFor="password" className="text-sm font-medium text-gray-700">
+                  Password
+                </Label>
+                <div className="relative mt-1">
+                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                  <Input
+                    id="password"
+                    type="password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    placeholder="••••••••"
+                    className="pl-10"
+                    required
+                    minLength={6}
+                  />
+                </div>
+                {!isLogin && (
+                  <p className="text-xs text-gray-400 mt-1">Must be at least 6 characters</p>
+                )}
               </div>
             )}
 
             <Button
               type="submit"
               disabled={loading}
-              className="w-full"
+              className="w-full bg-primary-green hover:bg-primary-green-dark text-white py-2.5 rounded-xl font-semibold transition-all disabled:opacity-50"
             >
-              {loading
-                ? 'Loading...'
-                : resetMode
-                  ? 'Send Reset Link'
-                  : isLogin
-                    ? 'Login'
-                    : 'Sign Up'}
+              {loading ? (
+                <span className="flex items-center justify-center gap-2">
+                  <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent" />
+                  Loading...
+                </span>
+              ) : resetMode ? (
+                'Send Reset Link'
+              ) : isLogin ? (
+                'Sign In'
+              ) : (
+                'Create Account'
+              )}
             </Button>
           </form>
 
           {/* Footer Links */}
-          <div className="mt-6 text-center text-sm space-y-2">
+          <div className="mt-6 text-center space-y-3">
             {!resetMode ? (
               <>
-                <p className="text-muted-foreground">
-                  {isLogin ? "Don't have an account? " : "Already have an account? "}
+                <p className="text-sm text-gray-600">
+                  {isLogin ? "Don't have an account?" : "Already have an account?"}{' '}
                   <button
                     onClick={() => {
                       setIsLogin(!isLogin);
                       setError('');
+                      setMessage('');
                     }}
-                    className="text-primary hover:underline font-medium"
+                    className="text-primary-green hover:underline font-medium"
                   >
-                    {isLogin ? 'Sign Up' : 'Login'}
+                    {isLogin ? 'Create Account' : 'Sign In'}
                   </button>
                 </p>
                 {isLogin && (
@@ -195,8 +233,9 @@ export default function Auth() {
                     onClick={() => {
                       setResetMode(true);
                       setError('');
+                      setMessage('');
                     }}
-                    className="text-muted-foreground hover:text-primary text-xs"
+                    className="text-sm text-gray-400 hover:text-primary-green transition"
                   >
                     Forgot password?
                   </button>
@@ -207,19 +246,27 @@ export default function Auth() {
                 onClick={() => {
                   setResetMode(false);
                   setError('');
+                  setMessage('');
                 }}
-                className="text-primary hover:underline font-medium"
+                className="text-sm text-primary-green hover:underline font-medium"
               >
-                Back to Login
+                ← Back to Sign In
               </button>
             )}
           </div>
 
           {/* Trust Badge */}
-          <div className="mt-6 pt-4 border-t text-center">
-            <p className="text-xs text-muted-foreground">
-              By continuing, you agree to our Terms of Service
+          <div className="mt-6 pt-4 border-t border-gray-100 text-center">
+            <p className="text-xs text-gray-400">
+              By continuing, you agree to our Terms of Service and Privacy Policy
             </p>
+            <div className="flex items-center justify-center gap-4 mt-2 text-xs text-gray-400">
+              <span>🔒 Secure</span>
+              <span>•</span>
+              <span>🏆 Trusted</span>
+              <span>•</span>
+              <span>🌾 Farm Verified</span>
+            </div>
           </div>
         </CardContent>
       </Card>

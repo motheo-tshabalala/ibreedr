@@ -2,13 +2,272 @@
 @tailwind components;
 @tailwind utilities;
 
-body {
+/* ========================================
+   DESIGN TOKENS
+   ======================================== */
+:root {
+  /* Colors */
+  --primary-green: #1F4D3A;
+  --primary-green-light: #2D6B4F;
+  --primary-green-dark: #153528;
+  --earth-brown: #8B6B43;
+  --earth-brown-light: #A8855A;
+  --gold-accent: #D4A017;
+  --gold-accent-light: #E8B83A;
+  --warm-white: #F8F7F4;
+  --warm-white-dark: #EDECE7;
+  --dark-text: #1E1E1E;
+  --gray-text: #4A4A4A;
+  --light-gray: #E5E5E0;
+  --border-color: #E5E5E0;
+
+  /* Shadows */
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.08);
+  --shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.12);
+  --shadow-xl: 0 12px 48px rgba(0, 0, 0, 0.16);
+
+  /* Border Radius */
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 20px;
+  --radius-full: 9999px;
+
+  /* Spacing */
+  --spacing-xs: 4px;
+  --spacing-sm: 8px;
+  --spacing-md: 16px;
+  --spacing-lg: 24px;
+  --spacing-xl: 32px;
+  --spacing-2xl: 48px;
+}
+
+/* ========================================
+   BASE STYLES
+   ======================================== */
+* {
+  box-sizing: border-box;
   margin: 0;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
-    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
-    sans-serif;
+  padding: 0;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Inter", "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  background-color: var(--warm-white);
+  color: var(--dark-text);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  background: linear-gradient(135deg, #fef3c7 0%, #ffffff 50%, #faf7f0 100%);
-  min-height: 100vh;
+  line-height: 1.6;
+}
+
+/* ========================================
+   SCROLLBAR
+   ======================================== */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #D1D5DB;
+  border-radius: var(--radius-full);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #9CA3AF;
+}
+
+/* ========================================
+   FOCUS STATES (Accessibility)
+   ======================================== */
+*:focus-visible {
+  outline: 2px solid var(--gold-accent);
+  outline-offset: 2px;
+}
+
+/* ========================================
+   LOADING ANIMATION
+   ======================================== */
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.animate-spin {
+  animation: spin 1s linear infinite;
+}
+
+/* ========================================
+   UTILITY CLASSES
+   ======================================== */
+.text-primary-green {
+  color: var(--primary-green);
+}
+
+.text-earth-brown {
+  color: var(--earth-brown);
+}
+
+.text-gold-accent {
+  color: var(--gold-accent);
+}
+
+.bg-primary-green {
+  background-color: var(--primary-green);
+}
+
+.bg-warm-white {
+  background-color: var(--warm-white);
+}
+
+.border-primary-green {
+  border-color: var(--primary-green);
+}
+
+/* Shadow utilities */
+.shadow-soft {
+  box-shadow: var(--shadow-md);
+}
+
+.shadow-hover {
+  transition: box-shadow 0.2s ease;
+}
+
+.shadow-hover:hover {
+  box-shadow: var(--shadow-lg);
+}
+
+/* Card utility */
+.card {
+  background: white;
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-md);
+  overflow: hidden;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.card:hover {
+  transform: translateY(-4px);
+  box-shadow: var(--shadow-lg);
+}
+
+/* Button utilities */
+.btn-primary {
+  background-color: var(--primary-green);
+  color: white;
+  padding: 10px 24px;
+  border-radius: var(--radius-md);
+  font-weight: 500;
+  transition: background-color 0.2s ease;
+}
+
+.btn-primary:hover {
+  background-color: var(--primary-green-dark);
+}
+
+.btn-secondary {
+  background-color: var(--gold-accent);
+  color: white;
+  padding: 10px 24px;
+  border-radius: var(--radius-md);
+  font-weight: 500;
+  transition: background-color 0.2s ease;
+}
+
+.btn-secondary:hover {
+  background-color: var(--gold-accent-light);
+}
+
+.btn-outline {
+  background: transparent;
+  color: var(--primary-green);
+  border: 2px solid var(--primary-green);
+  padding: 10px 24px;
+  border-radius: var(--radius-md);
+  font-weight: 500;
+  transition: all 0.2s ease;
+}
+
+.btn-outline:hover {
+  background: var(--primary-green);
+  color: white;
+}
+
+/* Badge utilities */
+.badge-verified {
+  background-color: var(--primary-green);
+  color: white;
+  padding: 2px 10px;
+  border-radius: var(--radius-full);
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.badge-gold {
+  background-color: var(--gold-accent);
+  color: white;
+  padding: 2px 10px;
+  border-radius: var(--radius-full);
+  font-size: 10px;
+  font-weight: 600;
+}
+
+/* ========================================
+   RESPONSIVE HELPERS
+   ======================================== */
+.container-sm {
+  max-width: 640px;
+  margin: 0 auto;
+  padding: 0 var(--spacing-md);
+}
+
+.container-md {
+  max-width: 768px;
+  margin: 0 auto;
+  padding: 0 var(--spacing-md);
+}
+
+.container-lg {
+  max-width: 1024px;
+  margin: 0 auto;
+  padding: 0 var(--spacing-md);
+}
+
+.container-xl {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 0 var(--spacing-md);
+}
+
+/* ========================================
+   GRID UTILITIES
+   ======================================== */
+.grid-farms {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: var(--spacing-lg);
+}
+
+.grid-livestock {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: var(--spacing-lg);
+}
+
+@media (max-width: 640px) {
+  .grid-farms {
+    grid-template-columns: 1fr;
+  }
+
+  .grid-livestock {
+    grid-template-columns: 1fr;
+  }
 }
