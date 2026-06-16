@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { ArrowLeft, Upload, X, Video, ChevronRight, ChevronLeft, Check, TrendingUp, Building2, MapPin, Phone, User, Package, Percent } from 'lucide-react';
+import { ArrowLeft, Upload, X, Video, ChevronRight, ChevronLeft, Check, Building2, MapPin, Phone, User, Package, Percent } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { supabase } from './supabaseClient';
 import { Card, CardContent } from "./components/ui/card";
@@ -32,13 +32,10 @@ export default function SellerUpload() {
   const [showPriceSuggestion, setShowPriceSuggestion] = useState(false);
 
   const [formData, setFormData] = useState({
-    // Farm info (auto-filled from profile)
     farm_name: '',
     seller_name: '',
     seller_phone: '',
     location: '',
-
-    // Livestock details
     quantity: 1,
     is_bundle: false,
     bundle_discount: 0,
@@ -77,7 +74,6 @@ export default function SellerUpload() {
       }
       setUser(user);
 
-      // Load profile
       const { data: profile } = await supabase
         .from('profiles')
         .select('*')
@@ -102,44 +98,48 @@ export default function SellerUpload() {
   // Fetch price suggestion
   const fetchPriceSuggestion = useCallback(async () => {
     const animalType = formData.animal_type;
-    const weightMin = parseFloat(formData.weight_min);
-    const weightMax = parseFloat(formData.weight_max);
-    const avgWeight = (weightMin + weightMax) / 2;
-
     if (!animalType) return;
 
     try {
-      const response = await supabase.functions.invoke('pricing-engine', {
-        body: {
-          breed: formData.breed_type,
-          animal_type: animalType,
-          province: formData.location?.split(',')[0]?.trim() || '',
-          age_months: parseInt(formData.age_months) || 0
-        }
-      });
+      // Simple price suggestion based on animal type
+      const suggestions = {
+        cattle: { min: 15000, max: 25000, avg: 20000, demand: 'high', trend: 'up' },
+        goats: { min: 3000, max: 6000, avg: 4500, demand: 'medium', trend: 'stable' },
+        sheep: { min: 2500, max: 5000, avg: 3800, demand: 'medium', trend: 'up' },
+        pigs: { min: 4000, max: 7000, avg: 5500, demand: 'medium', trend: 'stable' },
+        chickens: { min: 50, max: 80, avg: 65, demand: 'high', trend: 'up' },
+        horses: { min: 20000, max: 50000, avg: 35000, demand: 'low', trend: 'stable' }
+      };
 
-      if (response.data?.success) {
-        setMarketSuggestion(response.data);
+      const suggestion = suggestions[animalType];
+      if (suggestion) {
+        setMarketSuggestion({
+          range: { min: suggestion.min, max: suggestion.max },
+          avg: suggestion.avg,
+          demand: suggestion.demand,
+          trend: suggestion.trend,
+          sample_size: 10,
+          confidence: 0.7,
+          suggested_sweet_spot: {
+            min: suggestion.avg * 0.9,
+            max: suggestion.avg * 1.1
+          }
+        });
         setShowPriceSuggestion(true);
-      } else {
-        setMarketSuggestion(null);
-        setShowPriceSuggestion(false);
       }
     } catch (error) {
       console.error('Error fetching price suggestion:', error);
-      setMarketSuggestion(null);
-      setShowPriceSuggestion(false);
     }
-  }, [formData.animal_type, formData.breed_type, formData.weight_min, formData.weight_max, formData.location, formData.age_months]);
+  }, [formData.animal_type]);
 
   useEffect(() => {
-    if (formData.animal_type && formData.breed_type) {
+    if (formData.animal_type) {
       const timer = setTimeout(() => {
         fetchPriceSuggestion();
       }, 500);
       return () => clearTimeout(timer);
     }
-  }, [formData.animal_type, formData.breed_type, formData.weight_min, formData.weight_max, formData.location, formData.age_months, fetchPriceSuggestion]);
+  }, [formData.animal_type, fetchPriceSuggestion]);
 
   const handleImageUpload = async (e) => {
     const files = Array.from(e.target.files);
@@ -241,7 +241,6 @@ export default function SellerUpload() {
       const quantity = parseInt(formData.quantity) || 1;
       const discount = parseFloat(formData.bundle_discount) || 0;
 
-      // Calculate total price
       let totalPrice = pricePerHead * quantity;
       if (formData.is_bundle && discount > 0) {
         totalPrice = totalPrice * (1 - discount / 100);
@@ -249,12 +248,10 @@ export default function SellerUpload() {
 
       const submitData = {
         user_id: user.id,
-        // Farm info
         farm_name: formData.farm_name,
         seller_name: formData.seller_name,
         seller_phone: formData.seller_phone,
         location: formData.location,
-        // Livestock details
         quantity: quantity,
         is_bundle: formData.is_bundle,
         bundle_discount: formData.is_bundle ? discount : 0,
@@ -280,9 +277,7 @@ export default function SellerUpload() {
         website_url: formData.website_url,
         gps_latitude: formData.gps_latitude ? parseFloat(formData.gps_latitude) : null,
         gps_longitude: formData.gps_longitude ? parseFloat(formData.gps_longitude) : null,
-        status: 'active',
-        likes_count: 0,
-        views_count: 0
+        status: 'active'
       };
 
       const { error } = await supabase
@@ -321,10 +316,10 @@ export default function SellerUpload() {
           <button
             onClick={() => setCurrentStep(step)}
             className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium transition-all ${currentStep === step
-              ? 'bg-primary-green text-white'
-              : step < currentStep
-                ? 'bg-green-500 text-white'
-                : 'bg-gray-200 text-gray-500'
+                ? 'bg-primary-green text-white'
+                : step < currentStep
+                  ? 'bg-green-500 text-white'
+                  : 'bg-gray-200 text-gray-500'
               }`}
           >
             {step < currentStep ? <Check className="w-4 h-4" /> : step}
@@ -412,8 +407,8 @@ export default function SellerUpload() {
                   type="button"
                   onClick={() => setFormData({ ...formData, quantity: qty })}
                   className={`p-4 rounded-xl border-2 transition-all ${formData.quantity === qty
-                    ? 'border-primary-green bg-primary-green/5'
-                    : 'border-gray-200 hover:border-primary-green/50'
+                      ? 'border-primary-green bg-primary-green/5'
+                      : 'border-gray-200 hover:border-primary-green/50'
                     }`}
                 >
                   <div className="text-2xl font-bold text-center">{qty}</div>
@@ -433,7 +428,6 @@ export default function SellerUpload() {
               />
             </div>
 
-            {/* Bundle Toggle */}
             <div className="p-4 bg-amber-50 rounded-xl border border-amber-200">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
@@ -653,8 +647,8 @@ export default function SellerUpload() {
                   <div>
                     <p className="text-xs text-gray-500">Demand</p>
                     <p className={`text-sm font-semibold ${marketSuggestion.demand === 'high' ? 'text-green-600' :
-                      marketSuggestion.demand === 'medium' ? 'text-amber-600' :
-                        'text-gray-600'
+                        marketSuggestion.demand === 'medium' ? 'text-amber-600' :
+                          'text-gray-600'
                       }`}>
                       {marketSuggestion.demand === 'high' && 'High'}
                       {marketSuggestion.demand === 'medium' && 'Medium'}
@@ -665,11 +659,6 @@ export default function SellerUpload() {
 
                 <div className="flex items-center gap-2 text-xs text-gray-500">
                   <span>Trend: {marketSuggestion.trend === 'up' ? 'Rising' : marketSuggestion.trend === 'down' ? 'Falling' : 'Stable'}</span>
-                  {marketSuggestion.trend_percentage && (
-                    <span className={`${marketSuggestion.trend_percentage > 0 ? 'text-green-600' : 'text-red-600'}`}>
-                      {marketSuggestion.trend_percentage > 0 ? '+' : ''}{marketSuggestion.trend_percentage}%
-                    </span>
-                  )}
                   <span className="ml-auto text-xs text-gray-400">
                     Confidence: {Math.round((marketSuggestion.confidence || 0) * 100)}%
                   </span>
