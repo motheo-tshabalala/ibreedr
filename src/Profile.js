@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowLeft, Save, User, Building2, Phone, Mail, CheckCircle, AlertCircle, MapPin, Info, Award, Camera, Upload, Package, TrendingUp } from 'lucide-react';
+import { ArrowLeft, Save, User, Building2, Phone, Mail, CheckCircle, AlertCircle, MapPin, Info, Award, Camera, Upload, Package, TrendingUp, LogOut } from 'lucide-react';
 import { supabase } from './supabaseClient';
 import { Card, CardContent } from "./components/ui/card";
 import { Button } from "./components/ui/button";
@@ -31,10 +31,7 @@ export default function Profile() {
   const [stats, setStats] = useState({
     total_listings: 0,
     active_listings: 0,
-    total_views: 0,
-    total_likes: 0,
     total_animals: 0,
-    total_sold: 0,
     bundles_count: 0
   });
 
@@ -52,7 +49,6 @@ export default function Profile() {
       setUser(user);
       setProfile(prev => ({ ...prev, email: user.email }));
 
-      // Load profile from profiles table
       const { data, error } = await supabase
         .from('profiles')
         .select('*')
@@ -87,7 +83,6 @@ export default function Profile() {
         });
       }
 
-      // Load farm statistics
       const { data: livestockData } = await supabase
         .from('livestock')
         .select('id, status, views_count, likes_count, quantity, is_bundle, price')
@@ -95,19 +90,13 @@ export default function Profile() {
 
       if (livestockData) {
         const activeListings = livestockData.filter(l => l.status === 'active').length;
-        const totalViews = livestockData.reduce((sum, l) => sum + (l.views_count || 0), 0);
-        const totalLikes = livestockData.reduce((sum, l) => sum + (l.likes_count || 0), 0);
         const totalAnimals = livestockData.reduce((sum, l) => sum + (l.quantity || 1), 0);
-        const totalSold = livestockData.filter(l => l.status === 'sold').length;
         const bundlesCount = livestockData.filter(l => l.is_bundle === true).length;
 
         setStats({
           total_listings: livestockData.length,
           active_listings: activeListings,
-          total_views: totalViews,
-          total_likes: totalLikes,
           total_animals: totalAnimals,
-          total_sold: totalSold,
           bundles_count: bundlesCount
         });
       }
@@ -144,7 +133,6 @@ export default function Profile() {
         [type === 'cover' ? 'cover_image' : 'logo_image']: publicUrl
       }));
 
-      // Save to database immediately
       const { error: updateError } = await supabase
         .from('profiles')
         .update({ [type === 'cover' ? 'cover_image' : 'logo_image']: publicUrl })
@@ -218,7 +206,6 @@ export default function Profile() {
 
       if (metadataError) throw metadataError;
 
-      // Update livestock with new farm name
       const { error: livestockError } = await supabase
         .from('livestock')
         .update({ farm_name: profile.farm_name })
@@ -367,7 +354,7 @@ export default function Profile() {
               </div>
             </div>
 
-            {/* 🔥 VIEW DASHBOARD BUTTON - THIS IS WHAT YOU WANT */}
+            {/* View Dashboard Button */}
             <Link to="/Dashboard">
               <Button className="w-full gap-2 bg-primary-green hover:bg-primary-green-dark mb-6">
                 <TrendingUp className="w-4 h-4" />
@@ -524,11 +511,19 @@ export default function Profile() {
               </Button>
             </div>
 
-            {/* Delete Account Link */}
-            <div className="mt-4 pt-4 border-t text-center">
-              <Link to="/DeleteProfile" className="text-sm text-red-500 hover:text-red-700 hover:underline">
-                Delete Account
+            {/* 🔥 LOGOUT & DELETE ACCOUNT - NOW WITH LOGOUT BUTTON */}
+            <div className="mt-4 pt-4 border-t space-y-3">
+              <Link to="/logout">
+                <Button variant="outline" className="w-full gap-2 text-red-600 border-red-200 hover:bg-red-50 hover:text-red-700">
+                  <LogOut className="w-4 h-4" />
+                  Logout
+                </Button>
               </Link>
+              <div className="text-center">
+                <Link to="/DeleteProfile" className="text-sm text-red-400 hover:text-red-600 hover:underline">
+                  Delete Account
+                </Link>
+              </div>
             </div>
           </CardContent>
         </Card>
