@@ -85,7 +85,7 @@ export default function Profile() {
 
       const { data: livestockData } = await supabase
         .from('livestock')
-        .select('id, status, views_count, likes_count, quantity, is_bundle, price')
+        .select('id, status, quantity, is_bundle')
         .eq('user_id', user.id);
 
       if (livestockData) {
@@ -109,41 +109,73 @@ export default function Profile() {
 
   const handleImageUpload = async (e, type) => {
     const file = e.target.files[0];
-    if (!file) return;
+    if (!file) {
+      console.log('No file selected');
+      return;
+    }
 
     setUploading(true);
+    setMessage({ type: '', text: '' });
 
     try {
+      // Validate file size (max 5MB)
+      if (file.size > 5 * 1024 * 1024) {
+        throw new Error('Image must be less than 5MB');
+      }
+
+      // Validate file type
+      if (!file.type.startsWith('image/')) {
+        throw new Error('Please upload an image file');
+      }
+
       const fileExt = file.name.split('.').pop();
       const fileName = `${user.id}_${type}_${Date.now()}.${fileExt}`;
-      const filePath = `profiles/${user.id}/${fileName}`;
+      const filePath = `${user.id}/${fileName}`;
 
-      const { error } = await supabase.storage
+      console.log('Uploading to:', filePath);
+
+      const { error: uploadError } = await supabase.storage
         .from('profile-images')
-        .upload(filePath, file);
+        .upload(filePath, file, {
+          cacheControl: '3600',
+          upsert: true
+        });
 
-      if (error) throw error;
+      if (uploadError) {
+        console.error('Upload error:', uploadError);
+        throw new Error(uploadError.message);
+      }
 
+      // Get public URL
       const { data: { publicUrl } } = supabase.storage
         .from('profile-images')
         .getPublicUrl(filePath);
 
-      setProfile(prev => ({
-        ...prev,
-        [type === 'cover' ? 'cover_image' : 'logo_image']: publicUrl
-      }));
+      console.log('Public URL:', publicUrl);
 
+      // Update profile with new image URL
+      const updateField = type === 'cover' ? 'cover_image' : 'logo_image';
       const { error: updateError } = await supabase
         .from('profiles')
-        .update({ [type === 'cover' ? 'cover_image' : 'logo_image']: publicUrl })
+        .update({ [updateField]: publicUrl })
         .eq('id', user.id);
 
-      if (updateError) throw updateError;
+      if (updateError) {
+        console.error('Update error:', updateError);
+        throw new Error(updateError.message);
+      }
+
+      // Update local state
+      setProfile(prev => ({
+        ...prev,
+        [updateField]: publicUrl
+      }));
 
       setMessage({ type: 'success', text: 'Image uploaded successfully!' });
+
     } catch (error) {
       console.error('Upload failed:', error);
-      setMessage({ type: 'error', text: 'Failed to upload image: ' + error.message });
+      setMessage({ type: 'error', text: error.message || 'Failed to upload image' });
     } finally {
       setUploading(false);
     }
@@ -511,7 +543,7 @@ export default function Profile() {
               </Button>
             </div>
 
-            {/* 🔥 LOGOUT & DELETE ACCOUNT - NOW WITH LOGOUT BUTTON */}
+            {/* Logout & Delete Account */}
             <div className="mt-4 pt-4 border-t space-y-3">
               <Link to="/logout">
                 <Button variant="outline" className="w-full gap-2 text-red-600 border-red-200 hover:bg-red-50 hover:text-red-700">
