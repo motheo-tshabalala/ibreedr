@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowLeft, Save, User, Building2, Phone, Mail, CheckCircle, AlertCircle, MapPin, Info, Award, Camera, Upload, Package, TrendingUp, LogOut, Shield } from 'lucide-react';
+import { ArrowLeft, Save, User, Building2, Phone, Mail, CheckCircle, AlertCircle, MapPin, Info, Award, Camera, Upload, Package, TrendingUp, LogOut, Shield, Trash2 } from 'lucide-react';
 import { supabase } from './supabaseClient';
 import { Card, CardContent } from "./components/ui/card";
 import { Button } from "./components/ui/button";
@@ -28,6 +28,7 @@ export default function Profile() {
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState({ type: '', text: '' });
   const [uploading, setUploading] = useState(false);
+  const [deletingImage, setDeletingImage] = useState(null);
   const [profileStrength, setProfileStrength] = useState(0);
   const [stats, setStats] = useState({
     total_listings: 0,
@@ -121,7 +122,7 @@ export default function Profile() {
     loadUserAndProfile();
   }, []);
 
-  // ✅ FIXED: Image upload function with better error handling
+  // ✅ Image upload function
   const handleImageUpload = async (e, type) => {
     const file = e.target.files[0];
     if (!file) {
@@ -129,13 +130,11 @@ export default function Profile() {
       return;
     }
 
-    // Validate file size (max 5MB)
     if (file.size > 5 * 1024 * 1024) {
       setMessage({ type: 'error', text: 'Image must be less than 5MB' });
       return;
     }
 
-    // Validate file type
     if (!file.type.startsWith('image/')) {
       setMessage({ type: 'error', text: 'Please upload an image file' });
       return;
@@ -147,11 +146,8 @@ export default function Profile() {
     try {
       const fileExt = file.name.split('.').pop();
       const fileName = `${user.id}_${type}_${Date.now()}.${fileExt}`;
-      const filePath = `${user.id}/${fileName}`;
+      const filePath = `profiles/${user.id}/${fileName}`;
 
-      console.log('Uploading to path:', filePath);
-
-      // Upload to Supabase Storage
       const { error: uploadError } = await supabase.storage
         .from('profile-images')
         .upload(filePath, file, {
@@ -164,14 +160,10 @@ export default function Profile() {
         throw new Error(uploadError.message);
       }
 
-      // Get public URL
       const { data: { publicUrl } } = supabase.storage
         .from('profile-images')
         .getPublicUrl(filePath);
 
-      console.log('Public URL:', publicUrl);
-
-      // Update profile with new image URL
       const updateField = type === 'cover' ? 'cover_image' : 'logo_image';
       const { error: updateError } = await supabase
         .from('profiles')
@@ -183,11 +175,13 @@ export default function Profile() {
         throw new Error(updateError.message);
       }
 
-      // Update local state
       setProfile(prev => ({
         ...prev,
         [updateField]: publicUrl
       }));
+
+      // Recalculate profile strength
+      updateProfileStrength(updateField, publicUrl);
 
       setMessage({ type: 'success', text: 'Image uploaded successfully!' });
       setTimeout(() => setMessage({ type: '', text: '' }), 3000);
@@ -197,9 +191,81 @@ export default function Profile() {
       setMessage({ type: 'error', text: 'Failed to upload image: ' + error.message });
     } finally {
       setUploading(false);
-      // Reset file input
       e.target.value = '';
     }
+  };
+
+  // ✅ Remove image function
+  const handleRemoveImage = async (type) => {
+    const field = type === 'cover' ? 'cover_image' : 'logo_image';
+    const currentUrl = profile[field];
+
+    if (!currentUrl) return;
+
+    setDeletingImage(type);
+    setMessage({ type: '', text: '' });
+
+    try {
+      // Extract file path from URL
+      const urlParts = currentUrl.split('/');
+      const filePath = urlParts.slice(urlParts.indexOf('profiles')).join('/');
+
+      // Delete from storage
+      if (filePath) {
+        const { error: deleteError } = await supabase.storage
+          .from('profile-images')
+          .remove([filePath]);
+
+        if (deleteError) {
+          console.error('Storage delete error:', deleteError);
+          // Continue with profile update even if storage delete fails
+        }
+      }
+
+      // Update profile
+      const { error: updateError } = await supabase
+        .from('profiles')
+        .update({ [field]: null })
+        .eq('id', user.id);
+
+      if (updateError) {
+        console.error('Update error:', updateError);
+        throw new Error(updateError.message);
+      }
+
+      setProfile(prev => ({
+        ...prev,
+        [field]: null
+      }));
+
+      // Recalculate profile strength
+      updateProfileStrength(field, null);
+
+      setMessage({ type: 'success', text: 'Image removed successfully!' });
+      setTimeout(() => setMessage({ type: '', text: '' }), 3000);
+
+    } catch (error) {
+      console.error('Remove error:', error);
+      setMessage({ type: 'error', text: 'Failed to remove image: ' + error.message });
+    } finally {
+      setDeletingImage(null);
+    }
+  };
+
+  // ✅ Update profile strength
+  const updateProfileStrength = (field, value) => {
+    const fields = [
+      profile.farm_name,
+      profile.phone,
+      profile.farm_location,
+      profile.farm_bio,
+      profile.years_farming,
+      field === 'logo_image' ? value : profile.logo_image,
+      field === 'cover_image' ? value : profile.cover_image
+    ].filter(Boolean).length;
+
+    const strength = Math.round((fields / 7) * 100);
+    setProfileStrength(strength);
   };
 
   const handleSave = async () => {
@@ -325,20 +391,36 @@ export default function Profile() {
               </div>
             )}
 
-            {/* Cover Image Upload */}
+            {/* Cover Image Upload with Remove Button */}
             <div className="mb-6">
               <Label className="text-sm font-medium text-gray-700">Farm Cover Image</Label>
               <div className="relative mt-1 h-40 rounded-xl overflow-hidden bg-gray-100 border-2 border-dashed border-gray-300 hover:border-primary-green transition">
                 {profile.cover_image ? (
                   <>
                     <img src={profile.cover_image} alt="Farm cover" className="w-full h-full object-cover" />
-                    <button
-                      type="button"
-                      onClick={() => document.getElementById('coverUpload').click()}
-                      className="absolute bottom-3 right-3 p-2 bg-white/90 backdrop-blur rounded-full shadow-md hover:bg-white transition"
-                    >
-                      <Camera className="w-4 h-4 text-gray-700" />
-                    </button>
+                    <div className="absolute inset-0 bg-black/0 hover:bg-black/20 transition-all flex items-center justify-center opacity-0 hover:opacity-100">
+                      <div className="flex gap-2">
+                        <button
+                          type="button"
+                          onClick={() => document.getElementById('coverUpload').click()}
+                          className="p-2 bg-white rounded-full shadow-lg hover:scale-105 transition"
+                        >
+                          <Camera className="w-5 h-5 text-gray-700" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveImage('cover')}
+                          disabled={deletingImage === 'cover'}
+                          className="p-2 bg-red-500 rounded-full shadow-lg hover:scale-105 transition disabled:opacity-50"
+                        >
+                          {deletingImage === 'cover' ? (
+                            <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                          ) : (
+                            <Trash2 className="w-5 h-5 text-white" />
+                          )}
+                        </button>
+                      </div>
+                    </div>
                   </>
                 ) : (
                   <label className="w-full h-full flex flex-col items-center justify-center cursor-pointer">
@@ -361,13 +443,39 @@ export default function Profile() {
                   </div>
                 )}
               </div>
+              <p className="text-xs text-gray-400 mt-1">Cover image appears on your farm storefront</p>
             </div>
 
-            {/* Logo Image Upload */}
+            {/* Logo Image Upload with Remove Button */}
             <div className="mb-6 -mt-10 ml-4 relative z-10">
-              <div className="relative w-20 h-20 rounded-full bg-white border-4 border-white shadow-md overflow-hidden">
+              <div className="relative w-20 h-20 rounded-full bg-white border-4 border-white shadow-md overflow-hidden group">
                 {profile.logo_image ? (
-                  <img src={profile.logo_image} alt="Farm logo" className="w-full h-full object-cover" />
+                  <>
+                    <img src={profile.logo_image} alt="Farm logo" className="w-full h-full object-cover" />
+                    <div className="absolute inset-0 bg-black/0 hover:bg-black/40 transition-all flex items-center justify-center opacity-0 hover:opacity-100 rounded-full">
+                      <div className="flex gap-1">
+                        <button
+                          type="button"
+                          onClick={() => document.getElementById('logoUpload').click()}
+                          className="p-1 bg-white rounded-full shadow-lg hover:scale-105 transition"
+                        >
+                          <Camera className="w-4 h-4 text-gray-700" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveImage('logo')}
+                          disabled={deletingImage === 'logo'}
+                          className="p-1 bg-red-500 rounded-full shadow-lg hover:scale-105 transition disabled:opacity-50"
+                        >
+                          {deletingImage === 'logo' ? (
+                            <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                          ) : (
+                            <Trash2 className="w-4 h-4 text-white" />
+                          )}
+                        </button>
+                      </div>
+                    </div>
+                  </>
                 ) : (
                   <div className="w-full h-full flex items-center justify-center text-2xl bg-primary-green/10 text-primary-green">
                     {profile.farm_name?.charAt(0) || 'F'}
@@ -389,6 +497,7 @@ export default function Profile() {
                   disabled={uploading}
                 />
               </div>
+              <p className="text-xs text-gray-400 ml-1">Logo appears on your farm card</p>
             </div>
 
             {/* Quick Stats */}
