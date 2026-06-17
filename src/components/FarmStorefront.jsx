@@ -54,7 +54,7 @@ export default function FarmStorefront() {
 
         setListings(livestock || []);
 
-        // ✅ Load recent reviews
+        // Load recent reviews
         const { data: reviewsData } = await supabase
           .from('reviews')
           .select(`
@@ -131,6 +131,9 @@ export default function FarmStorefront() {
       </div>
     );
   }
+
+  // Get Google Maps API key from environment
+  const googleMapsKey = process.env.REACT_APP_GOOGLE_MAPS_API_KEY || '';
 
   return (
     <div className="min-h-screen bg-warm-white pb-20">
@@ -369,7 +372,7 @@ export default function FarmStorefront() {
               </CardContent>
             </Card>
 
-            {/* Operating Hours */}
+            {/* ✅ Operating Hours - NOW DISPLAYED */}
             <Card>
               <CardContent className="p-5">
                 <h3 className="text-lg font-semibold text-gray-900 mb-3 flex items-center gap-2">
@@ -377,18 +380,27 @@ export default function FarmStorefront() {
                   Operating Hours
                 </h3>
                 <div className="space-y-2">
-                  <div className="flex justify-between text-sm py-1 border-b border-gray-100">
-                    <span className="text-gray-500">Monday - Friday</span>
-                    <span className="font-medium">{farm.operating_hours_weekdays || '8:00 AM - 5:00 PM'}</span>
-                  </div>
-                  <div className="flex justify-between text-sm py-1 border-b border-gray-100">
-                    <span className="text-gray-500">Saturday</span>
-                    <span className="font-medium">{farm.operating_hours_saturday || '8:00 AM - 1:00 PM'}</span>
-                  </div>
-                  <div className="flex justify-between text-sm py-1">
-                    <span className="text-gray-500">Sunday</span>
-                    <span className="font-medium">{farm.operating_hours_sunday || 'Closed'}</span>
-                  </div>
+                  {farm.operating_hours_weekdays && (
+                    <div className="flex justify-between text-sm py-1 border-b border-gray-100">
+                      <span className="text-gray-500">Monday - Friday</span>
+                      <span className="font-medium">{farm.operating_hours_weekdays}</span>
+                    </div>
+                  )}
+                  {farm.operating_hours_saturday && (
+                    <div className="flex justify-between text-sm py-1 border-b border-gray-100">
+                      <span className="text-gray-500">Saturday</span>
+                      <span className="font-medium">{farm.operating_hours_saturday}</span>
+                    </div>
+                  )}
+                  {farm.operating_hours_sunday && (
+                    <div className="flex justify-between text-sm py-1">
+                      <span className="text-gray-500">Sunday</span>
+                      <span className="font-medium">{farm.operating_hours_sunday}</span>
+                    </div>
+                  )}
+                  {!farm.operating_hours_weekdays && (
+                    <p className="text-sm text-gray-400 italic">No operating hours set</p>
+                  )}
                   <div className="mt-3 pt-3 border-t border-gray-200 flex items-center gap-2 text-sm text-green-600">
                     <Clock className="w-4 h-4" />
                     <span>Response time: Within 30 minutes</span>
@@ -397,8 +409,8 @@ export default function FarmStorefront() {
               </CardContent>
             </Card>
 
-            {/* Location Map */}
-            {farm.gps_latitude && farm.gps_longitude ? (
+            {/* ✅ Google Maps Embed - Location */}
+            {farm.farm_location && googleMapsKey && (
               <Card>
                 <CardContent className="p-4">
                   <h3 className="text-lg font-semibold text-gray-900 mb-3 flex items-center gap-2">
@@ -406,32 +418,34 @@ export default function FarmStorefront() {
                     Farm Location
                   </h3>
                   <div className="h-48 rounded-lg overflow-hidden">
-                    <LocationMap
-                      latitude={parseFloat(farm.gps_latitude)}
-                      longitude={parseFloat(farm.gps_longitude)}
-                      locationName={farm.farm_name || 'Farm Location'}
+                    <iframe
+                      title="Farm location"
+                      width="100%"
+                      height="100%"
+                      style={{ border: 0 }}
+                      loading="lazy"
+                      allowFullScreen
+                      src={`https://www.google.com/maps/embed/v1/place?key=${googleMapsKey}&q=${encodeURIComponent(farm.farm_location)}&zoom=10`}
                     />
                   </div>
                   <p className="text-xs text-gray-400 mt-2 text-center">
-                    {farm.farm_location || 'Location on map'}
+                    {farm.farm_location}
                   </p>
                 </CardContent>
               </Card>
-            ) : (
+            )}
+
+            {/* Fallback Location Display (no map) */}
+            {farm.farm_location && !googleMapsKey && (
               <Card>
                 <CardContent className="p-4">
                   <h3 className="text-lg font-semibold text-gray-900 mb-3 flex items-center gap-2">
                     <MapPin className="w-5 h-5 text-primary-green" />
-                    Location
+                    Farm Location
                   </h3>
-                  <div className="h-48 bg-gray-100 rounded-lg flex items-center justify-center">
-                    <div className="text-center">
-                      <MapPin className="w-8 h-8 text-gray-300 mx-auto mb-2" />
-                      <p className="text-sm text-gray-400">Location not shared</p>
-                      <p className="text-xs text-gray-300 mt-1">
-                        {farm.farm_location || 'No location set'}
-                      </p>
-                    </div>
+                  <div className="bg-gray-100 rounded-lg p-4 text-center">
+                    <MapPin className="w-8 h-8 text-gray-300 mx-auto mb-2" />
+                    <p className="text-sm text-gray-600">{farm.farm_location}</p>
                   </div>
                 </CardContent>
               </Card>

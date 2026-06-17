@@ -1,13 +1,12 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowLeft, Save, User, Building2, Phone, Mail, CheckCircle, AlertCircle, MapPin, Info, Award, Camera, Upload, Package, TrendingUp, LogOut, Shield, Trash2 } from 'lucide-react';
+import { ArrowLeft, Save, User, Building2, Phone, Mail, CheckCircle, AlertCircle, MapPin, Info, Award, Camera, Upload, Package, TrendingUp, LogOut, Shield, Trash2, Clock, Truck } from 'lucide-react';
 import { supabase } from './supabaseClient';
 import { Card, CardContent } from "./components/ui/card";
 import { Button } from "./components/ui/button";
 import { Input } from "./components/ui/input";
 import { Label } from "./components/ui/label";
 import { Textarea } from "./components/ui/textarea";
-import { Badge } from "./components/ui/Badge";
 import VerificationBadge from './components/VerificationBadge';
 
 export default function Profile() {
@@ -22,12 +21,21 @@ export default function Profile() {
     email: '',
     verified_farmer: false,
     cover_image: '',
-    logo_image: ''
+    logo_image: '',
+    operating_hours_weekdays: '',
+    operating_hours_saturday: '',
+    operating_hours_sunday: '',
+    transport_responsibility: 'Negotiable',
+    transport_range: '',
+    transport_notes: '',
+    gps_latitude: '',
+    gps_longitude: ''
   });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState({ type: '', text: '' });
-  const [uploading, setUploading] = useState(false);
+  const [uploadingCover, setUploadingCover] = useState(false);
+  const [uploadingLogo, setUploadingLogo] = useState(false);
   const [deletingImage, setDeletingImage] = useState(null);
   const [profileStrength, setProfileStrength] = useState(0);
   const [stats, setStats] = useState({
@@ -36,6 +44,9 @@ export default function Profile() {
     total_animals: 0,
     bundles_count: 0
   });
+
+  // ✅ Google Maps Autocomplete ref
+  const locationInputRef = useRef(null);
 
   useEffect(() => {
     const loadUserAndProfile = async () => {
@@ -68,7 +79,15 @@ export default function Profile() {
           email: user.email,
           verified_farmer: data.verified_farmer || false,
           cover_image: data.cover_image || '',
-          logo_image: data.logo_image || ''
+          logo_image: data.logo_image || '',
+          operating_hours_weekdays: data.operating_hours_weekdays || '',
+          operating_hours_saturday: data.operating_hours_saturday || '',
+          operating_hours_sunday: data.operating_hours_sunday || '',
+          transport_responsibility: data.transport_responsibility || 'Negotiable',
+          transport_range: data.transport_range || '',
+          transport_notes: data.transport_notes || '',
+          gps_latitude: data.gps_latitude || '',
+          gps_longitude: data.gps_longitude || ''
         });
 
         const profileFields = [
@@ -94,7 +113,15 @@ export default function Profile() {
           email: user.email,
           verified_farmer: false,
           cover_image: '',
-          logo_image: ''
+          logo_image: '',
+          operating_hours_weekdays: '',
+          operating_hours_saturday: '',
+          operating_hours_sunday: '',
+          transport_responsibility: 'Negotiable',
+          transport_range: '',
+          transport_notes: '',
+          gps_latitude: '',
+          gps_longitude: ''
         });
       }
 
@@ -122,8 +149,30 @@ export default function Profile() {
     loadUserAndProfile();
   }, []);
 
-  // ✅ Image upload function
-  const handleImageUpload = async (e, type) => {
+  // ✅ Google Maps Autocomplete setup
+  useEffect(() => {
+    if (!locationInputRef.current || typeof google === 'undefined') return;
+
+    const autocomplete = new google.maps.places.Autocomplete(locationInputRef.current, {
+      componentRestrictions: { country: 'za' },
+      types: ['geocode', 'establishment']
+    });
+
+    autocomplete.addListener('place_changed', () => {
+      const place = autocomplete.getPlace();
+      if (place.formatted_address) {
+        setProfile(prev => ({
+          ...prev,
+          farm_location: place.formatted_address,
+          gps_latitude: place.geometry?.location?.lat() || '',
+          gps_longitude: place.geometry?.location?.lng() || ''
+        }));
+      }
+    });
+  }, [loading]);
+
+  // Cover image upload
+  const handleCoverUpload = async (e) => {
     const file = e.target.files[0];
     if (!file) {
       setMessage({ type: 'error', text: 'No file selected' });
@@ -140,13 +189,13 @@ export default function Profile() {
       return;
     }
 
-    setUploading(true);
+    setUploadingCover(true);
     setMessage({ type: '', text: '' });
 
     try {
       const fileExt = file.name.split('.').pop();
-      const fileName = `${user.id}_${type}_${Date.now()}.${fileExt}`;
-      const filePath = `profiles/${user.id}/${fileName}`;
+      const fileName = `${user.id}_cover_${Date.now()}.${fileExt}`;
+      const filePath = `${user.id}/${fileName}`;
 
       const { error: uploadError } = await supabase.storage
         .from('profile-images')
@@ -155,47 +204,91 @@ export default function Profile() {
           upsert: true
         });
 
-      if (uploadError) {
-        console.error('Upload error:', uploadError);
-        throw new Error(uploadError.message);
-      }
+      if (uploadError) throw uploadError;
 
       const { data: { publicUrl } } = supabase.storage
         .from('profile-images')
         .getPublicUrl(filePath);
 
-      const updateField = type === 'cover' ? 'cover_image' : 'logo_image';
       const { error: updateError } = await supabase
         .from('profiles')
-        .update({ [updateField]: publicUrl })
+        .update({ cover_image: publicUrl })
         .eq('id', user.id);
 
-      if (updateError) {
-        console.error('Update error:', updateError);
-        throw new Error(updateError.message);
-      }
+      if (updateError) throw updateError;
 
-      setProfile(prev => ({
-        ...prev,
-        [updateField]: publicUrl
-      }));
-
-      // Recalculate profile strength
-      updateProfileStrength(updateField, publicUrl);
-
-      setMessage({ type: 'success', text: 'Image uploaded successfully!' });
+      setProfile(prev => ({ ...prev, cover_image: publicUrl }));
+      setMessage({ type: 'success', text: 'Cover image uploaded!' });
       setTimeout(() => setMessage({ type: '', text: '' }), 3000);
 
     } catch (error) {
-      console.error('Upload failed:', error);
-      setMessage({ type: 'error', text: 'Failed to upload image: ' + error.message });
+      console.error('Cover upload error:', error);
+      setMessage({ type: 'error', text: 'Failed to upload cover: ' + error.message });
     } finally {
-      setUploading(false);
+      setUploadingCover(false);
       e.target.value = '';
     }
   };
 
-  // ✅ Remove image function
+  // Logo upload
+  const handleLogoUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file) {
+      setMessage({ type: 'error', text: 'No file selected' });
+      return;
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      setMessage({ type: 'error', text: 'Image must be less than 5MB' });
+      return;
+    }
+
+    if (!file.type.startsWith('image/')) {
+      setMessage({ type: 'error', text: 'Please upload an image file' });
+      return;
+    }
+
+    setUploadingLogo(true);
+    setMessage({ type: '', text: '' });
+
+    try {
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${user.id}_logo_${Date.now()}.${fileExt}`;
+      const filePath = `${user.id}/${fileName}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from('profile-images')
+        .upload(filePath, file, {
+          cacheControl: '3600',
+          upsert: true
+        });
+
+      if (uploadError) throw uploadError;
+
+      const { data: { publicUrl } } = supabase.storage
+        .from('profile-images')
+        .getPublicUrl(filePath);
+
+      const { error: updateError } = await supabase
+        .from('profiles')
+        .update({ logo_image: publicUrl })
+        .eq('id', user.id);
+
+      if (updateError) throw updateError;
+
+      setProfile(prev => ({ ...prev, logo_image: publicUrl }));
+      setMessage({ type: 'success', text: 'Logo uploaded!' });
+      setTimeout(() => setMessage({ type: '', text: '' }), 3000);
+
+    } catch (error) {
+      console.error('Logo upload error:', error);
+      setMessage({ type: 'error', text: 'Failed to upload logo: ' + error.message });
+    } finally {
+      setUploadingLogo(false);
+      e.target.value = '';
+    }
+  };
+
   const handleRemoveImage = async (type) => {
     const field = type === 'cover' ? 'cover_image' : 'logo_image';
     const currentUrl = profile[field];
@@ -206,42 +299,24 @@ export default function Profile() {
     setMessage({ type: '', text: '' });
 
     try {
-      // Extract file path from URL
       const urlParts = currentUrl.split('/');
       const filePath = urlParts.slice(urlParts.indexOf('profiles')).join('/');
 
-      // Delete from storage
       if (filePath) {
-        const { error: deleteError } = await supabase.storage
+        await supabase.storage
           .from('profile-images')
           .remove([filePath]);
-
-        if (deleteError) {
-          console.error('Storage delete error:', deleteError);
-          // Continue with profile update even if storage delete fails
-        }
       }
 
-      // Update profile
       const { error: updateError } = await supabase
         .from('profiles')
         .update({ [field]: null })
         .eq('id', user.id);
 
-      if (updateError) {
-        console.error('Update error:', updateError);
-        throw new Error(updateError.message);
-      }
+      if (updateError) throw updateError;
 
-      setProfile(prev => ({
-        ...prev,
-        [field]: null
-      }));
-
-      // Recalculate profile strength
-      updateProfileStrength(field, null);
-
-      setMessage({ type: 'success', text: 'Image removed successfully!' });
+      setProfile(prev => ({ ...prev, [field]: null }));
+      setMessage({ type: 'success', text: 'Image removed!' });
       setTimeout(() => setMessage({ type: '', text: '' }), 3000);
 
     } catch (error) {
@@ -252,48 +327,50 @@ export default function Profile() {
     }
   };
 
-  // ✅ Update profile strength
-  const updateProfileStrength = (field, value) => {
-    const fields = [
-      profile.farm_name,
-      profile.phone,
-      profile.farm_location,
-      profile.farm_bio,
-      profile.years_farming,
-      field === 'logo_image' ? value : profile.logo_image,
-      field === 'cover_image' ? value : profile.cover_image
-    ].filter(Boolean).length;
-
-    const strength = Math.round((fields / 7) * 100);
-    setProfileStrength(strength);
-  };
-
   const handleSave = async () => {
     setSaving(true);
     setMessage({ type: '', text: '' });
 
     try {
-      const { data: existingProfile, error: fetchError } = await supabase
+      // ✅ Fix: Re-fetch image URLs before saving to prevent overwrite
+      const { data: freshImages } = await supabase
+        .from('profiles')
+        .select('cover_image, logo_image')
+        .eq('id', user.id)
+        .single();
+
+      const { data: existingProfile } = await supabase
         .from('profiles')
         .select('id')
         .eq('id', user.id)
         .single();
 
+      // ✅ Fix: Include all fields including operating_hours and transport
+      const profileData = {
+        full_name: profile.full_name,
+        farm_name: profile.farm_name,
+        farm_bio: profile.farm_bio,
+        farm_location: profile.farm_location,
+        years_farming: profile.years_farming ? parseInt(profile.years_farming) : null,
+        phone: profile.phone,
+        cover_image: freshImages?.cover_image || profile.cover_image,
+        logo_image: freshImages?.logo_image || profile.logo_image,
+        gps_latitude: profile.gps_latitude || null,
+        gps_longitude: profile.gps_longitude || null,
+        operating_hours_weekdays: profile.operating_hours_weekdays,
+        operating_hours_saturday: profile.operating_hours_saturday,
+        operating_hours_sunday: profile.operating_hours_sunday,
+        transport_responsibility: profile.transport_responsibility,
+        transport_range: profile.transport_range,
+        transport_notes: profile.transport_notes,
+        updated_at: new Date()
+      };
+
       let profileError;
       if (existingProfile) {
         const { error } = await supabase
           .from('profiles')
-          .update({
-            full_name: profile.full_name,
-            farm_name: profile.farm_name,
-            farm_bio: profile.farm_bio,
-            farm_location: profile.farm_location,
-            years_farming: profile.years_farming ? parseInt(profile.years_farming) : null,
-            phone: profile.phone,
-            cover_image: profile.cover_image,
-            logo_image: profile.logo_image,
-            updated_at: new Date()
-          })
+          .update(profileData)
           .eq('id', user.id);
         profileError = error;
       } else {
@@ -301,15 +378,8 @@ export default function Profile() {
           .from('profiles')
           .insert({
             id: user.id,
-            full_name: profile.full_name,
-            farm_name: profile.farm_name,
-            farm_bio: profile.farm_bio,
-            farm_location: profile.farm_location,
-            years_farming: profile.years_farming ? parseInt(profile.years_farming) : null,
-            phone: profile.phone,
             email: profile.email,
-            cover_image: profile.cover_image,
-            logo_image: profile.logo_image
+            ...profileData
           });
         profileError = error;
       }
@@ -325,18 +395,13 @@ export default function Profile() {
 
       if (metadataError) throw metadataError;
 
-      const { error: livestockError } = await supabase
+      await supabase
         .from('livestock')
         .update({ farm_name: profile.farm_name })
         .eq('user_id', user.id);
 
-      if (livestockError) console.error('Error updating livestock:', livestockError);
-
-      setMessage({ type: 'success', text: 'Profile updated successfully! All your listings have been updated.' });
-
-      setTimeout(() => {
-        window.location.reload();
-      }, 1500);
+      setMessage({ type: 'success', text: 'Profile updated successfully!' });
+      setTimeout(() => window.location.reload(), 1500);
 
     } catch (err) {
       console.error('Save error:', err);
@@ -356,7 +421,6 @@ export default function Profile() {
 
   return (
     <div className="min-h-screen bg-warm-white pb-20">
-      {/* Header */}
       <div className="bg-white border-b sticky top-0 z-30">
         <div className="max-w-2xl mx-auto px-4 py-4 flex items-center gap-4">
           <Link to="/farms">
@@ -376,7 +440,6 @@ export default function Profile() {
       <div className="max-w-2xl mx-auto px-4 py-6">
         <Card>
           <CardContent className="p-6">
-            {/* Message */}
             {message.text && (
               <div className={`mb-6 p-3 rounded-lg flex items-center gap-2 ${message.type === 'success'
                 ? 'bg-green-100 text-green-700'
@@ -391,7 +454,7 @@ export default function Profile() {
               </div>
             )}
 
-            {/* Cover Image Upload with Remove Button */}
+            {/* Cover Image */}
             <div className="mb-6">
               <Label className="text-sm font-medium text-gray-700">Farm Cover Image</Label>
               <div className="relative mt-1 h-40 rounded-xl overflow-hidden bg-gray-100 border-2 border-dashed border-gray-300 hover:border-primary-green transition">
@@ -433,11 +496,11 @@ export default function Profile() {
                   id="coverUpload"
                   type="file"
                   accept="image/*"
-                  onChange={(e) => handleImageUpload(e, 'cover')}
+                  onChange={handleCoverUpload}
                   className="hidden"
-                  disabled={uploading}
+                  disabled={uploadingCover}
                 />
-                {uploading && (
+                {uploadingCover && (
                   <div className="absolute inset-0 bg-white/70 flex items-center justify-center">
                     <div className="animate-spin rounded-full h-8 w-8 border-4 border-primary-green border-t-transparent" />
                   </div>
@@ -446,7 +509,7 @@ export default function Profile() {
               <p className="text-xs text-gray-400 mt-1">Cover image appears on your farm storefront</p>
             </div>
 
-            {/* Logo Image Upload with Remove Button */}
+            {/* Logo */}
             <div className="mb-6 -mt-10 ml-4 relative z-10">
               <div className="relative w-20 h-20 rounded-full bg-white border-4 border-white shadow-md overflow-hidden group">
                 {profile.logo_image ? (
@@ -492,9 +555,9 @@ export default function Profile() {
                   id="logoUpload"
                   type="file"
                   accept="image/*"
-                  onChange={(e) => handleImageUpload(e, 'logo')}
+                  onChange={handleLogoUpload}
                   className="hidden"
-                  disabled={uploading}
+                  disabled={uploadingLogo}
                 />
               </div>
               <p className="text-xs text-gray-400 ml-1">Logo appears on your farm card</p>
@@ -556,20 +619,20 @@ export default function Profile() {
               </div>
             </div>
 
-            {/* View Dashboard Button */}
+            {/* Dashboard Button */}
             <Link to="/Dashboard">
-              <Button className="w-full gap-2 bg-primary-green hover:bg-primary-green-dark mb-6">
+              <Button className="w-full gap-2 bg-primary-green hover:bg-primary-green-dark text-white mb-6">
                 <TrendingUp className="w-4 h-4" />
                 View Full Dashboard
               </Button>
             </Link>
 
-            {/* Get Verified Button */}
+            {/* ✅ Get Verified Button - Gold accent for visibility */}
             {!profile.verified_farmer && (
               <Link to="/GetVerified">
-                <Button className="w-full gap-2 bg-gold-accent hover:bg-gold-accent-light text-white mb-6">
-                  <Shield className="w-4 h-4" />
-                  Get Verified
+                <Button className="w-full gap-2 bg-gold-accent hover:bg-gold-accent-light text-white mb-6 text-base font-semibold py-3">
+                  <Shield className="w-5 h-5" />
+                  Get Verified — Build Buyer Trust
                 </Button>
               </Link>
             )}
@@ -582,7 +645,7 @@ export default function Profile() {
               </div>
             )}
 
-            {/* Important Note */}
+            {/* Note */}
             <div className="mb-6 p-3 bg-amber-50 rounded-lg border border-amber-200">
               <p className="text-sm text-amber-800">
                 <strong>Note:</strong> Your <strong>Farm/Business Name</strong> appears on all your current and future listings.
@@ -611,20 +674,21 @@ export default function Profile() {
                 </p>
               </div>
 
-              {/* Farm Location */}
+              {/* ✅ Google Maps Autocomplete - Farm Location */}
               <div>
                 <Label htmlFor="farmLocation" className="flex items-center gap-2">
                   <MapPin className="w-4 h-4 text-primary-green" />
                   Farm Location
                 </Label>
-                <Input
-                  id="farmLocation"
+                <input
+                  ref={locationInputRef}
                   type="text"
-                  value={profile.farm_location}
+                  defaultValue={profile.farm_location}
                   onChange={(e) => setProfile({ ...profile, farm_location: e.target.value })}
-                  placeholder="e.g., Mpumalanga, South Africa"
-                  className="mt-1"
+                  placeholder="Start typing your farm location..."
+                  className="w-full mt-1 rounded-lg border border-gray-200 px-3 py-2 text-sm focus:border-primary-green focus:ring-1 focus:ring-primary-green outline-none"
                 />
+                <p className="text-xs text-gray-400 mt-1">Start typing and select from Google Maps suggestions</p>
               </div>
 
               {/* Farm Bio */}
@@ -691,6 +755,80 @@ export default function Profile() {
                 />
               </div>
 
+              {/* ✅ Operating Hours */}
+              <div className="space-y-3 pt-3 border-t">
+                <h3 className="text-sm font-semibold text-gray-700 flex items-center gap-2">
+                  <Clock className="w-4 h-4 text-primary-green" />
+                  Operating Hours
+                </h3>
+                <div>
+                  <Label>Weekdays</Label>
+                  <Input
+                    value={profile.operating_hours_weekdays || ''}
+                    onChange={(e) => setProfile({ ...profile, operating_hours_weekdays: e.target.value })}
+                    placeholder="e.g., 8:00 AM - 5:00 PM"
+                    className="mt-1"
+                  />
+                </div>
+                <div>
+                  <Label>Saturday</Label>
+                  <Input
+                    value={profile.operating_hours_saturday || ''}
+                    onChange={(e) => setProfile({ ...profile, operating_hours_saturday: e.target.value })}
+                    placeholder="e.g., 8:00 AM - 1:00 PM"
+                    className="mt-1"
+                  />
+                </div>
+                <div>
+                  <Label>Sunday</Label>
+                  <Input
+                    value={profile.operating_hours_sunday || ''}
+                    onChange={(e) => setProfile({ ...profile, operating_hours_sunday: e.target.value })}
+                    placeholder="e.g., Closed"
+                    className="mt-1"
+                  />
+                </div>
+              </div>
+
+              {/* ✅ Transport */}
+              <div className="space-y-3 pt-3 border-t">
+                <h3 className="text-sm font-semibold text-gray-700 flex items-center gap-2">
+                  <Truck className="w-4 h-4 text-primary-green" />
+                  Transport
+                </h3>
+                <div>
+                  <Label>Transport Responsibility</Label>
+                  <select
+                    value={profile.transport_responsibility || 'Negotiable'}
+                    onChange={(e) => setProfile({ ...profile, transport_responsibility: e.target.value })}
+                    className="w-full mt-1 rounded-lg border border-gray-200 px-3 py-2 text-sm"
+                  >
+                    <option value="Buyer">Buyer Arranges</option>
+                    <option value="Seller">Seller Arranges</option>
+                    <option value="Negotiable">Negotiable</option>
+                  </select>
+                </div>
+                <div>
+                  <Label>Delivery Range</Label>
+                  <Input
+                    value={profile.transport_range || ''}
+                    onChange={(e) => setProfile({ ...profile, transport_range: e.target.value })}
+                    placeholder="e.g., 50km, Nationwide"
+                    className="mt-1"
+                  />
+                </div>
+                <div>
+                  <Label>Transport Notes</Label>
+                  <Textarea
+                    value={profile.transport_notes || ''}
+                    onChange={(e) => setProfile({ ...profile, transport_notes: e.target.value })}
+                    placeholder="Any additional transport information..."
+                    rows={2}
+                    className="mt-1"
+                  />
+                </div>
+              </div>
+
               {/* Email */}
               <div>
                 <Label htmlFor="email" className="flex items-center gap-2">
@@ -715,7 +853,7 @@ export default function Profile() {
               <Button
                 onClick={handleSave}
                 disabled={saving || !profile.farm_name}
-                className="w-full gap-2 bg-primary-green hover:bg-primary-green-dark"
+                className="w-full gap-2 bg-primary-green hover:bg-primary-green-dark text-white"
               >
                 {saving ? (
                   <>
