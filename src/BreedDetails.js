@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate, useSearchParams, Link } from 'react-router-dom';
 import { ArrowLeft, ArrowRight, MapPin, Star, Phone, Bookmark, Calendar, Weight, Info, Users, Baby, Hash, MessageCircle, Building2, CheckCircle, Package, Percent } from 'lucide-react';
-import { Link } from 'react-router-dom';
 import { supabase } from './supabaseClient';
 import { Card, CardContent } from "./components/ui/card";
 import { Button } from "./components/ui/button";
@@ -13,12 +13,12 @@ import LocationMap from './components/LocationMap';
 import VerificationBadge from './components/VerificationBadge';
 
 export default function BreedDetails() {
-  const urlParams = new URLSearchParams(window.location.search);
-  const livestockId = urlParams.get('id');
+  const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const livestockId = searchParams.get('id');
 
   const [user, setUser] = useState(null);
   const [livestock, setLivestock] = useState(null);
-  const [seller, setSeller] = useState(null);
   const [isInWishlist, setIsInWishlist] = useState(false);
   const [reviews, setReviews] = useState([]);
   const [showReviewForm, setShowReviewForm] = useState(false);
@@ -30,10 +30,15 @@ export default function BreedDetails() {
   const [lightboxOpen, setLightboxOpen] = useState(false);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [activeTab, setActiveTab] = useState('details');
+  const [message, setMessage] = useState({ type: '', text: '' });
 
   useEffect(() => {
     const getUser = async () => {
       const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        // Don't redirect immediately, let the page load for public viewing
+        // Only redirect if user needs to interact (like messaging/wishlist)
+      }
       setUser(user);
     };
     getUser();
@@ -41,7 +46,10 @@ export default function BreedDetails() {
 
   useEffect(() => {
     const loadLivestock = async () => {
-      if (!livestockId) return;
+      if (!livestockId) {
+        navigate('/livestock');
+        return;
+      }
       setIsLoading(true);
 
       const { data: livestockData, error: livestockError } = await supabase
@@ -70,22 +78,39 @@ export default function BreedDetails() {
 
       setLivestock(livestockData);
 
-      // Update view count
+      // Increment view count using RPC to avoid race conditions
       if (livestockData) {
-        await supabase
-          .from('livestock')
-          .update({ views_count: (livestockData.views_count || 0) + 1 })
-          .eq('id', livestockId);
-        setLivestock({ ...livestockData, views_count: (livestockData.views_count || 0) + 1 });
+        try {
+          const { error: viewError } = await supabase
+            .rpc('increment_views', { p_id: parseInt(livestockId) });
+
+          if (viewError) {
+            console.error('Error incrementing views:', viewError);
+            // Fallback: increment locally if RPC fails
+            setLivestock({
+              ...livestockData,
+              views_count: (livestockData.views_count || 0) + 1
+            });
+          } else {
+            // RPC succeeded, update local state with incremented value
+            setLivestock({
+              ...livestockData,
+              views_count: (livestockData.views_count || 0) + 1
+            });
+          }
+        } catch (err) {
+          console.error('Error incrementing views:', err);
+          // Fallback: increment locally
+          setLivestock({
+            ...livestockData,
+            views_count: (livestockData.views_count || 0) + 1
+          });
+        }
       }
 
       if (livestockData.user_id) {
-        const { data: sellerData } = await supabase
-          .from('profiles')
-          .select('*')
-          .eq('id', livestockData.user_id)
-          .single();
-        setSeller(sellerData);
+        // Seller data is already included in the join above via profiles!user_id
+        // No need for a separate fetch
       }
 
       const { data: reviewsData } = await supabase
@@ -109,7 +134,7 @@ export default function BreedDetails() {
     };
 
     loadLivestock();
-  }, [livestockId, user]);
+  }, [livestockId, user, navigate]);
 
   useEffect(() => {
     const getOrCreateConversation = async () => {
@@ -143,14 +168,15 @@ export default function BreedDetails() {
 
   const toggleWishlist = async () => {
     if (!user) {
-      alert('Please login to save to wishlist');
-      window.location.href = '/login';
+      setMessage({ type: 'error', text: 'Please login to save to wishlist' });
+      setTimeout(() => navigate('/login'), 1500);
       return;
     }
     if (isInWishlist) {
       await supabase.from('wishlist').delete().eq('livestock_id', livestockId).eq('user_id', user.id);
       setIsInWishlist(false);
-      alert('Removed from wishlist');
+      setMessage({ type: 'success', text: 'Removed from wishlist' });
+      setTimeout(() => setMessage({ type: '', text: '' }), 2000);
     } else {
       await supabase.from('wishlist').insert([{
         livestock_id: livestockId,
@@ -159,15 +185,17 @@ export default function BreedDetails() {
         original_price: livestock.price
       }]);
       setIsInWishlist(true);
-      alert('Added to wishlist');
+      setMessage({ type: 'success', text: 'Added to wishlist' });
+      setTimeout(() => setMessage({ type: '', text: '' }), 2000);
     }
   };
 
   const submitReview = async () => {
     if (!reviewerName) {
-      alert('Please enter your name');
+      setMessage({ type: 'error', text: 'Please enter your name' });
       return;
     }
+
     const { data, error } = await supabase
       .from('reviews')
       .insert([{
@@ -178,19 +206,20 @@ export default function BreedDetails() {
         user_id: user?.id || null
       }])
       .select();
+
     if (error) {
       console.error('Review error:', error);
-      alert('Failed to submit review');
+      setMessage({ type: 'error', text: 'Failed to submit review' });
     } else {
-      const allRatings = [...reviews, { rating }];
-      const avgRating = allRatings.reduce((sum, r) => sum + r.rating, 0) / allRatings.length;
-      await supabase.from('livestock').update({ average_rating: avgRating }).eq('id', livestockId);
+      // The trigger_update_avg_rating handles recalculating averages automatically
+      // No need to manually update livestock or profiles here
       setReviews([data[0], ...reviews]);
       setShowReviewForm(false);
       setComment('');
       setReviewerName('');
       setRating(5);
-      alert('Review submitted!');
+      setMessage({ type: 'success', text: 'Review submitted!' });
+      setTimeout(() => setMessage({ type: '', text: '' }), 2000);
     }
   };
 
@@ -271,6 +300,16 @@ export default function BreedDetails() {
       </div>
 
       <div className="max-w-4xl mx-auto px-4 py-6 space-y-5">
+        {/* Message */}
+        {message.text && (
+          <div className={`p-3 rounded-lg text-sm ${message.type === 'success'
+              ? 'bg-green-100 text-green-700'
+              : 'bg-red-100 text-red-700'
+            }`}>
+            {message.text}
+          </div>
+        )}
+
         {/* Image Section */}
         <Card className="overflow-hidden rounded-xl">
           {livestock.video_url ? (
@@ -344,7 +383,7 @@ export default function BreedDetails() {
           </Card>
         </Link>
 
-        {/* Main Info Card - NO LIKE OR VIEWS */}
+        {/* Main Info Card */}
         <Card>
           <CardContent className="p-5 space-y-4">
             <div className="flex items-start justify-between">
@@ -393,6 +432,10 @@ export default function BreedDetails() {
               <Badge variant="secondary" className="gap-1">
                 <Star className="w-3 h-3" />
                 {avgRating > 0 ? avgRating : 'No reviews'}
+              </Badge>
+              <Badge variant="secondary" className="gap-1 bg-blue-50 text-blue-700">
+                <Eye className="w-3 h-3" />
+                {livestock.views_count || 0} views
               </Badge>
             </div>
 

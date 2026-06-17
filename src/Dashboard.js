@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Package, TrendingUp, DollarSign, Users, Building2, Calendar, Award, BarChart3 } from 'lucide-react';
 import { supabase } from './supabaseClient';
 import { Card, CardContent } from "./components/ui/card";
@@ -8,55 +8,103 @@ import { Badge } from "./components/ui/Badge";
 import { Table, TableHeader, TableBody, TableHead, TableRow, TableCell } from "./components/ui/table";
 
 export default function Dashboard() {
+  const navigate = useNavigate();
   const [user, setUser] = useState(null);
   const [profile, setProfile] = useState(null);
   const [listings, setListings] = useState([]);
+  const [stats, setStats] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    const getUser = async () => {
+    const loadData = async () => {
       const { data: { user } } = await supabase.auth.getUser();
-      if (user) {
-        setUser(user);
 
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('farm_name, full_name, verified_farmer, years_farming, total_animals_sold')
-          .eq('id', user.id)
-          .single();
-
-        if (profile) {
-          setProfile(profile);
-        }
-
-        loadData(user.id);
-      } else {
-        window.location.href = '/login';
+      if (!user) {
+        navigate('/login');
+        return;
       }
+
+      setUser(user);
+
+      // Load profile
+      const { data: profileData } = await supabase
+        .from('profiles')
+        .select('farm_name, full_name, verified_farmer, years_farming, total_animals_sold')
+        .eq('id', user.id)
+        .single();
+
+      if (profileData) {
+        setProfile(profileData);
+      }
+
+      // Use RPC for farm stats (one call instead of loading all rows)
+      const { data: statsData, error: statsError } = await supabase
+        .rpc('get_farm_stats', { p_user_id: user.id });
+
+      if (statsError) {
+        console.error('Error loading farm stats:', statsError);
+      } else if (statsData && statsData.length > 0) {
+        setStats(statsData[0]);
+      }
+
+      // Load listings for the performance table only
+      const { data: listingsData } = await supabase
+        .from('livestock')
+        .select('id, name, breed_type, price, quantity, is_bundle, bundle_discount, status, created_at')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false });
+
+      setListings(listingsData || []);
+      setIsLoading(false);
     };
-    getUser();
-  }, []);
 
-  const loadData = async (userId) => {
-    setIsLoading(true);
+    loadData();
+  }, [navigate]);
 
-    const { data: listingsData } = await supabase
-      .from('livestock')
-      .select('*')
-      .eq('user_id', userId);
+  const farmName = profile?.farm_name || profile?.full_name || 'My Farm';
+  const isVerified = profile?.verified_farmer || false;
+  const yearsFarming = profile?.years_farming || 0;
 
-    setListings(listingsData || []);
-    setIsLoading(false);
+  const StatCard = ({ title, value, icon: Icon, color, subtitle }) => {
+    // Handle value formatting safely
+    const displayValue = typeof value === 'number' ? value.toLocaleString() : value || '0';
+
+    return (
+      <Card className="overflow-hidden">
+        <CardContent className="p-0">
+          <div className="p-5">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-muted-foreground mb-1">{title}</p>
+                <p className="text-3xl font-bold">{displayValue}</p>
+                {subtitle && <p className="text-xs text-muted-foreground mt-1">{subtitle}</p>}
+              </div>
+              <div className={`p-3 rounded-full ${color}`}>
+                <Icon className="w-5 h-5 text-white" />
+              </div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    );
   };
 
-  const totalListings = listings.length;
-  const activeListings = listings.filter(l => l.status !== 'sold').length;
-  const soldListings = listings.filter(l => l.status === 'sold').length;
-  const totalValue = listings.reduce((sum, l) => sum + (Number(l.price) || 0) * (l.quantity || 1), 0);
-  const soldValue = listings.filter(l => l.status === 'sold').reduce((sum, l) => sum + (Number(l.price) || 0) * (l.quantity || 1), 0);
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-warm-white flex items-center justify-center">
+        <div className="animate-spin rounded-full h-10 w-10 border-4 border-primary-green border-t-transparent" />
+      </div>
+    );
+  }
 
-  const bundleCount = listings.filter(l => l.is_bundle === true).length;
-  const totalAnimals = listings.reduce((sum, l) => sum + (l.quantity || 1), 0);
+  // Use stats from RPC, fallback to calculated values
+  const totalListings = stats?.total_listings || 0;
+  const activeListings = stats?.active_listings || 0;
+  const soldListings = stats?.sold_listings || 0;
+  const totalAnimals = stats?.total_animals || 0;
+  const bundleCount = stats?.bundles_count || 0;
+  const totalValue = stats?.total_value || 0;
+  const soldValue = stats?.sold_value || 0;
 
   const performanceData = listings.map(listing => ({
     id: listing.id,
@@ -69,41 +117,8 @@ export default function Dashboard() {
     status: listing.status
   }));
 
-  const farmName = profile?.farm_name || profile?.full_name || 'My Farm';
-  const isVerified = profile?.verified_farmer || false;
-  const yearsFarming = profile?.years_farming || 0;
-  const animalsSold = profile?.total_animals_sold || 0;
-
-  const StatCard = ({ title, value, icon: Icon, color, subtitle }) => (
-    <Card className="overflow-hidden">
-      <CardContent className="p-0">
-        <div className="p-5">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-muted-foreground mb-1">{title}</p>
-              <p className="text-3xl font-bold">{value.toLocaleString()}</p>
-              {subtitle && <p className="text-xs text-muted-foreground mt-1">{subtitle}</p>}
-            </div>
-            <div className={`p-3 rounded-full ${color}`}>
-              <Icon className="w-5 h-5 text-white" />
-            </div>
-          </div>
-        </div>
-      </CardContent>
-    </Card>
-  );
-
-  if (isLoading) {
-    return (
-      <div className="min-h-screen bg-warm-white flex items-center justify-center">
-        <div className="animate-spin rounded-full h-10 w-10 border-4 border-primary-green border-t-transparent" />
-      </div>
-    );
-  }
-
   return (
     <div className="min-h-screen bg-warm-white pb-20">
-      {/* Header */}
       <div className="bg-white border-b sticky top-0 z-30">
         <div className="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">
           <div className="flex items-center gap-4">
@@ -120,6 +135,12 @@ export default function Dashboard() {
                 {isVerified && (
                   <Badge className="bg-primary-green text-white text-xs">Verified</Badge>
                 )}
+                {yearsFarming > 0 && (
+                  <span className="text-xs text-gray-400 flex items-center gap-1">
+                    <Calendar className="w-3 h-3" />
+                    {yearsFarming} years
+                  </span>
+                )}
               </div>
             </div>
           </div>
@@ -127,7 +148,7 @@ export default function Dashboard() {
       </div>
 
       <div className="max-w-7xl mx-auto px-4 py-6 space-y-6">
-        {/* Stats Grid - No Likes, No Views */}
+        {/* Stats Grid - Using RPC data */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
           <StatCard
             title="Total Listings"
@@ -190,7 +211,7 @@ export default function Dashboard() {
                 </div>
                 <div className="flex justify-between py-2 border-b">
                   <span className="text-sm text-muted-foreground">Animals Sold</span>
-                  <span className="font-semibold">{animalsSold}</span>
+                  <span className="font-semibold">{profile?.total_animals_sold || 0}</span>
                 </div>
                 <div className="flex justify-between py-2">
                   <span className="text-sm text-muted-foreground">Listings Sold</span>
@@ -201,7 +222,7 @@ export default function Dashboard() {
           </Card>
         </div>
 
-        {/* Performance Table - No Views Column */}
+        {/* Performance Table */}
         <Card>
           <CardContent className="p-0">
             <div className="p-5 border-b">

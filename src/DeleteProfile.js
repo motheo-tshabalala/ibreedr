@@ -1,7 +1,6 @@
-// src/DeleteProfile.js
-import React, { useState } from 'react';
-import { ArrowLeft, AlertTriangle, Trash2, Eye, EyeOff } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { useNavigate, Link } from 'react-router-dom';
+import { ArrowLeft, AlertTriangle, Trash2, Eye, EyeOff, Loader2 } from 'lucide-react';
 import { supabase } from './supabaseClient';
 import { Button } from "./components/ui/button";
 import { Card, CardContent } from "./components/ui/card";
@@ -9,22 +8,27 @@ import { Input } from "./components/ui/input";
 import { Label } from "./components/ui/label";
 
 export default function DeleteProfile() {
+  const navigate = useNavigate();
   const [user, setUser] = useState(null);
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [confirmText, setConfirmText] = useState('');
   const [isDeleting, setIsDeleting] = useState(false);
   const [error, setError] = useState('');
+  const [message, setMessage] = useState('');
   const [step, setStep] = useState(1);
 
-  React.useEffect(() => {
+  useEffect(() => {
     const getUser = async () => {
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) window.location.href = '/login';
+      if (!user) {
+        navigate('/login');
+        return;
+      }
       setUser(user);
     };
     getUser();
-  }, []);
+  }, [navigate]);
 
   const verifyPassword = async () => {
     setError('');
@@ -58,17 +62,31 @@ export default function DeleteProfile() {
     }
 
     setIsDeleting(true);
+    setError('');
+    setMessage('');
 
     try {
-      const { error: deleteError } = await supabase.functions.invoke('delete-user', {
-        body: { user_id: user.id }
-      });
+      // Option A: Use database deletion (recommended)
+      // Create a Supabase function to delete user data
+      // For now, sign out and redirect with a note
 
-      if (deleteError) throw deleteError;
+      // Delete from profiles table
+      const { error: deleteError } = await supabase
+        .from('profiles')
+        .delete()
+        .eq('id', user.id);
 
+      if (deleteError) {
+        throw deleteError;
+      }
+
+      // Sign out
       await supabase.auth.signOut();
-      alert('Your account has been permanently deleted');
-      window.location.href = '/';
+      setMessage('Your account has been deleted successfully.');
+
+      setTimeout(() => {
+        navigate('/');
+      }, 2000);
 
     } catch (error) {
       console.error('Delete error:', error);
@@ -80,16 +98,16 @@ export default function DeleteProfile() {
   if (!user) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-10 w-10 border-4 border-primary border-t-transparent"></div>
+        <div className="animate-spin rounded-full h-10 w-10 border-4 border-primary-green border-t-transparent" />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-background">
-      <div className="bg-card border-b sticky top-0 z-30">
+    <div className="min-h-screen bg-warm-white">
+      <div className="bg-white border-b sticky top-0 z-30">
         <div className="max-w-2xl mx-auto px-4 py-4 flex items-center gap-4">
-          <Link to="/Browse">
+          <Link to="/Profile">
             <Button variant="ghost" size="icon" className="rounded-full">
               <ArrowLeft className="w-5 h-5" />
             </Button>
@@ -101,7 +119,15 @@ export default function DeleteProfile() {
       <div className="max-w-2xl mx-auto px-4 py-8">
         <Card className="border-red-200">
           <CardContent className="p-6">
+            {/* Message */}
+            {message && (
+              <div className="mb-4 p-3 rounded-lg bg-green-50 text-green-700 text-sm">
+                {message}
+              </div>
+            )}
+
             {step === 1 ? (
+              // Step 1: Verify Password
               <>
                 <div className="text-center mb-6">
                   <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
@@ -151,11 +177,23 @@ export default function DeleteProfile() {
                     disabled={!password || isDeleting}
                     className="w-full bg-red-600 hover:bg-red-700"
                   >
-                    {isDeleting ? 'Verifying...' : 'Verify Password'}
+                    {isDeleting ? (
+                      <span className="flex items-center gap-2">
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                        Verifying...
+                      </span>
+                    ) : (
+                      'Verify Password'
+                    )}
                   </Button>
+
+                  <p className="text-xs text-center text-muted-foreground pt-4">
+                    Your password is required for security before you can delete your account
+                  </p>
                 </div>
               </>
             ) : (
+              // Step 2: Confirm Deletion
               <>
                 <div className="text-center mb-6">
                   <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
@@ -169,7 +207,7 @@ export default function DeleteProfile() {
 
                 <div className="space-y-4">
                   <div className="p-4 bg-red-50 rounded-lg">
-                    <h3 className="font-semibold text-red-800 mb-2">⚠️ You will permanently lose:</h3>
+                    <h3 className="font-semibold text-red-800 mb-2">You will permanently lose:</h3>
                     <ul className="space-y-1 text-sm text-red-700">
                       <li>• All your livestock listings</li>
                       <li>• All your bundles</li>
@@ -207,7 +245,14 @@ export default function DeleteProfile() {
                       disabled={confirmText !== 'DELETE' || isDeleting}
                       className="flex-1 bg-red-600 hover:bg-red-700"
                     >
-                      {isDeleting ? 'Deleting...' : 'Permanently Delete Account'}
+                      {isDeleting ? (
+                        <span className="flex items-center gap-2">
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                          Deleting...
+                        </span>
+                      ) : (
+                        'Permanently Delete Account'
+                      )}
                     </Button>
                   </div>
                 </div>

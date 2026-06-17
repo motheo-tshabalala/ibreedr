@@ -1,13 +1,13 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate, Link } from 'react-router-dom';
 import { ArrowLeft, Upload, X, Video, Save, Package, Percent, Users } from 'lucide-react';
-import { Link, useNavigate } from 'react-router-dom';
 import { supabase } from './supabaseClient';
 import { Card, CardContent } from "./components/ui/card";
-import { Badge } from "./components/ui/Badge";
 import { Button } from "./components/ui/button";
 import { Input } from "./components/ui/input";
 import { Label } from "./components/ui/label";
 import { Textarea } from "./components/ui/textarea";
+import { Badge } from "./components/ui/Badge";
 
 const ANIMAL_TYPES = [
   { value: 'cattle', label: 'Cattle' },
@@ -21,21 +21,19 @@ const ANIMAL_TYPES = [
 ];
 
 export default function EditListing() {
+  const navigate = useNavigate();
   const urlParams = new URLSearchParams(window.location.search);
   const listingId = urlParams.get('id');
-  const navigate = useNavigate();
 
   const [user, setUser] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+  const [message, setMessage] = useState({ type: '', text: '' });
   const [formData, setFormData] = useState({
-    // Farm info
     farm_name: '',
     seller_name: '',
     seller_phone: '',
     location: '',
-
-    // Listing details
     name: '',
     animal_type: '',
     breed_type: '',
@@ -67,14 +65,14 @@ export default function EditListing() {
     const getUser = async () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
-        window.location.href = '/login';
+        navigate('/login');
         return;
       }
       setUser(user);
       loadListing(user.id);
     };
     getUser();
-  }, []);
+  }, [navigate]);
 
   const loadListing = async (userId) => {
     setIsLoading(true);
@@ -88,17 +86,14 @@ export default function EditListing() {
 
     if (error || !data) {
       console.error('Error loading listing:', error);
-      alert('Failed to load listing');
-      navigate('/MyListings');
+      setMessage({ type: 'error', text: 'Failed to load listing' });
+      setTimeout(() => navigate('/MyListings'), 1500);
     } else {
       setFormData({
-        // Farm info
         farm_name: data.farm_name || '',
         seller_name: data.seller_name || '',
         seller_phone: data.seller_phone || '',
         location: data.location || '',
-
-        // Listing details
         name: data.name || '',
         animal_type: data.animal_type || '',
         breed_type: data.breed_type || '',
@@ -156,9 +151,11 @@ export default function EditListing() {
         ...prev,
         images: [...prev.images, ...imageUrls]
       }));
+      setMessage({ type: 'success', text: 'Images uploaded successfully!' });
+      setTimeout(() => setMessage({ type: '', text: '' }), 2000);
     } catch (error) {
       console.error('Upload failed:', error);
-      alert('Failed to upload images: ' + error.message);
+      setMessage({ type: 'error', text: 'Failed to upload images: ' + error.message });
     }
   };
 
@@ -172,16 +169,15 @@ export default function EditListing() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setIsSaving(true);
+    setMessage({ type: '', text: '' });
 
     try {
+      // Remove total_price from updateData - DB trigger handles it
       const updateData = {
-        // Farm info
         farm_name: formData.farm_name,
         seller_name: formData.seller_name,
         seller_phone: formData.seller_phone,
         location: formData.location,
-
-        // Listing details
         name: formData.name,
         animal_type: formData.animal_type,
         breed_type: formData.breed_type,
@@ -197,6 +193,7 @@ export default function EditListing() {
         quantity: parseInt(formData.quantity) || 1,
         is_bundle: formData.is_bundle || false,
         bundle_discount: formData.bundle_discount || 0,
+        // total_price is calculated by DB trigger - DO NOT SEND IT
         health_info: formData.health_info,
         notes: formData.notes,
         images: formData.images,
@@ -215,11 +212,15 @@ export default function EditListing() {
         .eq('id', listingId);
 
       if (error) throw error;
-      alert('Listing updated successfully!');
-      navigate('/MyListings');
+
+      setMessage({ type: 'success', text: 'Listing updated successfully!' });
+      setTimeout(() => {
+        navigate('/MyListings');
+      }, 1500);
+
     } catch (err) {
       console.error('Update error:', err);
-      alert('Error: ' + err.message);
+      setMessage({ type: 'error', text: 'Error: ' + err.message });
     } finally {
       setIsSaving(false);
     }
@@ -237,7 +238,7 @@ export default function EditListing() {
   if (isLoading) {
     return (
       <div className="min-h-screen bg-warm-white flex items-center justify-center">
-        <div className="animate-spin rounded-full h-10 w-10 border-4 border-primary-green border-t-transparent"></div>
+        <div className="animate-spin rounded-full h-10 w-10 border-4 border-primary-green border-t-transparent" />
       </div>
     );
   }
@@ -262,6 +263,16 @@ export default function EditListing() {
       </div>
 
       <div className="max-w-4xl mx-auto px-4 py-8">
+        {/* Message */}
+        {message.text && (
+          <div className={`mb-4 p-3 rounded-lg text-sm ${message.type === 'success'
+              ? 'bg-green-100 text-green-700'
+              : 'bg-red-100 text-red-700'
+            }`}>
+            {message.text}
+          </div>
+        )}
+
         <form onSubmit={handleSubmit} className="space-y-6">
           {/* Farm Information */}
           <div className="bg-white rounded-xl border p-6 space-y-4">

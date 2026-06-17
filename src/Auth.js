@@ -1,13 +1,14 @@
 import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { supabase } from './supabaseClient';
 import { Card, CardContent } from "./components/ui/card";
 import { Button } from "./components/ui/button";
 import { Input } from "./components/ui/input";
 import { Label } from "./components/ui/label";
-import { Building2, Mail, Lock, User, ArrowRight, CheckCircle, AlertCircle } from 'lucide-react';
+import { Building2, Mail, Lock, User, CheckCircle, AlertCircle } from 'lucide-react';
 
 export default function Auth() {
+  const navigate = useNavigate();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [fullName, setFullName] = useState('');
@@ -25,7 +26,6 @@ export default function Auth() {
     setMessage('');
 
     if (resetMode) {
-      // Password reset
       const { error } = await supabase.auth.resetPasswordForEmail(email, {
         redirectTo: window.location.origin + '/login',
       });
@@ -40,16 +40,14 @@ export default function Auth() {
     }
 
     if (isLogin) {
-      // Login
       const { error } = await supabase.auth.signInWithPassword({ email, password });
       if (error) {
         setError(error.message);
       } else {
-        window.location.href = '/';
+        navigate('/');
       }
     } else {
-      // Signup
-      const { data, error } = await supabase.auth.signUp({
+      const { error } = await supabase.auth.signUp({
         email,
         password,
         options: {
@@ -63,7 +61,6 @@ export default function Auth() {
         setError(error.message);
       } else {
         setMessage('Account created! Please check your email to confirm.');
-        // Auto-create profile is handled by trigger
         setTimeout(() => setIsLogin(true), 3000);
       }
     }

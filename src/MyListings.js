@@ -1,16 +1,19 @@
 import React, { useState, useEffect } from 'react';
-import { ArrowLeft, Plus, Trash2, Eye, Heart, Package, Edit, Building2, MapPin, Users, Percent } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
+import { ArrowLeft, Plus, Trash2, Eye, Edit, Building2, Users, Percent } from 'lucide-react';
 import { supabase } from './supabaseClient';
 import { Card, CardContent } from "./components/ui/card";
 import { Button } from "./components/ui/button";
 import { Badge } from "./components/ui/Badge";
 
 export default function MyListings() {
+  const navigate = useNavigate();
   const [user, setUser] = useState(null);
   const [profile, setProfile] = useState(null);
   const [myListings, setMyListings] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [deletingId, setDeletingId] = useState(null);
+  const [message, setMessage] = useState({ type: '', text: '' });
 
   useEffect(() => {
     const getUserAndProfile = async () => {
@@ -18,7 +21,6 @@ export default function MyListings() {
       if (user) {
         setUser(user);
 
-        // Load profile for farm name
         const { data: profile } = await supabase
           .from('profiles')
           .select('farm_name, full_name')
@@ -31,11 +33,11 @@ export default function MyListings() {
 
         loadListings(user.id);
       } else {
-        window.location.href = '/login';
+        navigate('/login');
       }
     };
     getUserAndProfile();
-  }, []);
+  }, [navigate]);
 
   const loadListings = async (userId) => {
     const { data, error } = await supabase
@@ -49,13 +51,21 @@ export default function MyListings() {
 
   const deleteListing = async (id) => {
     if (!window.confirm('Are you sure you want to delete this?')) return;
+
+    setDeletingId(id);
+    setMessage({ type: '', text: '' });
+
     const { error } = await supabase.from('livestock').delete().eq('id', id);
     if (error) {
-      alert('Failed to delete: ' + error.message);
-    } else {
-      setMyListings(myListings.filter(l => l.id !== id));
-      alert('Deleted successfully');
+      setMessage({ type: 'error', text: 'Failed to delete: ' + error.message });
+      setDeletingId(null);
+      return;
     }
+
+    setMyListings(myListings.filter(l => l.id !== id));
+    setMessage({ type: 'success', text: 'Deleted successfully' });
+    setDeletingId(null);
+    setTimeout(() => setMessage({ type: '', text: '' }), 3000);
   };
 
   const updateStatus = async (id, newStatus) => {
@@ -64,11 +74,12 @@ export default function MyListings() {
       .update({ status: newStatus })
       .eq('id', id);
     if (error) {
-      alert('Failed to update: ' + error.message);
-    } else {
-      setMyListings(myListings.map(l => l.id === id ? { ...l, status: newStatus } : l));
-      alert(`Listing marked as ${newStatus}`);
+      setMessage({ type: 'error', text: 'Failed to update: ' + error.message });
+      return;
     }
+    setMyListings(myListings.map(l => l.id === id ? { ...l, status: newStatus } : l));
+    setMessage({ type: 'success', text: `Listing marked as ${newStatus}` });
+    setTimeout(() => setMessage({ type: '', text: '' }), 3000);
   };
 
   const displayAge = (livestock) => {
@@ -115,7 +126,7 @@ export default function MyListings() {
   if (isLoading) {
     return (
       <div className="min-h-screen bg-warm-white flex items-center justify-center">
-        <div className="animate-spin rounded-full h-10 w-10 border-4 border-primary-green border-t-transparent"></div>
+        <div className="animate-spin rounded-full h-10 w-10 border-4 border-primary-green border-t-transparent" />
       </div>
     );
   }
@@ -150,6 +161,16 @@ export default function MyListings() {
       </div>
 
       <div className="max-w-7xl mx-auto px-4 py-6">
+        {/* Message */}
+        {message.text && (
+          <div className={`mb-4 p-3 rounded-lg text-sm ${message.type === 'success'
+              ? 'bg-green-100 text-green-700'
+              : 'bg-red-100 text-red-700'
+            }`}>
+            {message.text}
+          </div>
+        )}
+
         {myListings.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-16 text-center">
             <div className="text-5xl mb-4 opacity-50">📋</div>
@@ -248,8 +269,18 @@ export default function MyListings() {
                           Mark Sold
                         </Button>
                       )}
-                      <Button variant="outline" size="icon" className="text-red-500 hover:text-red-700" onClick={() => deleteListing(listing.id)}>
-                        <Trash2 className="w-4 h-4" />
+                      <Button
+                        variant="outline"
+                        size="icon"
+                        className="text-red-500 hover:text-red-700"
+                        onClick={() => deleteListing(listing.id)}
+                        disabled={deletingId === listing.id}
+                      >
+                        {deletingId === listing.id ? (
+                          <div className="animate-spin rounded-full h-4 w-4 border-2 border-red-500 border-t-transparent" />
+                        ) : (
+                          <Trash2 className="w-4 h-4" />
+                        )}
                       </Button>
                     </div>
                   </CardContent>

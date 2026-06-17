@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, Upload, X, Video, ChevronRight, ChevronLeft, Check, Building2, MapPin, Phone, User, Package, Percent } from 'lucide-react';
-import { Link } from 'react-router-dom';
 import { supabase } from './supabaseClient';
 import { Card, CardContent } from "./components/ui/card";
 import { Button } from "./components/ui/button";
@@ -22,6 +22,7 @@ const ANIMAL_TYPES = [
 const QUANTITY_OPTIONS = [1, 5, 10, 20, 50];
 
 export default function SellerUpload() {
+  const navigate = useNavigate();
   const [user, setUser] = useState(null);
   const [profile, setProfile] = useState(null);
   const [currentStep, setCurrentStep] = useState(1);
@@ -30,6 +31,7 @@ export default function SellerUpload() {
   const [videoUploading, setVideoUploading] = useState(false);
   const [marketSuggestion, setMarketSuggestion] = useState(null);
   const [showPriceSuggestion, setShowPriceSuggestion] = useState(false);
+  const [message, setMessage] = useState({ type: '', text: '' });
 
   const [formData, setFormData] = useState({
     farm_name: '',
@@ -69,7 +71,7 @@ export default function SellerUpload() {
     const loadUserAndProfile = async () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
-        window.location.href = '/login';
+        navigate('/login');
         return;
       }
       setUser(user);
@@ -93,44 +95,56 @@ export default function SellerUpload() {
     };
 
     loadUserAndProfile();
-  }, []);
+  }, [navigate]);
 
-  // Fetch price suggestion
+  // Fetch price suggestion from RPC
   const fetchPriceSuggestion = useCallback(async () => {
     const animalType = formData.animal_type;
-    if (!animalType) return;
+    if (!animalType) {
+      setShowPriceSuggestion(false);
+      return;
+    }
 
     try {
-      // Simple price suggestion based on animal type
-      const suggestions = {
-        cattle: { min: 15000, max: 25000, avg: 20000, demand: 'high', trend: 'up' },
-        goats: { min: 3000, max: 6000, avg: 4500, demand: 'medium', trend: 'stable' },
-        sheep: { min: 2500, max: 5000, avg: 3800, demand: 'medium', trend: 'up' },
-        pigs: { min: 4000, max: 7000, avg: 5500, demand: 'medium', trend: 'stable' },
-        chickens: { min: 50, max: 80, avg: 65, demand: 'high', trend: 'up' },
-        horses: { min: 20000, max: 50000, avg: 35000, demand: 'low', trend: 'stable' }
-      };
+      const { data, error } = await supabase
+        .rpc('get_price_suggestion', {
+          p_animal_type: animalType,
+          p_province: formData.location?.split(',')[0]?.trim() || null
+        });
 
-      const suggestion = suggestions[animalType];
-      if (suggestion) {
+      if (error) {
+        console.error('Error fetching price suggestion:', error);
+        setShowPriceSuggestion(false);
+        return;
+      }
+
+      if (data && data.length > 0) {
+        const suggestion = data[0];
         setMarketSuggestion({
-          range: { min: suggestion.min, max: suggestion.max },
-          avg: suggestion.avg,
-          demand: suggestion.demand,
-          trend: suggestion.trend,
-          sample_size: 10,
-          confidence: 0.7,
+          range: {
+            min: suggestion.min_price,
+            max: suggestion.max_price
+          },
+          avg: suggestion.avg_price,
+          demand: suggestion.demand_level,
+          trend: suggestion.trend_direction,
+          trend_percentage: suggestion.trend_percentage,
+          sample_size: suggestion.sample_size,
+          confidence: suggestion.confidence_score,
           suggested_sweet_spot: {
-            min: suggestion.avg * 0.9,
-            max: suggestion.avg * 1.1
+            min: suggestion.avg_price * 0.9,
+            max: suggestion.avg_price * 1.1
           }
         });
         setShowPriceSuggestion(true);
+      } else {
+        setShowPriceSuggestion(false);
       }
     } catch (error) {
       console.error('Error fetching price suggestion:', error);
+      setShowPriceSuggestion(false);
     }
-  }, [formData.animal_type]);
+  }, [formData.animal_type, formData.location]);
 
   useEffect(() => {
     if (formData.animal_type) {
@@ -171,7 +185,7 @@ export default function SellerUpload() {
       }));
     } catch (error) {
       console.error('Upload failed:', error);
-      alert('Failed to upload images: ' + error.message);
+      setMessage({ type: 'error', text: 'Failed to upload images: ' + error.message });
     } finally {
       setUploading(false);
     }
@@ -182,7 +196,7 @@ export default function SellerUpload() {
     if (!file) return;
 
     if (!file.type.startsWith('video/')) {
-      alert('Please upload a video file');
+      setMessage({ type: 'error', text: 'Please upload a video file' });
       return;
     }
 
@@ -203,10 +217,10 @@ export default function SellerUpload() {
         .getPublicUrl(fileName);
 
       setFormData(prev => ({ ...prev, video_url: publicUrl }));
-      alert('Video uploaded successfully!');
+      setMessage({ type: 'success', text: 'Video uploaded successfully!' });
     } catch (error) {
       console.error('Video upload failed:', error);
-      alert('Failed to upload video: ' + error.message);
+      setMessage({ type: 'error', text: 'Failed to upload video: ' + error.message });
     } finally {
       setVideoUploading(false);
     }
@@ -235,17 +249,14 @@ export default function SellerUpload() {
 
   const handleSubmit = async () => {
     setSubmitting(true);
+    setMessage({ type: '', text: '' });
 
     try {
       const pricePerHead = parseFloat(formData.price) || 0;
       const quantity = parseInt(formData.quantity) || 1;
       const discount = parseFloat(formData.bundle_discount) || 0;
 
-      let totalPrice = pricePerHead * quantity;
-      if (formData.is_bundle && discount > 0) {
-        totalPrice = totalPrice * (1 - discount / 100);
-      }
-
+      // total_price is calculated by DB trigger - DO NOT send it
       const submitData = {
         user_id: user.id,
         farm_name: formData.farm_name,
@@ -256,7 +267,6 @@ export default function SellerUpload() {
         is_bundle: formData.is_bundle,
         bundle_discount: formData.is_bundle ? discount : 0,
         price: pricePerHead,
-        total_price: totalPrice,
         animal_type: formData.animal_type,
         breed_type: formData.breed_type,
         pure_cross: formData.pure_cross,
@@ -285,12 +295,15 @@ export default function SellerUpload() {
         .insert([submitData]);
 
       if (error) throw error;
-      alert('Listing published successfully!');
-      window.location.href = '/MyListings';
+
+      setMessage({ type: 'success', text: 'Listing published successfully!' });
+      setTimeout(() => {
+        navigate('/MyListings');
+      }, 1500);
 
     } catch (err) {
       console.error('Submit error:', err);
-      alert('Error: ' + err.message);
+      setMessage({ type: 'error', text: err.message || 'Failed to publish listing' });
     } finally {
       setSubmitting(false);
     }
@@ -690,6 +703,16 @@ export default function SellerUpload() {
         return (
           <div className="space-y-4">
             <h2 className="text-xl font-semibold text-center">Health, Notes & Photos</h2>
+
+            {/* Message display */}
+            {message.text && (
+              <div className={`p-3 rounded-lg text-sm ${message.type === 'success'
+                  ? 'bg-green-100 text-green-700'
+                  : 'bg-red-100 text-red-700'
+                }`}>
+                {message.text}
+              </div>
+            )}
 
             <div>
               <Label>Health Information</Label>
