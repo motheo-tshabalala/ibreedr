@@ -32,6 +32,7 @@ export default function ChatList() {
       setIsLoading(true);
       setError(null);
 
+      // ✅ Destructure error from RPC call
       const { data, error } = await supabase
         .rpc('get_user_conversations', { p_user_id: user.id });
 
@@ -49,7 +50,7 @@ export default function ChatList() {
 
     loadConversations();
 
-    // Set up subscription with filter for user's conversations
+    // ✅ Filtered subscription - only fires for user's conversations
     const conversationIds = conversations.map(c => c.id);
 
     if (conversationIds.length > 0) {
@@ -99,7 +100,8 @@ export default function ChatList() {
     <div className="min-h-screen bg-warm-white pb-20">
       <div className="bg-white border-b sticky top-0 z-30">
         <div className="max-w-2xl mx-auto px-4 py-4 flex items-center gap-4">
-          <Link to="/">
+          {/* ✅ Fixed back button to go to /livestock instead of /Browse */}
+          <Link to="/livestock">
             <Button variant="ghost" size="icon" className="rounded-full">
               <ArrowLeft className="w-5 h-5" />
             </Button>
@@ -122,6 +124,7 @@ export default function ChatList() {
             </div>
             <h3 className="text-lg font-semibold mb-2">No messages yet</h3>
             <p className="text-muted-foreground text-sm mb-6">Browse listings and message farms</p>
+            {/* ✅ Fixed second back button */}
             <Link to="/livestock">
               <Button className="bg-primary-green hover:bg-primary-green-dark">Browse Livestock</Button>
             </Link>

@@ -172,7 +172,7 @@ export default function EditListing() {
     setMessage({ type: '', text: '' });
 
     try {
-      // Remove total_price from updateData - DB trigger handles it
+      // ✅ REMOVED total_price from updateData - DB trigger handles it
       const updateData = {
         farm_name: formData.farm_name,
         seller_name: formData.seller_name,
@@ -193,7 +193,6 @@ export default function EditListing() {
         quantity: parseInt(formData.quantity) || 1,
         is_bundle: formData.is_bundle || false,
         bundle_discount: formData.bundle_discount || 0,
-        // total_price is calculated by DB trigger - DO NOT SEND IT
         health_info: formData.health_info,
         notes: formData.notes,
         images: formData.images,
@@ -263,7 +262,7 @@ export default function EditListing() {
       </div>
 
       <div className="max-w-4xl mx-auto px-4 py-8">
-        {/* Message */}
+        {/* ✅ Inline message replaces alert() */}
         {message.text && (
           <div className={`mb-4 p-3 rounded-lg text-sm ${message.type === 'success'
               ? 'bg-green-100 text-green-700'

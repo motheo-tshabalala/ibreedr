@@ -66,10 +66,7 @@ export default function DeleteProfile() {
     setMessage('');
 
     try {
-      // Option A: Use database deletion (recommended)
-      // Create a Supabase function to delete user data
-      // For now, sign out and redirect with a note
-
+      // Option A: Use database deletion 
       // Delete from profiles table
       const { error: deleteError } = await supabase
         .from('profiles')
@@ -80,8 +77,21 @@ export default function DeleteProfile() {
         throw deleteError;
       }
 
+      // Also delete all livestock
+      await supabase
+        .from('livestock')
+        .delete()
+        .eq('user_id', user.id);
+
+      // Also delete all conversations
+      await supabase
+        .from('conversations')
+        .delete()
+        .or(`buyer_id.eq.${user.id},seller_id.eq.${user.id}`);
+
       // Sign out
       await supabase.auth.signOut();
+
       setMessage('Your account has been deleted successfully.');
 
       setTimeout(() => {
@@ -119,7 +129,7 @@ export default function DeleteProfile() {
       <div className="max-w-2xl mx-auto px-4 py-8">
         <Card className="border-red-200">
           <CardContent className="p-6">
-            {/* Message */}
+            {/* ✅ Inline message replaces alert() */}
             {message && (
               <div className="mb-4 p-3 rounded-lg bg-green-50 text-green-700 text-sm">
                 {message}

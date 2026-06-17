@@ -1,10 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { Search, X, Filter, MapPin, Star, ChevronDown } from 'lucide-react';
+import { Search, X, Filter, MapPin, ChevronDown } from 'lucide-react';
 import { supabase } from '../supabaseClient';
 import { Card, CardContent } from "../components/ui/card";
 import { Badge } from "../components/ui/Badge";
 import { Button } from "../components/ui/button";
+
+const PROVINCES = [
+  'Gauteng', 'Western Cape', 'KwaZulu-Natal', 'Eastern Cape',
+  'Free State', 'Limpopo', 'Mpumalanga', 'North West', 'Northern Cape'
+];
 
 export default function SearchPage() {
   const [searchQuery, setSearchQuery] = useState('');
@@ -16,12 +21,13 @@ export default function SearchPage() {
     maxPrice: '',
     verifiedOnly: false,
     transportAvailable: false,
-    distance: ''
+    sortBy: 'newest'
   });
   const [showFilters, setShowFilters] = useState(false);
   const [results, setResults] = useState([]);
   const [loading, setLoading] = useState(false);
   const [recentSearches, setRecentSearches] = useState([]);
+  const [suggestedSearches, setSuggestedSearches] = useState([]);
 
   // Load recent searches from localStorage
   useEffect(() => {
@@ -31,9 +37,26 @@ export default function SearchPage() {
     }
   }, []);
 
+  // Load suggested searches from DB
+  useEffect(() => {
+    const loadSuggestions = async () => {
+      const { data } = await supabase
+        .from('livestock')
+        .select('animal_type, count')
+        .eq('status', 'active')
+        .group('animal_type');
+
+      if (data) {
+        const topTypes = data.slice(0, 3).map(item => item.animal_type);
+        setSuggestedSearches(topTypes);
+      }
+    };
+    loadSuggestions();
+  }, []);
+
   // Handle search
   const handleSearch = async () => {
-    if (!searchQuery.trim() && !filters.animalType) {
+    if (!searchQuery.trim() && !filters.animalType && !filters.province) {
       return;
     }
 
@@ -86,14 +109,25 @@ export default function SearchPage() {
       query = query.eq('profiles.verified_farmer', true);
     }
 
-    const { data, error } = await query.order('created_at', { ascending: false });
+    // Sort
+    switch (filters.sortBy) {
+      case 'price-low':
+        query = query.order('price', { ascending: true });
+        break;
+      case 'price-high':
+        query = query.order('price', { ascending: false });
+        break;
+      default:
+        query = query.order('created_at', { ascending: false });
+    }
+
+    const { data, error } = await query;
 
     if (error) {
       console.error('Search error:', error);
     } else {
       setResults(data || []);
 
-      // Save search to recent
       if (searchQuery.trim()) {
         const newRecent = [searchQuery, ...recentSearches.filter(s => s !== searchQuery)].slice(0, 5);
         setRecentSearches(newRecent);
@@ -121,10 +155,20 @@ export default function SearchPage() {
       maxPrice: '',
       verifiedOnly: false,
       transportAvailable: false,
-      distance: ''
+      sortBy: 'newest'
     });
     setSearchQuery('');
+    setResults([]);
   };
+
+  const hasActiveFilters = searchQuery || filters.animalType || filters.province ||
+    filters.breed || filters.minPrice || filters.maxPrice || filters.verifiedOnly;
+
+  // Count active filters
+  const activeFilterCount = [
+    filters.animalType, filters.province, filters.breed,
+    filters.minPrice, filters.maxPrice, filters.verifiedOnly ? 'verified' : null
+  ].filter(Boolean).length;
 
   return (
     <div className="min-h-screen bg-warm-white pb-20">
@@ -142,19 +186,11 @@ export default function SearchPage() {
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               onKeyPress={handleKeyPress}
-              className="w-full pl-10 pr-12 py-3 rounded-xl bg-white text-gray-900 focus:ring-2 focus:ring-gold-accent outline-none"
+              className="w-full pl-10 pr-4 py-3 rounded-xl bg-white text-gray-900 placeholder-gray-400 focus:ring-2 focus:ring-gold-accent outline-none"
             />
-            {searchQuery && (
-              <button
-                onClick={() => setSearchQuery('')}
-                className="absolute right-3 top-1/2 -translate-y-1/2"
-              >
-                <X className="w-5 h-5 text-gray-400 hover:text-gray-600" />
-              </button>
-            )}
           </div>
 
-          {/* Filter Toggle */}
+          {/* Filter Toggle with Badge */}
           <button
             onClick={() => setShowFilters(!showFilters)}
             className="mt-3 flex items-center gap-2 text-sm text-green-100 hover:text-white transition"
@@ -162,6 +198,11 @@ export default function SearchPage() {
             <Filter className="w-4 h-4" />
             {showFilters ? 'Hide Filters' : 'Show Filters'}
             <ChevronDown className={`w-4 h-4 transition-transform ${showFilters ? 'rotate-180' : ''}`} />
+            {activeFilterCount > 0 && (
+              <span className="ml-auto bg-gold-accent text-white text-xs px-2 py-0.5 rounded-full">
+                {activeFilterCount}
+              </span>
+            )}
           </button>
         </div>
       </div>
@@ -185,6 +226,7 @@ export default function SearchPage() {
                   <option value="pigs">Pigs</option>
                   <option value="chickens">Chickens</option>
                   <option value="horses">Horses</option>
+                  <option value="donkeys">Donkeys</option>
                 </select>
               </div>
               <div>
@@ -195,15 +237,9 @@ export default function SearchPage() {
                   className="w-full mt-1 rounded-lg border border-gray-200 px-3 py-2 text-sm"
                 >
                   <option value="">All Provinces</option>
-                  <option value="Gauteng">Gauteng</option>
-                  <option value="Mpumalanga">Mpumalanga</option>
-                  <option value="Limpopo">Limpopo</option>
-                  <option value="North West">North West</option>
-                  <option value="Free State">Free State</option>
-                  <option value="KwaZulu-Natal">KwaZulu-Natal</option>
-                  <option value="Eastern Cape">Eastern Cape</option>
-                  <option value="Western Cape">Western Cape</option>
-                  <option value="Northern Cape">Northern Cape</option>
+                  {PROVINCES.map(p => (
+                    <option key={p} value={p}>{p}</option>
+                  ))}
                 </select>
               </div>
             </div>
@@ -242,6 +278,19 @@ export default function SearchPage() {
               </div>
             </div>
 
+            <div>
+              <label className="text-xs font-medium text-gray-600">Sort By</label>
+              <select
+                value={filters.sortBy}
+                onChange={(e) => setFilters({ ...filters, sortBy: e.target.value })}
+                className="w-full mt-1 rounded-lg border border-gray-200 px-3 py-2 text-sm"
+              >
+                <option value="newest">Newest First</option>
+                <option value="price-low">Price: Low to High</option>
+                <option value="price-high">Price: High to Low</option>
+              </select>
+            </div>
+
             <div className="flex gap-4">
               <label className="flex items-center gap-2 text-sm">
                 <input
@@ -252,29 +301,22 @@ export default function SearchPage() {
                 />
                 Verified Farms Only
               </label>
-              <label className="flex items-center gap-2 text-sm">
-                <input
-                  type="checkbox"
-                  checked={filters.transportAvailable}
-                  onChange={(e) => setFilters({ ...filters, transportAvailable: e.target.checked })}
-                  className="w-4 h-4 text-primary-green"
-                />
-                Transport Available
-              </label>
             </div>
 
-            <button
-              onClick={clearFilters}
-              className="w-full py-2 text-sm text-gray-500 hover:text-gray-700 border border-gray-200 rounded-lg"
-            >
-              Clear All Filters
-            </button>
+            {hasActiveFilters && (
+              <button
+                onClick={clearFilters}
+                className="w-full py-2 text-sm text-gray-500 hover:text-gray-700 border border-gray-200 rounded-lg"
+              >
+                Clear All Filters
+              </button>
+            )}
           </div>
         </div>
       )}
 
       {/* Recent Searches */}
-      {!searchQuery && recentSearches.length > 0 && !showFilters && (
+      {!searchQuery && recentSearches.length > 0 && !showFilters && results.length === 0 && (
         <div className="max-w-md mx-auto px-4 py-4">
           <h3 className="text-sm font-medium text-gray-500 mb-2">Recent Searches</h3>
           <div className="flex flex-wrap gap-2">
@@ -298,7 +340,7 @@ export default function SearchPage() {
       <div className="max-w-md mx-auto px-4 py-3">
         <button
           onClick={handleSearch}
-          disabled={!searchQuery.trim() && !filters.animalType}
+          disabled={!searchQuery.trim() && !filters.animalType && !filters.province}
           className="w-full py-3 bg-primary-green text-white rounded-xl font-semibold hover:bg-primary-green-dark transition disabled:opacity-50 disabled:cursor-not-allowed"
         >
           {loading ? 'Searching...' : 'Search'}
@@ -307,13 +349,38 @@ export default function SearchPage() {
 
       {/* Results */}
       <div className="max-w-md mx-auto px-4">
-        {results.length === 0 && !loading && (searchQuery || filters.animalType) ? (
+        {results.length === 0 && !loading && (searchQuery || filters.animalType || filters.province) ? (
           <div className="text-center py-12">
             <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
               <Search className="w-8 h-8 text-gray-400" />
             </div>
             <h3 className="text-lg font-semibold text-gray-700 mb-2">No results found</h3>
             <p className="text-gray-500 text-sm">Try adjusting your search or filters</p>
+            <button
+              onClick={clearFilters}
+              className="mt-3 text-sm text-primary-green hover:underline"
+            >
+              Clear all filters
+            </button>
+            {suggestedSearches.length > 0 && (
+              <div className="mt-6">
+                <p className="text-xs text-gray-400 mb-2">Suggested searches:</p>
+                <div className="flex flex-wrap gap-2 justify-center">
+                  {suggestedSearches.map((term, index) => (
+                    <button
+                      key={index}
+                      onClick={() => {
+                        setFilters({ ...filters, animalType: term });
+                        setTimeout(handleSearch, 100);
+                      }}
+                      className="px-3 py-1 bg-gray-100 rounded-full text-sm hover:bg-gray-200 transition"
+                    >
+                      {term}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         ) : loading ? (
           <div className="flex justify-center py-12">
@@ -331,7 +398,7 @@ export default function SearchPage() {
                       {animal.images && animal.images[0] ? (
                         <img src={animal.images[0]} alt={animal.name} className="w-full h-full object-cover" />
                       ) : (
-                        <div className="w-full h-full flex items-center justify-center text-3xl">🐄</div>
+                        <div className="w-full h-full flex items-center justify-center text-3xl text-gray-400">🐄</div>
                       )}
                     </div>
 

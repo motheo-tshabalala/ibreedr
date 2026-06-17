@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Home, Search, PlusCircle, MessageCircle, User, Package } from 'lucide-react';
+import { Home, Search, PlusCircle, MessageCircle, User } from 'lucide-react';
 
 export default function BottomNav() {
   const location = useLocation();
@@ -22,9 +22,9 @@ export default function BottomNav() {
       path: '/SellerUpload'
     },
     {
-      icon: Package,
-      label: 'Listings',
-      path: '/MyListings'
+      icon: MessageCircle,
+      label: 'Chat',
+      path: '/ChatList'
     },
     {
       icon: User,
@@ -37,7 +37,7 @@ export default function BottomNav() {
     <>
       <div className="h-20" />
 
-      <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 z-50">
+      <nav className="fixed bottom-0 left-0 right-0 bg-white border-t-2 border-gray-100 z-50">
         <div className="max-w-md mx-auto">
           <div className="flex justify-around items-center h-16">
             {tabs.map((tab) => {
@@ -54,14 +54,18 @@ export default function BottomNav() {
                       : 'text-gray-400 hover:text-gray-600'
                     }`}
                 >
-                  <Icon
-                    className={`w-5 h-5 ${isActive ? 'fill-primary-green/10' : ''}`}
-                  />
-                  <span className="text-[10px] font-medium">{tab.label}</span>
-
+                  {/* Top border for active state */}
                   {isActive && (
-                    <span className="absolute -bottom-0.5 left-1/2 -translate-x-1/2 w-1 h-1 bg-primary-green rounded-full" />
+                    <span className="absolute -top-0.5 left-1/2 -translate-x-1/2 w-8 h-0.5 bg-primary-green rounded-full" />
                   )}
+
+                  <Icon className="w-5 h-5" />
+
+                  {/* Label - colored when active */}
+                  <span className={`text-[10px] font-medium ${isActive ? 'text-primary-green' : ''
+                    }`}>
+                    {tab.label}
+                  </span>
                 </Link>
               );
             })}

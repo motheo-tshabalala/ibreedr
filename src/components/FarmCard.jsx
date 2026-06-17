@@ -1,9 +1,8 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { MapPin, Star, Users, CheckCircle, Calendar, Package, Building2 } from 'lucide-react';
+import { MapPin, Star, CheckCircle, Calendar, Package, Building2 } from 'lucide-react';
 import { Card, CardContent } from "./ui/card";
 import { Badge } from "./ui/Badge";
-import VerificationBadge from './VerificationBadge';
 
 export default function FarmCard({ farm }) {
   if (!farm) return null;
@@ -23,7 +22,8 @@ export default function FarmCard({ farm }) {
 
   return (
     <Link to={`/farm/${id}`}>
-      <Card className="overflow-hidden hover:shadow-xl transition-all duration-300 group">
+      <Card className={`overflow-hidden hover:shadow-xl transition-all duration-300 group ${verified_farmer ? 'border-b-4 border-gold-accent rounded-b-xl' : ''
+        }`}>
         {/* Cover Image */}
         <div className="relative h-32 bg-gray-200 overflow-hidden">
           {cover_image ? (
@@ -33,8 +33,14 @@ export default function FarmCard({ farm }) {
               className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
             />
           ) : (
-            <div className="w-full h-full bg-gradient-to-r from-primary-green/20 to-primary-green/10 flex items-center justify-center">
-              <Building2 className="w-10 h-10 text-primary-green/30" />
+            <div className="w-full h-full bg-primary-green/10">
+              <svg className="w-full h-full opacity-20" xmlns="http://www.w3.org/2000/svg">
+                <pattern id="farmPattern" width="40" height="40" patternUnits="userSpaceOnUse">
+                  <rect width="40" height="40" fill="#1F4D3A" opacity="0.05" />
+                  <path d="M20 10 L25 18 L20 26 L15 18 Z" fill="#1F4D3A" opacity="0.1" />
+                </pattern>
+                <rect width="100%" height="100%" fill="url(#farmPattern)" />
+              </svg>
             </div>
           )}
 
@@ -63,7 +69,6 @@ export default function FarmCard({ farm }) {
             <div className="flex-1 min-w-0">
               <h3 className="font-semibold text-gray-900 truncate">{farm_name || 'Unnamed Farm'}</h3>
 
-              {/* Location */}
               {farm_location && (
                 <div className="flex items-center gap-1 text-xs text-gray-500 mt-0.5">
                   <MapPin className="w-3 h-3 flex-shrink-0" />
@@ -81,8 +86,8 @@ export default function FarmCard({ farm }) {
             )}
           </div>
 
-          {/* Farm Stats - Enhanced */}
-          <div className="grid grid-cols-3 gap-2 mt-3 pt-3 border-t border-gray-100">
+          {/* Stats - Only show if listing_count > 0 */}
+          <div className="grid grid-cols-2 gap-2 mt-3 pt-3 border-t border-gray-100">
             <div className="flex flex-col items-center text-center">
               <Package className="w-4 h-4 text-primary-green" />
               <span className="text-sm font-semibold text-gray-900">{listing_count || 0}</span>
@@ -95,24 +100,12 @@ export default function FarmCard({ farm }) {
                 <span className="text-[10px] text-gray-400">Years</span>
               </div>
             )}
-            <div className="flex flex-col items-center text-center">
-              <Users className="w-4 h-4 text-primary-green" />
-              <span className="text-sm font-semibold text-gray-900">—</span>
-              <span className="text-[10px] text-gray-400">Followers</span>
-            </div>
           </div>
 
-          {/* Bio Preview */}
+          {/* Bio Preview - replaces "View Farm →" link */}
           {farm_bio && (
             <p className="text-xs text-gray-500 mt-2 line-clamp-2">{farm_bio}</p>
           )}
-
-          {/* View Button */}
-          <div className="mt-3">
-            <span className="text-sm text-primary-green font-medium hover:underline">
-              View Farm →
-            </span>
-          </div>
         </CardContent>
       </Card>
     </Link>

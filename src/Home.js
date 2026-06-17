@@ -77,27 +77,36 @@ export default function Home() {
 
   return (
     <div className="min-h-screen bg-warm-white pb-20">
-      {/* Hero Section */}
-      <div className="bg-primary-green text-white">
-        <div className="max-w-md mx-auto px-4 py-8 md:py-12">
-          <div className="text-center mb-6">
-            <h1 className="text-3xl md:text-4xl font-bold mb-2">iBreedr</h1>
-            <p className="text-green-100 text-sm md:text-base">Find trusted farms and quality livestock</p>
+      {/* Hero Section - With Background Image */}
+      <div
+        className="relative bg-primary-green text-white overflow-hidden"
+        style={{
+          background: 'linear-gradient(rgba(31, 77, 58, 0.82), rgba(31, 77, 58, 0.9)), url("https://images.unsplash.com/photo-1500382017468-9049fed747ef?w=1600") center/cover'
+        }}
+      >
+        <div className="max-w-md mx-auto px-4 py-12 md:py-16">
+          <div className="text-center mb-8">
+            <h1 className="text-3xl md:text-4xl font-bold mb-3">
+              Your livestock. Your price. Your buyers.
+            </h1>
+            <p className="text-green-100 text-sm md:text-base max-w-sm mx-auto">
+              South Africa's livestock marketplace — list in minutes, sell with confidence
+            </p>
           </div>
 
-          {/* Search Bar */}
+          {/* Search Bar - Full width with larger padding */}
           <form onSubmit={handleSearch} className="relative">
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+            <Search className="absolute left-5 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
             <input
               type="text"
               placeholder="Search farms, breeds, or locations..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-12 pr-4 py-3 rounded-xl bg-white text-gray-900 placeholder-gray-400 focus:ring-2 focus:ring-gold-accent outline-none transition"
+              className="w-full pl-14 pr-32 py-4 rounded-xl bg-white text-gray-900 placeholder-gray-400 focus:ring-2 focus:ring-gold-accent outline-none transition text-base"
             />
             <button
               type="submit"
-              className="absolute right-2 top-1/2 -translate-y-1/2 bg-primary-green text-white px-4 py-1.5 rounded-lg text-sm font-medium hover:bg-primary-green-dark transition"
+              className="absolute right-2 top-1/2 -translate-y-1/2 bg-primary-green text-white px-6 py-2 rounded-lg text-sm font-medium hover:bg-primary-green-dark transition"
             >
               Search
             </button>
@@ -106,46 +115,40 @@ export default function Home() {
           {/* Quick Filters */}
           <div className="flex gap-2 mt-4 overflow-x-auto pb-2">
             <Link to="/search?type=cattle">
-              <span className="px-4 py-1.5 bg-white/10 backdrop-blur rounded-full text-sm whitespace-nowrap hover:bg-white/20 transition">
+              <span className="px-4 py-1.5 bg-white/15 backdrop-blur rounded-full text-sm whitespace-nowrap hover:bg-white/25 transition">
                 Cattle
               </span>
             </Link>
             <Link to="/search?type=goats">
-              <span className="px-4 py-1.5 bg-white/10 backdrop-blur rounded-full text-sm whitespace-nowrap hover:bg-white/20 transition">
+              <span className="px-4 py-1.5 bg-white/15 backdrop-blur rounded-full text-sm whitespace-nowrap hover:bg-white/25 transition">
                 Goats
               </span>
             </Link>
             <Link to="/search?type=sheep">
-              <span className="px-4 py-1.5 bg-white/10 backdrop-blur rounded-full text-sm whitespace-nowrap hover:bg-white/20 transition">
+              <span className="px-4 py-1.5 bg-white/15 backdrop-blur rounded-full text-sm whitespace-nowrap hover:bg-white/25 transition">
                 Sheep
               </span>
             </Link>
             <Link to="/search?type=pigs">
-              <span className="px-4 py-1.5 bg-white/10 backdrop-blur rounded-full text-sm whitespace-nowrap hover:bg-white/20 transition">
+              <span className="px-4 py-1.5 bg-white/15 backdrop-blur rounded-full text-sm whitespace-nowrap hover:bg-white/25 transition">
                 Pigs
               </span>
             </Link>
             <Link to="/search?type=poultry">
-              <span className="px-4 py-1.5 bg-white/10 backdrop-blur rounded-full text-sm whitespace-nowrap hover:bg-white/20 transition">
+              <span className="px-4 py-1.5 bg-white/15 backdrop-blur rounded-full text-sm whitespace-nowrap hover:bg-white/25 transition">
                 Poultry
               </span>
             </Link>
-          </div>
-
-          {/* Quick Stats */}
-          <div className="grid grid-cols-3 gap-3 mt-6 pt-6 border-t border-green-700/30">
-            <div className="text-center">
-              <p className="text-2xl font-bold text-gold-accent">240k+</p>
-              <p className="text-xs text-green-200">Farmers</p>
-            </div>
-            <div className="text-center">
-              <p className="text-2xl font-bold text-gold-accent">R37B+</p>
-              <p className="text-xs text-green-200">Industry Value</p>
-            </div>
-            <div className="text-center">
-              <p className="text-2xl font-bold text-gold-accent">42%</p>
-              <p className="text-xs text-green-200">SA Agriculture</p>
-            </div>
+            <Link to="/search?type=horses">
+              <span className="px-4 py-1.5 bg-white/15 backdrop-blur rounded-full text-sm whitespace-nowrap hover:bg-white/25 transition">
+                Horses
+              </span>
+            </Link>
+            <Link to="/search?type=donkeys">
+              <span className="px-4 py-1.5 bg-white/15 backdrop-blur rounded-full text-sm whitespace-nowrap hover:bg-white/25 transition">
+                Donkeys
+              </span>
+            </Link>
           </div>
         </div>
       </div>
@@ -235,10 +238,10 @@ export default function Home() {
 
               return (
                 <Link to={`/BreedDetails?id=${animal.id}`} key={animal.id}>
-                  <Card className="overflow-hidden hover:shadow-lg transition-shadow">
+                  <Card className="overflow-hidden hover:shadow-lg transition-shadow border-l-4 border-primary-green">
                     <div className="flex gap-3 p-3">
-                      {/* Image */}
-                      <div className="w-20 h-20 rounded-lg overflow-hidden bg-gray-100 flex-shrink-0">
+                      {/* Image - increased to w-24 h-24 */}
+                      <div className="w-24 h-24 rounded-lg overflow-hidden bg-gray-100 flex-shrink-0">
                         {animal.images && animal.images[0] ? (
                           <img src={animal.images[0]} alt={animal.name} className="w-full h-full object-cover" />
                         ) : (
@@ -285,15 +288,12 @@ export default function Home() {
                             </div>
                             <p className="text-xs text-gray-500">{animal.breed_type}</p>
 
-                            {/* Farm Stats */}
-                            <div className="flex items-center gap-3 mt-1.5 text-xs text-gray-400">
-                              {yearsFarming > 0 && (
-                                <span className="flex items-center gap-1">
-                                  <Calendar className="w-3 h-3" />
-                                  {yearsFarming} years
-                                </span>
-                              )}
-                            </div>
+                            {/* Reference Number */}
+                            {animal.reference_number && (
+                              <p className="text-[10px] text-gray-300 mt-1">
+                                Ref: {animal.reference_number}
+                              </p>
+                            )}
                           </div>
 
                           {/* Price */}

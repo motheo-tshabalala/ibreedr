@@ -1,6 +1,6 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { MapPin, Bookmark } from 'lucide-react';
+import { MapPin, Bookmark, Building2 } from 'lucide-react';
 import { Card, CardContent } from "./ui/card";
 import { Badge } from "./ui/Badge";
 
@@ -34,11 +34,14 @@ export default function LivestockCard({ livestock, onWishlist, isInWishlist }) {
     if (onWishlist) onWishlist(livestock);
   };
 
+  const farmName = livestock.farm_name || 'Farm';
+  const isVerified = livestock.verified || false;
+
   return (
     <Card className="overflow-hidden hover:shadow-xl transition-all duration-300 group">
       <Link to={`/BreedDetails?id=${livestock.id}`}>
-        {/* Image */}
-        <div className="relative h-48 bg-gray-100 overflow-hidden">
+        {/* Image - Increased height to h-56 */}
+        <div className="relative h-56 bg-gray-100 overflow-hidden">
           {livestock.images && livestock.images[0] ? (
             <img
               src={livestock.images[0]}
@@ -46,12 +49,19 @@ export default function LivestockCard({ livestock, onWishlist, isInWishlist }) {
               className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
             />
           ) : (
-            <div className="w-full h-full flex items-center justify-center text-6xl bg-gradient-to-br from-gray-100 to-gray-200">
-              🐄
+            <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-primary-green/10 to-primary-green/5">
+              <svg className="w-16 h-16 text-primary-green/30" fill="currentColor" viewBox="0 0 24 24">
+                <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z" />
+              </svg>
             </div>
           )}
 
-          {/* Wishlist Button - Only */}
+          {/* Price overlay badge */}
+          <div className="absolute bottom-3 left-3 bg-white text-primary-green font-bold text-sm px-3 py-1 rounded-full shadow">
+            R {Number(livestock.price).toLocaleString()}
+          </div>
+
+          {/* Wishlist Button */}
           <button
             onClick={handleWishlistClick}
             className="absolute top-3 right-3 p-2 bg-white/90 backdrop-blur rounded-full shadow-md hover:scale-105 transition"
@@ -60,9 +70,9 @@ export default function LivestockCard({ livestock, onWishlist, isInWishlist }) {
           </button>
 
           {/* Badges */}
-          <div className="absolute bottom-3 left-3 flex gap-2">
+          <div className="absolute bottom-3 right-3 flex gap-2">
             {livestock.pure_cross === 'pure' && (
-              <Badge className="bg-primary-green text-white">Pure Breed</Badge>
+              <Badge className="bg-primary-green text-white">Pure</Badge>
             )}
             {livestock.pregnancy_status === 'pregnant' && (
               <Badge className="bg-pink-500 text-white">🤰 Pregnant</Badge>
@@ -70,24 +80,32 @@ export default function LivestockCard({ livestock, onWishlist, isInWishlist }) {
           </div>
         </div>
 
-        <CardContent className="p-4">
-          <div className="flex justify-between items-start">
-            <div>
-              <h3 className="font-semibold text-gray-900">{livestock.name}</h3>
-              <p className="text-sm text-gray-600">{livestock.breed_type}</p>
-              <div className="flex items-center gap-1 text-xs text-gray-500 mt-0.5">
-                <MapPin className="w-3 h-3" />
-                {livestock.location?.split(',')[0] || 'Location not set'}
-              </div>
-            </div>
-            <div className="text-right">
-              <p className="text-lg font-bold text-primary-green">R {Number(livestock.price).toLocaleString()}</p>
-              <p className="text-xs text-gray-400 capitalize">{livestock.animal_type}</p>
-            </div>
+        <CardContent className="p-4 space-y-2">
+          {/* Farm name with icon - directly below image */}
+          <div className="flex items-center gap-1.5 text-xs text-gray-500">
+            <Building2 className="w-3.5 h-3.5 text-primary-green" />
+            <span className="font-medium text-gray-700">{farmName}</span>
+            {isVerified && (
+              <span className="text-primary-green text-[10px]">✓ Verified</span>
+            )}
+          </div>
+
+          {/* Breed name - 15px/500 */}
+          <h3 className="text-[15px] font-medium text-gray-900">
+            {livestock.name || livestock.breed_type}
+          </h3>
+
+          {/* Animal type - 12px/400 muted */}
+          <p className="text-xs text-gray-400 capitalize">{livestock.animal_type}</p>
+
+          {/* Location */}
+          <div className="flex items-center gap-1 text-xs text-gray-400 mt-0.5">
+            <MapPin className="w-3 h-3" />
+            <span>{livestock.location?.split(',')[0] || 'Location not set'}</span>
           </div>
 
           {/* Tags */}
-          <div className="flex flex-wrap gap-1 mt-3">
+          <div className="flex flex-wrap gap-1 mt-2">
             {getAgeDisplay() && (
               <Badge variant="outline" className="text-xs">{getAgeDisplay()}</Badge>
             )}

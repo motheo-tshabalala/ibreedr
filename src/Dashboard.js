@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Package, TrendingUp, DollarSign, Users, Building2, Calendar, Award, BarChart3 } from 'lucide-react';
+import { ArrowLeft, Package, TrendingUp, DollarSign, Users, Building2, Calendar, Award } from 'lucide-react';
 import { supabase } from './supabaseClient';
 import { Card, CardContent } from "./components/ui/card";
 import { Button } from "./components/ui/button";
@@ -37,7 +37,7 @@ export default function Dashboard() {
         setProfile(profileData);
       }
 
-      // Use RPC for farm stats (one call instead of loading all rows)
+      // ✅ Use RPC for farm stats (one call instead of loading all rows)
       const { data: statsData, error: statsError } = await supabase
         .rpc('get_farm_stats', { p_user_id: user.id });
 
@@ -65,6 +65,7 @@ export default function Dashboard() {
   const isVerified = profile?.verified_farmer || false;
   const yearsFarming = profile?.years_farming || 0;
 
+  // ✅ StatCard now accepts raw numbers only (no pre-formatted strings)
   const StatCard = ({ title, value, icon: Icon, color, subtitle }) => {
     // Handle value formatting safely
     const displayValue = typeof value === 'number' ? value.toLocaleString() : value || '0';
@@ -97,7 +98,7 @@ export default function Dashboard() {
     );
   }
 
-  // Use stats from RPC, fallback to calculated values
+  // ✅ Use stats from RPC - no client-side calculation
   const totalListings = stats?.total_listings || 0;
   const activeListings = stats?.active_listings || 0;
   const soldListings = stats?.sold_listings || 0;
@@ -148,7 +149,7 @@ export default function Dashboard() {
       </div>
 
       <div className="max-w-7xl mx-auto px-4 py-6 space-y-6">
-        {/* Stats Grid - Using RPC data */}
+        {/* ✅ Stats Grid - Using RPC data with raw numbers */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
           <StatCard
             title="Total Listings"
@@ -166,7 +167,7 @@ export default function Dashboard() {
           />
           <StatCard
             title="Revenue"
-            value={`R ${totalValue.toLocaleString()}`}
+            value={totalValue}
             icon={DollarSign}
             color="bg-amber-500"
             subtitle={`R ${soldValue.toLocaleString()} sold`}
