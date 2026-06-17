@@ -19,6 +19,7 @@ export default function FarmStorefront() {
   const { id } = useParams();
   const [farm, setFarm] = useState(null);
   const [listings, setListings] = useState([]);
+  const [recentReviews, setRecentReviews] = useState([]);
   const [loading, setLoading] = useState(true);
   const [isFollowing, setIsFollowing] = useState(false);
   const [user, setUser] = useState(null);
@@ -52,6 +53,24 @@ export default function FarmStorefront() {
           .order('created_at', { ascending: false });
 
         setListings(livestock || []);
+
+        // ✅ Load recent reviews
+        const { data: reviewsData } = await supabase
+          .from('reviews')
+          .select(`
+            *,
+            livestock!inner (
+              name,
+              breed_type
+            )
+          `)
+          .eq('livestock.user_id', id)
+          .order('created_at', { ascending: false })
+          .limit(3);
+
+        if (reviewsData) {
+          setRecentReviews(reviewsData);
+        }
       }
 
       if (user) {
@@ -197,7 +216,6 @@ export default function FarmStorefront() {
                 <span className="font-semibold">{farm.total_animals_sold}</span> Animals Sold
               </div>
             )}
-            {/* Review Count */}
             <div className="flex items-center gap-2 text-sm text-gray-600">
               <Star className="w-4 h-4 fill-gold-accent text-gold-accent" />
               <span className="font-semibold">{farm.rating || 0}</span>
@@ -205,7 +223,6 @@ export default function FarmStorefront() {
                 ({farm.total_reviews || 0} reviews)
               </span>
             </div>
-            {/* Member Since */}
             {farm.created_at && (
               <div className="flex items-center gap-2 text-sm text-gray-600">
                 <Calendar className="w-4 h-4" />
@@ -422,6 +439,45 @@ export default function FarmStorefront() {
           </div>
         </div>
       </div>
+
+      {/* Recent Reviews */}
+      {recentReviews.length > 0 && (
+        <div className="max-w-4xl mx-auto px-4 py-6">
+          <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+            <Star className="w-5 h-5 fill-gold-accent text-gold-accent" />
+            Recent Reviews ({farm.total_reviews || 0})
+          </h3>
+          <div className="space-y-3">
+            {recentReviews.map((review) => (
+              <Card key={review.id} className="overflow-hidden">
+                <CardContent className="p-4">
+                  <div className="flex items-center justify-between mb-1">
+                    <div className="flex items-center gap-2">
+                      <div className="flex">
+                        {[...Array(5)].map((_, i) => (
+                          <Star key={i} className={`w-4 h-4 ${i < review.rating ? 'fill-gold-accent text-gold-accent' : 'text-gray-300'}`} />
+                        ))}
+                      </div>
+                      <span className="font-medium text-sm">{review.reviewer_name || 'Anonymous'}</span>
+                    </div>
+                    <span className="text-xs text-gray-400">
+                      {new Date(review.created_at).toLocaleDateString()}
+                    </span>
+                  </div>
+                  {review.comment && (
+                    <p className="text-sm text-gray-600 mt-1">{review.comment}</p>
+                  )}
+                  {review.livestock && (
+                    <p className="text-xs text-gray-400 mt-1">
+                      on {review.livestock.name || review.livestock.breed_type}
+                    </p>
+                  )}
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Inventory */}
       <div className="max-w-4xl mx-auto px-4 py-6">

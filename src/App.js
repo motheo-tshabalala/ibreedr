@@ -8,6 +8,7 @@ import SearchPage from './pages/SearchPage';
 import FarmsPage from './pages/FarmsPage';
 import FarmStorefront from './components/FarmStorefront';
 import LivestockGrid from './components/LivestockGrid';
+import GetVerified from './pages/GetVerified';
 
 // Components
 import SellerUpload from './SellerUpload';
@@ -56,6 +57,7 @@ function AppContent() {
         <Route path="/logout" element={<Logout />} />
         <Route path="/Profile" element={<Profile />} />
         <Route path="/DeleteProfile" element={<DeleteProfile />} />
+        <Route path="/GetVerified" element={<GetVerified />} />
 
         {/* Chat */}
         <Route path="/ChatList" element={<ChatList />} />

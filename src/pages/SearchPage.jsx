@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
-import { Search, X, Filter, MapPin, ChevronDown } from 'lucide-react';
+import { Link, useNavigate } from 'react-router-dom';
+import { Search, X, Filter, MapPin, ChevronDown, Bell } from 'lucide-react';
 import { supabase } from '../supabaseClient';
 import { Card, CardContent } from "../components/ui/card";
 import { Badge } from "../components/ui/Badge";
@@ -12,6 +12,8 @@ const PROVINCES = [
 ];
 
 export default function SearchPage() {
+  const navigate = useNavigate();
+  const [user, setUser] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [filters, setFilters] = useState({
     animalType: '',
@@ -28,6 +30,18 @@ export default function SearchPage() {
   const [loading, setLoading] = useState(false);
   const [recentSearches, setRecentSearches] = useState([]);
   const [suggestedSearches, setSuggestedSearches] = useState([]);
+  const [showAlertModal, setShowAlertModal] = useState(false);
+  const [alertSubmitting, setAlertSubmitting] = useState(false);
+  const [message, setMessage] = useState({ type: '', text: '' });
+
+  // Get user on mount
+  useEffect(() => {
+    const getUser = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      setUser(user);
+    };
+    getUser();
+  }, []);
 
   // Load recent searches from localStorage
   useEffect(() => {
@@ -37,17 +51,29 @@ export default function SearchPage() {
     }
   }, []);
 
-  // Load suggested searches from DB
+  // ✅ FIXED: Load suggested searches from DB
   useEffect(() => {
     const loadSuggestions = async () => {
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from('livestock')
-        .select('animal_type, count')
-        .eq('status', 'active')
-        .group('animal_type');
+        .select('animal_type')
+        .eq('status', 'active');
 
-      if (data) {
-        const topTypes = data.slice(0, 3).map(item => item.animal_type);
+      if (error) {
+        console.error('Error loading suggestions:', error);
+        return;
+      }
+
+      if (data && data.length > 0) {
+        const counts = {};
+        data.forEach(item => {
+          if (item.animal_type) {
+            counts[item.animal_type] = (counts[item.animal_type] || 0) + 1;
+          }
+        });
+
+        const sorted = Object.entries(counts).sort((a, b) => b[1] - a[1]);
+        const topTypes = sorted.slice(0, 3).map(item => item[0]);
         setSuggestedSearches(topTypes);
       }
     };
@@ -75,7 +101,6 @@ export default function SearchPage() {
       `)
       .eq('status', 'active');
 
-    // Search by query
     if (searchQuery.trim()) {
       query = query.or(
         `name.ilike.%${searchQuery}%,` +
@@ -84,7 +109,6 @@ export default function SearchPage() {
       );
     }
 
-    // Filters
     if (filters.animalType) {
       query = query.eq('animal_type', filters.animalType);
     }
@@ -109,7 +133,6 @@ export default function SearchPage() {
       query = query.eq('profiles.verified_farmer', true);
     }
 
-    // Sort
     switch (filters.sortBy) {
       case 'price-low':
         query = query.order('price', { ascending: true });
@@ -138,14 +161,12 @@ export default function SearchPage() {
     setLoading(false);
   };
 
-  // Handle Enter key
   const handleKeyPress = (e) => {
     if (e.key === 'Enter') {
       handleSearch();
     }
   };
 
-  // Clear filters
   const clearFilters = () => {
     setFilters({
       animalType: '',
@@ -164,11 +185,45 @@ export default function SearchPage() {
   const hasActiveFilters = searchQuery || filters.animalType || filters.province ||
     filters.breed || filters.minPrice || filters.maxPrice || filters.verifiedOnly;
 
-  // Count active filters
   const activeFilterCount = [
     filters.animalType, filters.province, filters.breed,
     filters.minPrice, filters.maxPrice, filters.verifiedOnly ? 'verified' : null
   ].filter(Boolean).length;
+
+  // Handle search alert
+  const handleSetAlert = async () => {
+    if (!user) {
+      setMessage({ type: 'error', text: 'Please login to set up alerts' });
+      setTimeout(() => navigate('/login'), 1500);
+      return;
+    }
+
+    setAlertSubmitting(true);
+    try {
+      const { error } = await supabase
+        .from('search_alerts')
+        .insert([{
+          user_id: user.id,
+          search_term: searchQuery || null,
+          animal_type: filters.animalType || null,
+          province: filters.province || null,
+          breed: filters.breed || null,
+          min_price: filters.minPrice ? parseFloat(filters.minPrice) : null,
+          max_price: filters.maxPrice ? parseFloat(filters.maxPrice) : null
+        }]);
+
+      if (error) throw error;
+
+      setMessage({ type: 'success', text: 'Alert set! We\'ll notify you when new listings match your search.' });
+      setShowAlertModal(false);
+      setTimeout(() => setMessage({ type: '', text: '' }), 5000);
+    } catch (error) {
+      console.error('Alert error:', error);
+      setMessage({ type: 'error', text: 'Failed to set alert: ' + error.message });
+    } finally {
+      setAlertSubmitting(false);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-warm-white pb-20">
@@ -177,7 +232,6 @@ export default function SearchPage() {
         <div className="max-w-md mx-auto px-4 py-4">
           <h1 className="text-xl font-bold mb-3">Search</h1>
 
-          {/* Search Bar */}
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
             <input
@@ -190,7 +244,6 @@ export default function SearchPage() {
             />
           </div>
 
-          {/* Filter Toggle with Badge */}
           <button
             onClick={() => setShowFilters(!showFilters)}
             className="mt-3 flex items-center gap-2 text-sm text-green-100 hover:text-white transition"
@@ -347,9 +400,78 @@ export default function SearchPage() {
         </button>
       </div>
 
+      {/* Active Filters Pills */}
+      {hasActiveFilters && (
+        <div className="max-w-md mx-auto px-4 py-2 flex flex-wrap gap-2">
+          {searchQuery && (
+            <button
+              onClick={() => { setSearchQuery(''); handleSearch(); }}
+              className="flex items-center gap-1 px-3 py-1 bg-primary-green/10 text-primary-green rounded-full text-xs font-medium hover:bg-primary-green/20 transition"
+            >
+              {searchQuery}
+              <X className="w-3 h-3" />
+            </button>
+          )}
+          {filters.animalType && (
+            <button
+              onClick={() => { setFilters({ ...filters, animalType: '' }); handleSearch(); }}
+              className="flex items-center gap-1 px-3 py-1 bg-primary-green/10 text-primary-green rounded-full text-xs font-medium hover:bg-primary-green/20 transition"
+            >
+              {filters.animalType}
+              <X className="w-3 h-3" />
+            </button>
+          )}
+          {filters.province && (
+            <button
+              onClick={() => { setFilters({ ...filters, province: '' }); handleSearch(); }}
+              className="flex items-center gap-1 px-3 py-1 bg-primary-green/10 text-primary-green rounded-full text-xs font-medium hover:bg-primary-green/20 transition"
+            >
+              {filters.province}
+              <X className="w-3 h-3" />
+            </button>
+          )}
+          {filters.breed && (
+            <button
+              onClick={() => { setFilters({ ...filters, breed: '' }); handleSearch(); }}
+              className="flex items-center gap-1 px-3 py-1 bg-primary-green/10 text-primary-green rounded-full text-xs font-medium hover:bg-primary-green/20 transition"
+            >
+              {filters.breed}
+              <X className="w-3 h-3" />
+            </button>
+          )}
+          {filters.minPrice && (
+            <button
+              onClick={() => { setFilters({ ...filters, minPrice: '' }); handleSearch(); }}
+              className="flex items-center gap-1 px-3 py-1 bg-primary-green/10 text-primary-green rounded-full text-xs font-medium hover:bg-primary-green/20 transition"
+            >
+              R{filters.minPrice}+
+              <X className="w-3 h-3" />
+            </button>
+          )}
+          {filters.maxPrice && (
+            <button
+              onClick={() => { setFilters({ ...filters, maxPrice: '' }); handleSearch(); }}
+              className="flex items-center gap-1 px-3 py-1 bg-primary-green/10 text-primary-green rounded-full text-xs font-medium hover:bg-primary-green/20 transition"
+            >
+              R{filters.maxPrice}+
+              <X className="w-3 h-3" />
+            </button>
+          )}
+          {filters.verifiedOnly && (
+            <button
+              onClick={() => { setFilters({ ...filters, verifiedOnly: false }); handleSearch(); }}
+              className="flex items-center gap-1 px-3 py-1 bg-primary-green/10 text-primary-green rounded-full text-xs font-medium hover:bg-primary-green/20 transition"
+            >
+              Verified Only
+              <X className="w-3 h-3" />
+            </button>
+          )}
+        </div>
+      )}
+
       {/* Results */}
       <div className="max-w-md mx-auto px-4">
-        {results.length === 0 && !loading && (searchQuery || filters.animalType || filters.province) ? (
+        {results.length === 0 && !loading && (searchQuery || filters.animalType || filters.province) && (
           <div className="text-center py-12">
             <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
               <Search className="w-8 h-8 text-gray-400" />
@@ -381,8 +503,17 @@ export default function SearchPage() {
                 </div>
               </div>
             )}
+            <button
+              onClick={() => setShowAlertModal(true)}
+              className="mt-4 text-sm text-primary-green hover:underline flex items-center gap-1 mx-auto"
+            >
+              <Bell className="w-4 h-4" />
+              Set up an alert for this search
+            </button>
           </div>
-        ) : loading ? (
+        )}
+
+        {loading ? (
           <div className="flex justify-center py-12">
             <div className="animate-spin rounded-full h-10 w-10 border-4 border-primary-green border-t-transparent" />
           </div>
@@ -393,7 +524,6 @@ export default function SearchPage() {
               <Link to={`/BreedDetails?id=${animal.id}`} key={animal.id}>
                 <Card className="overflow-hidden hover:shadow-lg transition-shadow">
                   <div className="flex gap-4 p-4">
-                    {/* Image */}
                     <div className="w-24 h-24 rounded-lg overflow-hidden bg-gray-100 flex-shrink-0">
                       {animal.images && animal.images[0] ? (
                         <img src={animal.images[0]} alt={animal.name} className="w-full h-full object-cover" />
@@ -402,7 +532,6 @@ export default function SearchPage() {
                       )}
                     </div>
 
-                    {/* Info */}
                     <div className="flex-1 min-w-0">
                       <div className="flex items-start justify-between">
                         <div>
@@ -448,6 +577,57 @@ export default function SearchPage() {
           </div>
         ) : null}
       </div>
+
+      {/* Alert Modal */}
+      {showAlertModal && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl max-w-md w-full p-6">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-xl font-bold">Set Up Search Alert</h2>
+              <button onClick={() => setShowAlertModal(false)} className="p-1 hover:bg-gray-100 rounded-full">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <p className="text-sm text-gray-500 mb-4">
+              We'll notify you when new livestock matches your search criteria.
+            </p>
+            <div className="bg-gray-50 p-3 rounded-lg mb-4">
+              <p className="text-sm text-gray-700">
+                <span className="font-semibold">Search:</span> {searchQuery || 'All livestock'}
+              </p>
+              {filters.animalType && (
+                <p className="text-sm text-gray-700">
+                  <span className="font-semibold">Type:</span> {filters.animalType}
+                </p>
+              )}
+              {filters.province && (
+                <p className="text-sm text-gray-700">
+                  <span className="font-semibold">Province:</span> {filters.province}
+                </p>
+              )}
+              {filters.breed && (
+                <p className="text-sm text-gray-700">
+                  <span className="font-semibold">Breed:</span> {filters.breed}
+                </p>
+              )}
+              {(filters.minPrice || filters.maxPrice) && (
+                <p className="text-sm text-gray-700">
+                  <span className="font-semibold">Price:</span>
+                  {filters.minPrice && ` R${filters.minPrice}`}
+                  {filters.maxPrice && ` - R${filters.maxPrice}`}
+                </p>
+              )}
+            </div>
+            <Button
+              onClick={handleSetAlert}
+              disabled={alertSubmitting}
+              className="w-full bg-primary-green hover:bg-primary-green-dark"
+            >
+              {alertSubmitting ? 'Setting alert...' : 'Set Alert'}
+            </Button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

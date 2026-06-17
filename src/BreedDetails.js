@@ -244,6 +244,32 @@ export default function BreedDetails() {
   const isVerified = livestock?.profiles?.verified_farmer || false;
   const whatsappNumber = livestock?.whatsapp_number || livestock?.profiles?.phone;
 
+  const handleShare = () => {
+    const shareData = {
+      title: `${livestock.breed_type} for sale on iBreedr`,
+      text: `${livestock.name || livestock.breed_type} — R${Number(livestock.price).toLocaleString()}`,
+      url: window.location.href
+    };
+
+    if (navigator.share) {
+      navigator.share(shareData).catch(() => { });
+    } else {
+      navigator.clipboard.writeText(window.location.href).then(() => {
+        setMessage({ type: 'success', text: 'Link copied to clipboard!' });
+        setTimeout(() => setMessage({ type: '', text: '' }), 3000);
+      }).catch(() => {
+        const textarea = document.createElement('textarea');
+        textarea.value = window.location.href;
+        document.body.appendChild(textarea);
+        textarea.select();
+        document.execCommand('copy');
+        document.body.removeChild(textarea);
+        setMessage({ type: 'success', text: 'Link copied to clipboard!' });
+        setTimeout(() => setMessage({ type: '', text: '' }), 3000);
+      });
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="min-h-screen bg-warm-white flex items-center justify-center">
@@ -292,6 +318,16 @@ export default function BreedDetails() {
               : 'bg-red-100 text-red-700'
             }`}>
             {message.text}
+          </div>
+        )}
+
+        {/* ✅ 60+ Days Status Prompt */}
+        {daysSince > 60 && (
+          <div className="p-3 bg-amber-50 rounded-lg border border-amber-200">
+            <p className="text-sm text-amber-700 flex items-center gap-2">
+              <Clock className="w-4 h-4" />
+              Still available? Contact seller to confirm.
+            </p>
           </div>
         )}
 
@@ -373,11 +409,9 @@ export default function BreedDetails() {
           <CardContent className="p-5 space-y-4">
             <div className="flex items-start justify-between">
               <div className="flex-1">
-                {/* Reference Number - Moved to top */}
                 <div className="flex items-center gap-2 mb-2">
                   <Hash className="w-4 h-4 text-muted-foreground" />
                   <span className="text-xs text-muted-foreground font-medium">Ref: {livestock.reference_number || 'N/A'}</span>
-                  {/* Days since listed */}
                   {daysSince > 0 && (
                     <span className="text-xs text-muted-foreground ml-2">
                       Listed {daysSince} days ago
@@ -398,7 +432,6 @@ export default function BreedDetails() {
                 </div>
               </div>
 
-              {/* Wishlist Button */}
               {user && (
                 <div className="flex gap-1">
                   <Button variant="ghost" size="icon" onClick={toggleWishlist} className="rounded-full">
@@ -431,7 +464,6 @@ export default function BreedDetails() {
               </Badge>
             </div>
 
-            {/* Pricing Section */}
             <div className="pt-3 border-t">
               {quantity === 1 ? (
                 <div>
@@ -467,7 +499,6 @@ export default function BreedDetails() {
         {/* WhatsApp & Contact Section */}
         <Card>
           <CardContent className="p-5 space-y-3">
-            {/* WhatsApp Button - Primary CTA */}
             {whatsappNumber && (
               <a
                 href={`https://wa.me/${whatsappNumber.replace(/\D/g, '')}?text=Hi, I'm interested in your ${livestock.breed_type} listing on iBreedr (Ref: ${livestock.reference_number})`}
@@ -484,7 +515,16 @@ export default function BreedDetails() {
               </a>
             )}
 
-            {/* Operating Hours */}
+            <button
+              onClick={handleShare}
+              className="w-full mt-2 py-2.5 border border-gray-200 rounded-xl text-gray-600 text-sm font-medium hover:bg-gray-50 transition flex items-center justify-center gap-2"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
+              </svg>
+              Share Listing
+            </button>
+
             {livestock.profiles?.operating_hours_weekdays && (
               <div className="flex items-center gap-2 text-sm text-gray-500 bg-gray-50 p-3 rounded-lg">
                 <Clock className="w-4 h-4 text-primary-green" />
@@ -495,7 +535,6 @@ export default function BreedDetails() {
               </div>
             )}
 
-            {/* In-app Chat Button - Secondary */}
             {user && user.id !== livestock.user_id && conversationId && (
               <Button className="w-full gap-2 bg-primary-green hover:bg-primary-green-dark" variant="outline" asChild>
                 <Link to={`/ChatRoom?conversation=${conversationId}&livestock=${livestock.id}`}>
@@ -505,7 +544,6 @@ export default function BreedDetails() {
               </Button>
             )}
 
-            {/* Report Listing */}
             <div className="text-center pt-2">
               <button
                 onClick={() => {
@@ -700,7 +738,6 @@ export default function BreedDetails() {
                     </div>
                   )}
 
-                  {/* Phone */}
                   {livestock.seller_phone && (
                     <div>
                       <p className="text-xs text-muted-foreground mb-1">Phone</p>

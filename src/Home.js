@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { Search, ArrowRight, Star, MapPin, Shield, Users, Award, ChevronRight, Building2, Calendar, Package, MessageCircle } from 'lucide-react';
+import { Search, ChevronRight, Building2, MapPin, Calendar, Package, MessageCircle, Award } from 'lucide-react';
 import { supabase } from './supabaseClient';
 import { Card, CardContent } from "./components/ui/card";
 import { Button } from "./components/ui/button";
@@ -67,6 +67,37 @@ export default function Home() {
     }
   };
 
+  // Near Me geolocation handler
+  const handleNearMe = () => {
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        async (position) => {
+          try {
+            const response = await fetch(
+              `https://nominatim.openstreetmap.org/reverse?lat=${position.coords.latitude}&lon=${position.coords.longitude}&format=json`
+            );
+            const data = await response.json();
+            const address = data.address;
+            const province = address.state || address.province || address.region || '';
+            if (province) {
+              window.location.href = `/search?province=${encodeURIComponent(province)}`;
+            } else {
+              alert('Could not detect your province. Please select it manually.');
+            }
+          } catch (error) {
+            console.error('Geolocation error:', error);
+            alert('Could not detect your location. Please select a province manually.');
+          }
+        },
+        () => {
+          alert('Please enable location services to use "Near Me"');
+        }
+      );
+    } else {
+      alert('Geolocation is not supported by your browser');
+    }
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-warm-white flex items-center justify-center">
@@ -77,7 +108,7 @@ export default function Home() {
 
   return (
     <div className="min-h-screen bg-warm-white pb-20">
-      {/* Hero Section - With Background Image */}
+      {/* Hero Section - With Background Image, No Stats */}
       <div
         className="relative bg-primary-green text-white overflow-hidden"
         style={{
@@ -94,7 +125,7 @@ export default function Home() {
             </p>
           </div>
 
-          {/* Search Bar - Full width with larger padding */}
+          {/* Search Bar */}
           <form onSubmit={handleSearch} className="relative">
             <Search className="absolute left-5 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
             <input
@@ -112,7 +143,7 @@ export default function Home() {
             </button>
           </form>
 
-          {/* Quick Filters */}
+          {/* Quick Filters with Near Me Chip */}
           <div className="flex gap-2 mt-4 overflow-x-auto pb-2">
             <Link to="/search?type=cattle">
               <span className="px-4 py-1.5 bg-white/15 backdrop-blur rounded-full text-sm whitespace-nowrap hover:bg-white/25 transition">
@@ -149,6 +180,13 @@ export default function Home() {
                 Donkeys
               </span>
             </Link>
+            {/* Near Me Chip */}
+            <button
+              onClick={handleNearMe}
+              className="px-4 py-1.5 bg-gold-accent/20 backdrop-blur rounded-full text-sm whitespace-nowrap hover:bg-gold-accent/30 transition text-white flex items-center gap-1"
+            >
+              📍 Near Me
+            </button>
           </div>
         </div>
       </div>
@@ -240,7 +278,7 @@ export default function Home() {
                 <Link to={`/BreedDetails?id=${animal.id}`} key={animal.id}>
                   <Card className="overflow-hidden hover:shadow-lg transition-shadow border-l-4 border-primary-green">
                     <div className="flex gap-3 p-3">
-                      {/* Image - increased to w-24 h-24 */}
+                      {/* Image - w-24 h-24 */}
                       <div className="w-24 h-24 rounded-lg overflow-hidden bg-gray-100 flex-shrink-0">
                         {animal.images && animal.images[0] ? (
                           <img src={animal.images[0]} alt={animal.name} className="w-full h-full object-cover" />

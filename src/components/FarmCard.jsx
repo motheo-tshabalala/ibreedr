@@ -17,8 +17,24 @@ export default function FarmCard({ farm }) {
     listing_count,
     rating,
     cover_image,
-    logo_image
+    logo_image,
+    phone,
+    created_at
   } = farm;
+
+  // Calculate profile strength (80%+ = Strong Profile)
+  const profileFields = [
+    farm_name,
+    farm_location,
+    farm_bio,
+    phone,
+    years_farming > 0,
+    logo_image,
+    cover_image
+  ].filter(Boolean).length;
+
+  const profileStrength = Math.round((profileFields / 7) * 100);
+  const isStrongProfile = profileStrength >= 80;
 
   return (
     <Link to={`/farm/${id}`}>
@@ -67,7 +83,15 @@ export default function FarmCard({ farm }) {
             </div>
 
             <div className="flex-1 min-w-0">
-              <h3 className="font-semibold text-gray-900 truncate">{farm_name || 'Unnamed Farm'}</h3>
+              <div className="flex items-center gap-2">
+                <h3 className="font-semibold text-gray-900 truncate">{farm_name || 'Unnamed Farm'}</h3>
+                {/* ✅ Strong Profile Badge */}
+                {isStrongProfile && (
+                  <span className="text-[10px] bg-gold-accent/20 text-gold-accent px-2 py-0.5 rounded-full font-medium flex-shrink-0">
+                    ★ Strong Profile
+                  </span>
+                )}
+              </div>
 
               {farm_location && (
                 <div className="flex items-center gap-1 text-xs text-gray-500 mt-0.5">
@@ -86,7 +110,7 @@ export default function FarmCard({ farm }) {
             )}
           </div>
 
-          {/* Stats - Only show if listing_count > 0 */}
+          {/* Stats */}
           <div className="grid grid-cols-2 gap-2 mt-3 pt-3 border-t border-gray-100">
             <div className="flex flex-col items-center text-center">
               <Package className="w-4 h-4 text-primary-green" />
@@ -102,7 +126,7 @@ export default function FarmCard({ farm }) {
             )}
           </div>
 
-          {/* Bio Preview - replaces "View Farm →" link */}
+          {/* Bio Preview */}
           {farm_bio && (
             <p className="text-xs text-gray-500 mt-2 line-clamp-2">{farm_bio}</p>
           )}

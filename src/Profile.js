@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowLeft, Save, User, Building2, Phone, Mail, CheckCircle, AlertCircle, MapPin, Info, Award, Camera, Upload, Package, TrendingUp, LogOut } from 'lucide-react';
+import { ArrowLeft, Save, User, Building2, Phone, Mail, CheckCircle, AlertCircle, MapPin, Info, Award, Camera, Upload, Package, TrendingUp, LogOut, Shield } from 'lucide-react';
 import { supabase } from './supabaseClient';
 import { Card, CardContent } from "./components/ui/card";
 import { Button } from "./components/ui/button";
@@ -28,6 +28,7 @@ export default function Profile() {
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState({ type: '', text: '' });
   const [uploading, setUploading] = useState(false);
+  const [profileStrength, setProfileStrength] = useState(0);
   const [stats, setStats] = useState({
     total_listings: 0,
     active_listings: 0,
@@ -68,6 +69,20 @@ export default function Profile() {
           cover_image: data.cover_image || '',
           logo_image: data.logo_image || ''
         });
+
+        // Calculate profile strength
+        const profileFields = [
+          data.farm_name,
+          data.phone,
+          data.farm_location,
+          data.farm_bio,
+          data.years_farming,
+          data.logo_image,
+          data.cover_image
+        ].filter(Boolean).length;
+
+        const strength = Math.round((profileFields / 7) * 100);
+        setProfileStrength(strength);
       } else {
         setProfile({
           full_name: user.user_metadata?.full_name || '',
@@ -109,73 +124,41 @@ export default function Profile() {
 
   const handleImageUpload = async (e, type) => {
     const file = e.target.files[0];
-    if (!file) {
-      console.log('No file selected');
-      return;
-    }
+    if (!file) return;
 
     setUploading(true);
-    setMessage({ type: '', text: '' });
 
     try {
-      // Validate file size (max 5MB)
-      if (file.size > 5 * 1024 * 1024) {
-        throw new Error('Image must be less than 5MB');
-      }
-
-      // Validate file type
-      if (!file.type.startsWith('image/')) {
-        throw new Error('Please upload an image file');
-      }
-
       const fileExt = file.name.split('.').pop();
       const fileName = `${user.id}_${type}_${Date.now()}.${fileExt}`;
-      const filePath = `${user.id}/${fileName}`;
+      const filePath = `profiles/${user.id}/${fileName}`;
 
-      console.log('Uploading to:', filePath);
-
-      const { error: uploadError } = await supabase.storage
+      const { error } = await supabase.storage
         .from('profile-images')
-        .upload(filePath, file, {
-          cacheControl: '3600',
-          upsert: true
-        });
+        .upload(filePath, file);
 
-      if (uploadError) {
-        console.error('Upload error:', uploadError);
-        throw new Error(uploadError.message);
-      }
+      if (error) throw error;
 
-      // Get public URL
       const { data: { publicUrl } } = supabase.storage
         .from('profile-images')
         .getPublicUrl(filePath);
 
-      console.log('Public URL:', publicUrl);
-
-      // Update profile with new image URL
-      const updateField = type === 'cover' ? 'cover_image' : 'logo_image';
-      const { error: updateError } = await supabase
-        .from('profiles')
-        .update({ [updateField]: publicUrl })
-        .eq('id', user.id);
-
-      if (updateError) {
-        console.error('Update error:', updateError);
-        throw new Error(updateError.message);
-      }
-
-      // Update local state
       setProfile(prev => ({
         ...prev,
-        [updateField]: publicUrl
+        [type === 'cover' ? 'cover_image' : 'logo_image']: publicUrl
       }));
 
-      setMessage({ type: 'success', text: 'Image uploaded successfully!' });
+      const { error: updateError } = await supabase
+        .from('profiles')
+        .update({ [type === 'cover' ? 'cover_image' : 'logo_image']: publicUrl })
+        .eq('id', user.id);
 
+      if (updateError) throw updateError;
+
+      setMessage({ type: 'success', text: 'Image uploaded successfully!' });
     } catch (error) {
       console.error('Upload failed:', error);
-      setMessage({ type: 'error', text: error.message || 'Failed to upload image' });
+      setMessage({ type: 'error', text: 'Failed to upload image: ' + error.message });
     } finally {
       setUploading(false);
     }
@@ -386,6 +369,46 @@ export default function Profile() {
               </div>
             </div>
 
+            {/* Profile Strength */}
+            <div className="mb-6">
+              <div className="flex items-center justify-between mb-1">
+                <span className="text-sm font-medium text-gray-700">Profile Strength</span>
+                <span className="text-sm font-semibold text-primary-green">{profileStrength}%</span>
+              </div>
+              <div className="w-full h-2 bg-gray-200 rounded-full overflow-hidden">
+                <div
+                  className={`h-full rounded-full transition-all duration-500 ${profileStrength >= 80 ? 'bg-green-500' :
+                      profileStrength >= 50 ? 'bg-amber-500' :
+                        'bg-gray-400'
+                    }`}
+                  style={{ width: `${profileStrength}%` }}
+                />
+              </div>
+              <div className="mt-2 space-y-1">
+                {!profile.farm_name && (
+                  <p className="text-xs text-gray-400">Add your farm name → buyers find you</p>
+                )}
+                {!profile.phone && (
+                  <p className="text-xs text-gray-400">Add your phone number → buyers can contact you</p>
+                )}
+                {!profile.farm_location && (
+                  <p className="text-xs text-gray-400">Add your farm location → buyers filter by province</p>
+                )}
+                {!profile.farm_bio && (
+                  <p className="text-xs text-gray-400">Add a farm bio → tell buyers about your farm</p>
+                )}
+                {!profile.years_farming && (
+                  <p className="text-xs text-gray-400">Add years farming → builds trust with buyers</p>
+                )}
+                {!profile.logo_image && (
+                  <p className="text-xs text-gray-400">Add a logo → makes your farm memorable</p>
+                )}
+                {!profile.cover_image && (
+                  <p className="text-xs text-gray-400">Add a cover image → showcases your farm</p>
+                )}
+              </div>
+            </div>
+
             {/* View Dashboard Button */}
             <Link to="/Dashboard">
               <Button className="w-full gap-2 bg-primary-green hover:bg-primary-green-dark mb-6">
@@ -393,6 +416,24 @@ export default function Profile() {
                 View Full Dashboard
               </Button>
             </Link>
+
+            {/* Get Verified Button */}
+            {!profile.verified_farmer && (
+              <Link to="/GetVerified">
+                <Button className="w-full gap-2 bg-gold-accent hover:bg-gold-accent-light text-white mb-6">
+                  <Shield className="w-4 h-4" />
+                  Get Verified
+                </Button>
+              </Link>
+            )}
+            {profile.verified_farmer && (
+              <div className="mb-6 p-3 bg-green-50 rounded-lg border border-green-200 text-center">
+                <p className="text-sm text-green-700 flex items-center justify-center gap-2">
+                  <Shield className="w-4 h-4" />
+                  Your farm is verified ✓
+                </p>
+              </div>
+            )}
 
             {/* Important Note about Farm Name */}
             <div className="mb-6 p-3 bg-amber-50 rounded-lg border border-amber-200">
