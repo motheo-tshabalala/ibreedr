@@ -1,3 +1,5 @@
+
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams, Link } from 'react-router-dom';
 import { ArrowLeft, ArrowRight, MapPin, Star, Phone, Bookmark, Calendar, Weight, Info, Users, Baby, Hash, Eye, MessageCircle, Building2, CheckCircle, Package, Percent, Clock, Shield } from 'lucide-react';
@@ -31,6 +33,7 @@ export default function BreedDetails() {
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [activeTab, setActiveTab] = useState('details');
   const [message, setMessage] = useState({ type: '', text: '' });
+  const [submittingReview, setSubmittingReview] = useState(false);
 
   useEffect(() => {
     const getUser = async () => {
@@ -40,6 +43,7 @@ export default function BreedDetails() {
     getUser();
   }, []);
 
+  // ✅ FIXED BUG 5 - loadLivestock without user dependency to prevent double view count
   useEffect(() => {
     const loadLivestock = async () => {
       if (!livestockId) {
@@ -64,7 +68,9 @@ export default function BreedDetails() {
             phone,
             operating_hours_weekdays,
             operating_hours_saturday,
-            operating_hours_sunday
+            operating_hours_sunday,
+            gps_latitude,
+            gps_longitude
           )
         `)
         .eq('id', livestockId)
@@ -77,21 +83,9 @@ export default function BreedDetails() {
       }
 
       if (livestockData) {
-        const currentViews = livestockData.views_count || 0;
-
-        const { error: viewError } = await supabase
-          .from('livestock')
-          .update({ views_count: currentViews + 1 })
-          .eq('id', livestockId);
-
-        if (viewError) {
-          console.error('Error incrementing views:', viewError);
-        }
-
-        setLivestock({
-          ...livestockData,
-          views_count: currentViews + 1
-        });
+        // ✅ FIXED - uses increment_views RPC to prevent race condition
+        await supabase.rpc('increment_views', { p_id: parseInt(livestockId) });
+        setLivestock({ ...livestockData, views_count: (livestockData.views_count || 0) + 1 });
       }
 
       const { data: reviewsData } = await supabase
@@ -101,24 +95,31 @@ export default function BreedDetails() {
         .order('created_at', { ascending: false });
       setReviews(reviewsData || []);
 
-      if (user) {
-        const { data: wishlistData } = await supabase
-          .from('wishlist')
-          .select('*')
-          .eq('livestock_id', livestockId)
-          .eq('user_id', user.id)
-          .maybeSingle();
-        setIsInWishlist(!!wishlistData);
-      }
-
       setIsLoading(false);
     };
 
     loadLivestock();
-  }, [livestockId, user, navigate]);
+    // ✅ FIXED BUG 5 - 'user' removed from deps, wishlist is in its own effect below
+  }, [livestockId, navigate]);
 
+  // ✅ FIXED BUG 5 - Separate wishlist check so it doesn't trigger a second livestock fetch
   useEffect(() => {
-    const getOrCreateConversation = async () => {
+    if (!user || !livestockId) return;
+    const checkWishlist = async () => {
+      const { data } = await supabase
+        .from('wishlist')
+        .select('*')
+        .eq('livestock_id', livestockId)
+        .eq('user_id', user.id)
+        .maybeSingle();
+      setIsInWishlist(!!data);
+    };
+    checkWishlist();
+  }, [user, livestockId]);
+
+  // ✅ FIXED BUG 4 - Only check for existing conversation, never auto-create
+  useEffect(() => {
+    const checkConversation = async () => {
       if (!user || !livestock) return;
       if (user.id === livestock.user_id) return;
 
@@ -129,23 +130,40 @@ export default function BreedDetails() {
         .eq('buyer_id', user.id)
         .maybeSingle();
 
-      if (existing) {
-        setConversationId(existing.id);
-      } else {
-        const { data: newConvo } = await supabase
-          .from('conversations')
-          .insert([{
-            livestock_id: livestock.id,
-            buyer_id: user.id,
-            seller_id: livestock.user_id
-          }])
-          .select()
-          .single();
-        if (newConvo) setConversationId(newConvo.id);
-      }
+      if (existing) setConversationId(existing.id);
     };
-    getOrCreateConversation();
+    checkConversation();
   }, [user, livestock]);
+
+  // ✅ FIXED BUG 4 - Conversation only created when buyer explicitly clicks Message
+  const handleMessageClick = async () => {
+    if (!user) {
+      navigate('/login');
+      return;
+    }
+    if (conversationId) {
+      navigate(`/ChatRoom?conversation=${conversationId}&livestock=${livestock.id}`);
+      return;
+    }
+    const { data: newConvo, error } = await supabase
+      .from('conversations')
+      .insert([{
+        livestock_id: livestock.id,
+        buyer_id: user.id,
+        seller_id: livestock.user_id
+      }])
+      .select()
+      .single();
+
+    if (error) {
+      setMessage({ type: 'error', text: 'Failed to start conversation. Please try again.' });
+      return;
+    }
+    if (newConvo) {
+      setConversationId(newConvo.id);
+      navigate(`/ChatRoom?conversation=${newConvo.id}&livestock=${livestock.id}`);
+    }
+  };
 
   const toggleWishlist = async () => {
     if (!user) {
@@ -171,11 +189,48 @@ export default function BreedDetails() {
     }
   };
 
+  // ✅ FIXED BUG 10 - Real report submitted to listing_reports table
+  const handleReport = async () => {
+    if (!user) {
+      setMessage({ type: 'error', text: 'Please login to report' });
+      setTimeout(() => navigate('/login'), 1500);
+      return;
+    }
+    const { error } = await supabase.from('listing_reports').insert([{
+      livestock_id: parseInt(livestockId),
+      reported_by: user.id,
+      reason: 'User report from listing page'
+    }]);
+    if (!error) {
+      setMessage({ type: 'success', text: "Report submitted. We'll review this listing." });
+    } else {
+      setMessage({ type: 'error', text: "Failed to submit report. Please try again." });
+    }
+    setTimeout(() => setMessage({ type: '', text: '' }), 3000);
+  };
+
+  // ✅ FIXED BUG 15 - Prevent duplicate reviews from same user
   const submitReview = async () => {
     if (!reviewerName) {
       setMessage({ type: 'error', text: 'Please enter your name' });
       return;
     }
+
+    if (user) {
+      const { data: existing } = await supabase
+        .from('reviews')
+        .select('id')
+        .eq('livestock_id', parseInt(livestockId))
+        .eq('user_id', user.id)
+        .maybeSingle();
+
+      if (existing) {
+        setMessage({ type: 'error', text: 'You have already reviewed this listing' });
+        return;
+      }
+    }
+
+    setSubmittingReview(true);
 
     const { data, error } = await supabase
       .from('reviews')
@@ -200,6 +255,7 @@ export default function BreedDetails() {
       setMessage({ type: 'success', text: 'Review submitted!' });
       setTimeout(() => setMessage({ type: '', text: '' }), 2000);
     }
+    setSubmittingReview(false);
   };
 
   const getAgeDisplay = () => {
@@ -235,7 +291,6 @@ export default function BreedDetails() {
     ? pricePerHead * quantity * (1 - discount / 100)
     : pricePerHead * quantity;
 
-  // Calculate days since listing
   const daysSince = livestock?.created_at
     ? Math.floor((new Date() - new Date(livestock.created_at)) / (1000 * 60 * 60 * 24))
     : 0;
@@ -243,6 +298,12 @@ export default function BreedDetails() {
   const farmName = livestock?.profiles?.farm_name || livestock?.profiles?.full_name || 'Individual Seller';
   const isVerified = livestock?.profiles?.verified_farmer || false;
   const whatsappNumber = livestock?.whatsapp_number || livestock?.profiles?.phone;
+
+  // ✅ FIXED - Location falls back to seller's profile GPS if livestock row has no coords
+  // This ensures location updates when farmer changes their profile location
+  const mapLatitude = livestock?.gps_latitude || livestock?.profiles?.gps_latitude;
+  const mapLongitude = livestock?.gps_longitude || livestock?.profiles?.gps_longitude;
+  const mapLocationName = livestock?.location || livestock?.profiles?.farm_location;
 
   const handleShare = () => {
     const shareData = {
@@ -311,17 +372,15 @@ export default function BreedDetails() {
       </div>
 
       <div className="max-w-4xl mx-auto px-4 py-6 space-y-5">
-        {/* Message */}
         {message.text && (
           <div className={`p-3 rounded-lg text-sm ${message.type === 'success'
-              ? 'bg-green-100 text-green-700'
-              : 'bg-red-100 text-red-700'
+            ? 'bg-green-100 text-green-700'
+            : 'bg-red-100 text-red-700'
             }`}>
             {message.text}
           </div>
         )}
 
-        {/* ✅ 60+ Days Status Prompt */}
         {daysSince > 60 && (
           <div className="p-3 bg-amber-50 rounded-lg border border-amber-200">
             <p className="text-sm text-amber-700 flex items-center gap-2">
@@ -392,6 +451,7 @@ export default function BreedDetails() {
                   </div>
                   <div className="flex items-center gap-1 text-xs text-gray-500">
                     <MapPin className="w-3 h-3" />
+                    {/* ✅ FIXED - shows updated farm_location from profiles join */}
                     <span>{livestock.profiles?.farm_location || livestock.location || 'Location not set'}</span>
                   </div>
                 </div>
@@ -428,7 +488,8 @@ export default function BreedDetails() {
                 </div>
                 <div className="flex items-center gap-1 text-muted-foreground text-sm">
                   <MapPin className="w-3 h-3" />
-                  <span>{livestock.location}</span>
+                  {/* ✅ FIXED - prefers profile location which updates when farmer changes it */}
+                  <span>{livestock.profiles?.farm_location || livestock.location}</span>
                 </div>
               </div>
 
@@ -499,12 +560,12 @@ export default function BreedDetails() {
         {/* WhatsApp & Contact Section */}
         <Card>
           <CardContent className="p-5 space-y-3">
-            {whatsappNumber && (
+            {whatsappNumber ? (
               <a
                 href={`https://wa.me/${whatsappNumber.replace(/\D/g, '')}?text=Hi, I'm interested in your ${livestock.breed_type} listing on iBreedr (Ref: ${livestock.reference_number})`}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="w-full"
+                className="w-full block"
               >
                 <Button className="w-full gap-2 bg-[#25D366] hover:bg-[#1DA851] text-white py-6 text-base font-semibold">
                   <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
@@ -513,11 +574,32 @@ export default function BreedDetails() {
                   WhatsApp Seller
                 </Button>
               </a>
+            ) : (
+              // ✅ ADDED - Fallback when no WhatsApp number is set
+              <div className="w-full p-3 bg-gray-50 rounded-xl border border-gray-200 text-center">
+                <p className="text-sm text-gray-500">WhatsApp not available for this listing</p>
+                <p className="text-xs text-gray-400 mt-0.5">Use the message button below to contact the seller</p>
+              </div>
             )}
+
+            {/* Pay Deposit placeholder — PayGate integration coming soon */}
+            <div className="relative">
+              <Button
+                disabled
+                className="w-full gap-2 bg-gray-100 text-gray-400 cursor-not-allowed border border-gray-200"
+                variant="outline"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
+                </svg>
+                Pay Deposit — Coming Soon
+              </Button>
+              <p className="text-xs text-center text-gray-400 mt-1">Secure in-app payments launching soon</p>
+            </div>
 
             <button
               onClick={handleShare}
-              className="w-full mt-2 py-2.5 border border-gray-200 rounded-xl text-gray-600 text-sm font-medium hover:bg-gray-50 transition flex items-center justify-center gap-2"
+              className="w-full py-2.5 border border-gray-200 rounded-xl text-gray-600 text-sm font-medium hover:bg-gray-50 transition flex items-center justify-center gap-2"
             >
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
@@ -535,24 +617,29 @@ export default function BreedDetails() {
               </div>
             )}
 
-            {user && user.id !== livestock.user_id && conversationId && (
-              <Button className="w-full gap-2 bg-primary-green hover:bg-primary-green-dark" variant="outline" asChild>
-                <Link to={`/ChatRoom?conversation=${conversationId}&livestock=${livestock.id}`}>
-                  <MessageCircle className="w-4 h-4" />
-                  Message on iBreedr
-                </Link>
+            {/* ✅ FIXED BUG 4 - Message button always visible to buyers, creates conversation on click */}
+            {user && user.id !== livestock.user_id && (
+              <Button
+                onClick={handleMessageClick}
+                className="w-full gap-2 bg-primary-green hover:bg-primary-green-dark"
+              >
+                <MessageCircle className="w-4 h-4" />
+                Message on iBreedr
+              </Button>
+            )}
+            {user && user.id === livestock.user_id && (
+              <Button className="w-full" variant="outline" disabled>
+                This is your listing
               </Button>
             )}
 
+            {/* ✅ FIXED BUG 10 - Report listing writes to listing_reports table */}
             <div className="text-center pt-2">
               <button
-                onClick={() => {
-                  setMessage({ type: 'info', text: 'Report submitted. We\'ll review this listing.' });
-                  setTimeout(() => setMessage({ type: '', text: '' }), 3000);
-                }}
-                className="text-xs text-gray-400 hover:text-gray-600 transition"
+                onClick={handleReport}
+                className="text-xs text-gray-400 hover:text-red-500 transition"
               >
-                Report listing
+                Report this listing
               </button>
             </div>
           </CardContent>
@@ -563,8 +650,8 @@ export default function BreedDetails() {
           <button
             onClick={() => setActiveTab('details')}
             className={`flex-1 py-2 rounded-lg text-sm font-medium transition-all ${activeTab === 'details'
-                ? 'bg-white shadow-sm text-primary-green'
-                : 'text-gray-500 hover:text-gray-700'
+              ? 'bg-white shadow-sm text-primary-green'
+              : 'text-gray-500 hover:text-gray-700'
               }`}
           >
             Details
@@ -572,8 +659,8 @@ export default function BreedDetails() {
           <button
             onClick={() => setActiveTab('health')}
             className={`flex-1 py-2 rounded-lg text-sm font-medium transition-all ${activeTab === 'health'
-                ? 'bg-white shadow-sm text-primary-green'
-                : 'text-gray-500 hover:text-gray-700'
+              ? 'bg-white shadow-sm text-primary-green'
+              : 'text-gray-500 hover:text-gray-700'
               }`}
           >
             Health
@@ -581,8 +668,8 @@ export default function BreedDetails() {
           <button
             onClick={() => setActiveTab('seller')}
             className={`flex-1 py-2 rounded-lg text-sm font-medium transition-all ${activeTab === 'seller'
-                ? 'bg-white shadow-sm text-primary-green'
-                : 'text-gray-500 hover:text-gray-700'
+              ? 'bg-white shadow-sm text-primary-green'
+              : 'text-gray-500 hover:text-gray-700'
               }`}
           >
             Farm
@@ -590,8 +677,8 @@ export default function BreedDetails() {
           <button
             onClick={() => setActiveTab('location')}
             className={`flex-1 py-2 rounded-lg text-sm font-medium transition-all ${activeTab === 'location'
-                ? 'bg-white shadow-sm text-primary-green'
-                : 'text-gray-500 hover:text-gray-700'
+              ? 'bg-white shadow-sm text-primary-green'
+              : 'text-gray-500 hover:text-gray-700'
               }`}
           >
             Location
@@ -748,18 +835,6 @@ export default function BreedDetails() {
                     </div>
                   )}
 
-                  {user.id !== livestock.user_id && conversationId && (
-                    <Button className="w-full gap-2 bg-primary-green hover:bg-primary-green-dark" asChild>
-                      <Link to={`/ChatRoom?conversation=${conversationId}&livestock=${livestock.id}`}>
-                        <MessageCircle className="w-4 h-4" />
-                        Message Farm
-                      </Link>
-                    </Button>
-                  )}
-                  {user.id === livestock.user_id && (
-                    <Button className="w-full" variant="outline" disabled>This is your listing</Button>
-                  )}
-
                   <Button className="w-full" variant="outline" asChild>
                     <Link to={`/farm/${livestock.user_id}`}>
                       <Building2 className="w-4 h-4 mr-2" />
@@ -785,16 +860,22 @@ export default function BreedDetails() {
                 </div>
               ) : (
                 <div className="space-y-4">
-                  {livestock.gps_latitude && livestock.gps_longitude ? (
+                  {mapLatitude && mapLongitude ? (
+                    // ✅ FIXED - uses mapLatitude/mapLongitude which falls back to
+                    // seller's profile GPS when livestock row has no coords.
+                    // This means location updates immediately when farmer changes
+                    // their location in Profile, without needing to re-list animals.
                     <LocationMap
-                      latitude={livestock.gps_latitude}
-                      longitude={livestock.gps_longitude}
-                      locationName={livestock.location}
+                      latitude={mapLatitude}
+                      longitude={mapLongitude}
+                      locationName={mapLocationName}
                     />
                   ) : (
                     <div className="text-center py-6">
                       <p className="text-muted-foreground text-sm">Farm hasn't shared exact location.</p>
-                      <p className="text-xs text-muted-foreground mt-2">📍 {livestock.location || 'Location not specified'}</p>
+                      <p className="text-xs text-muted-foreground mt-2">
+                        📍 {mapLocationName || 'Location not specified'}
+                      </p>
                     </div>
                   )}
                 </div>
@@ -848,7 +929,13 @@ export default function BreedDetails() {
                     rows={3}
                   />
                 </div>
-                <Button onClick={submitReview} className="w-full bg-primary-green hover:bg-primary-green-dark">Submit Review</Button>
+                <Button
+                  onClick={submitReview}
+                  disabled={submittingReview}
+                  className="w-full bg-primary-green hover:bg-primary-green-dark"
+                >
+                  {submittingReview ? 'Submitting...' : 'Submit Review'}
+                </Button>
               </div>
             )}
 
@@ -878,28 +965,54 @@ export default function BreedDetails() {
 
       {/* Lightbox */}
       {lightboxOpen && (
-        <div className="fixed inset-0 bg-black/95 z-50 flex items-center justify-center" onClick={() => setLightboxOpen(false)}>
-          <Button variant="ghost" size="icon" className="absolute top-4 right-4 text-white hover:bg-white/20 rounded-full" onClick={() => setLightboxOpen(false)}>
+        <div
+          className="fixed inset-0 bg-black/95 z-50 flex items-center justify-center"
+          onClick={() => setLightboxOpen(false)}
+        >
+          <Button
+            variant="ghost"
+            size="icon"
+            className="absolute top-4 right-4 text-white hover:bg-white/20 rounded-full"
+            onClick={() => setLightboxOpen(false)}
+          >
             ✕
           </Button>
-          <img src={livestock.images[currentImageIndex]} alt={livestock.name || livestock.breed_type} className="max-w-full max-h-full object-contain" onClick={(e) => e.stopPropagation()} />
+          <img
+            src={livestock.images[currentImageIndex]}
+            alt={livestock.name || livestock.breed_type}
+            className="max-w-full max-h-full object-contain"
+            onClick={(e) => e.stopPropagation()}
+          />
           {livestock.images && livestock.images.length > 1 && (
             <>
-              <Button variant="ghost" size="icon" className="absolute left-4 top-1/2 -translate-y-1/2 bg-black/50 hover:bg-black/70 rounded-full w-10 h-10 text-white" onClick={(e) => {
-                e.stopPropagation();
-                setCurrentImageIndex((prev) => (prev > 0 ? prev - 1 : livestock.images.length - 1));
-              }}>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="absolute left-4 top-1/2 -translate-y-1/2 bg-black/50 hover:bg-black/70 rounded-full w-10 h-10 text-white"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setCurrentImageIndex((prev) => (prev > 0 ? prev - 1 : livestock.images.length - 1));
+                }}
+              >
                 ←
               </Button>
-              <Button variant="ghost" size="icon" className="absolute right-4 top-1/2 -translate-y-1/2 bg-black/50 hover:bg-black/70 rounded-full w-10 h-10 text-white" onClick={(e) => {
-                e.stopPropagation();
-                setCurrentImageIndex((prev) => (prev < livestock.images.length - 1 ? prev + 1 : 0));
-              }}>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="absolute right-4 top-1/2 -translate-y-1/2 bg-black/50 hover:bg-black/70 rounded-full w-10 h-10 text-white"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setCurrentImageIndex((prev) => (prev < livestock.images.length - 1 ? prev + 1 : 0));
+                }}
+              >
                 →
               </Button>
               <div className="absolute bottom-4 left-0 right-0 flex justify-center gap-1.5">
                 {livestock.images.map((_, idx) => (
-                  <div key={idx} className={`w-1.5 h-1.5 rounded-full transition ${idx === currentImageIndex ? 'bg-white' : 'bg-white/50'}`} />
+                  <div
+                    key={idx}
+                    className={`w-1.5 h-1.5 rounded-full transition ${idx === currentImageIndex ? 'bg-white' : 'bg-white/50'}`}
+                  />
                 ))}
               </div>
             </>

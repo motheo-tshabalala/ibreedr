@@ -1,6 +1,6 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { Link } from 'react-router-dom';
-import { ArrowLeft, Save, User, Building2, Phone, Mail, CheckCircle, AlertCircle, MapPin, Info, Award, Camera, Upload, Package, TrendingUp, LogOut, Shield, Trash2, Clock, Truck } from 'lucide-react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
+import { ArrowLeft, Save, User, Building2, Phone, Mail, CheckCircle, AlertCircle, MapPin, Info, Award, Camera, Upload, Trash2, Clock, Truck } from 'lucide-react';
 import { supabase } from './supabaseClient';
 import { Card, CardContent } from "./components/ui/card";
 import { Button } from "./components/ui/button";
@@ -10,6 +10,7 @@ import { Textarea } from "./components/ui/textarea";
 import VerificationBadge from './components/VerificationBadge';
 
 export default function Profile() {
+  const navigate = useNavigate();
   const [user, setUser] = useState(null);
   const [profile, setProfile] = useState({
     full_name: '',
@@ -37,15 +38,21 @@ export default function Profile() {
   const [uploadingCover, setUploadingCover] = useState(false);
   const [uploadingLogo, setUploadingLogo] = useState(false);
   const [deletingImage, setDeletingImage] = useState(null);
-  const [profileStrength, setProfileStrength] = useState(0);
-  const [stats, setStats] = useState({
-    total_listings: 0,
-    active_listings: 0,
-    total_animals: 0,
-    bundles_count: 0
-  });
 
-  // ✅ Google Maps Autocomplete ref
+  // ✅ FIXED - Profile strength recalculates live as user types, no page reload needed
+  const profileStrength = useMemo(() => {
+    const fields = [
+      profile.farm_name,
+      profile.phone,
+      profile.farm_location,
+      profile.farm_bio,
+      profile.years_farming,
+      profile.logo_image,
+      profile.cover_image
+    ].filter(Boolean).length;
+    return Math.round((fields / 7) * 100);
+  }, [profile]);
+
   const locationInputRef = useRef(null);
 
   useEffect(() => {
@@ -54,8 +61,9 @@ export default function Profile() {
 
       const { data: { user } } = await supabase.auth.getUser();
 
+      // ✅ FIXED - uses navigate() instead of window.location.href
       if (!user) {
-        window.location.href = '/login';
+        navigate('/login');
         return;
       }
 
@@ -89,19 +97,6 @@ export default function Profile() {
           gps_latitude: data.gps_latitude || '',
           gps_longitude: data.gps_longitude || ''
         });
-
-        const profileFields = [
-          data.farm_name,
-          data.phone,
-          data.farm_location,
-          data.farm_bio,
-          data.years_farming,
-          data.logo_image,
-          data.cover_image
-        ].filter(Boolean).length;
-
-        const strength = Math.round((profileFields / 7) * 100);
-        setProfileStrength(strength);
       } else {
         setProfile({
           full_name: user.user_metadata?.full_name || '',
@@ -125,50 +120,51 @@ export default function Profile() {
         });
       }
 
-      const { data: livestockData } = await supabase
-        .from('livestock')
-        .select('id, status, quantity, is_bundle')
-        .eq('user_id', user.id);
-
-      if (livestockData) {
-        const activeListings = livestockData.filter(l => l.status === 'active').length;
-        const totalAnimals = livestockData.reduce((sum, l) => sum + (l.quantity || 1), 0);
-        const bundlesCount = livestockData.filter(l => l.is_bundle === true).length;
-
-        setStats({
-          total_listings: livestockData.length,
-          active_listings: activeListings,
-          total_animals: totalAnimals,
-          bundles_count: bundlesCount
-        });
-      }
-
       setLoading(false);
     };
 
     loadUserAndProfile();
-  }, []);
+  }, [navigate]);
 
-  // ✅ Google Maps Autocomplete setup
+  // ✅ FIXED - Google Maps Autocomplete initialises after loading completes
+  // with a 150ms delay to ensure DOM is committed and Google script is ready
   useEffect(() => {
-    if (!locationInputRef.current || typeof google === 'undefined') return;
+    if (loading) return; // only run after profile has loaded and DOM has rendered
 
-    const autocomplete = new google.maps.places.Autocomplete(locationInputRef.current, {
-      componentRestrictions: { country: 'za' },
-      types: ['geocode', 'establishment']
-    });
+    const initAutocomplete = () => {
+      if (!locationInputRef.current) return;
+      if (typeof window.google === 'undefined') return;
+      if (!window.google.maps || !window.google.maps.places) return;
 
-    autocomplete.addListener('place_changed', () => {
-      const place = autocomplete.getPlace();
-      if (place.formatted_address) {
-        setProfile(prev => ({
-          ...prev,
-          farm_location: place.formatted_address,
-          gps_latitude: place.geometry?.location?.lat() || '',
-          gps_longitude: place.geometry?.location?.lng() || ''
-        }));
+      try {
+        const autocomplete = new window.google.maps.places.Autocomplete(
+          locationInputRef.current,
+          {
+            componentRestrictions: { country: 'za' },
+            types: ['geocode', 'establishment'],
+            fields: ['formatted_address', 'geometry', 'name']
+          }
+        );
+
+        autocomplete.addListener('place_changed', () => {
+          const place = autocomplete.getPlace();
+          if (place.formatted_address) {
+            setProfile(prev => ({
+              ...prev,
+              farm_location: place.formatted_address,
+              gps_latitude: place.geometry?.location?.lat() || '',
+              gps_longitude: place.geometry?.location?.lng() || ''
+            }));
+          }
+        });
+      } catch (error) {
+        console.warn('Google Maps Autocomplete not available:', error);
       }
-    });
+    };
+
+    // Small delay ensures DOM is committed and Google Places script is fully ready
+    const timer = setTimeout(initAutocomplete, 150);
+    return () => clearTimeout(timer);
   }, [loading]);
 
   // Cover image upload
@@ -289,6 +285,7 @@ export default function Profile() {
     }
   };
 
+  // ✅ FIXED - Remove image uses correct path extraction via split on bucket name
   const handleRemoveImage = async (type) => {
     const field = type === 'cover' ? 'cover_image' : 'logo_image';
     const currentUrl = profile[field];
@@ -299,13 +296,18 @@ export default function Profile() {
     setMessage({ type: '', text: '' });
 
     try {
-      const urlParts = currentUrl.split('/');
-      const filePath = urlParts.slice(urlParts.indexOf('profiles')).join('/');
+      // Correctly extract storage path by splitting on bucket name
+      const urlParts = currentUrl.split('/profile-images/');
+      const filePath = urlParts[1];
 
       if (filePath) {
-        await supabase.storage
+        const { error: deleteError } = await supabase.storage
           .from('profile-images')
           .remove([filePath]);
+
+        if (deleteError) {
+          console.error('Storage delete error:', deleteError);
+        }
       }
 
       const { error: updateError } = await supabase
@@ -332,7 +334,7 @@ export default function Profile() {
     setMessage({ type: '', text: '' });
 
     try {
-      // ✅ Fix: Re-fetch image URLs before saving to prevent overwrite
+      // Re-fetch image URLs before saving to prevent overwriting uploaded images
       const { data: freshImages } = await supabase
         .from('profiles')
         .select('cover_image, logo_image')
@@ -345,7 +347,6 @@ export default function Profile() {
         .eq('id', user.id)
         .single();
 
-      // ✅ Fix: Include all fields including operating_hours and transport
       const profileData = {
         full_name: profile.full_name,
         farm_name: profile.farm_name,
@@ -395,13 +396,15 @@ export default function Profile() {
 
       if (metadataError) throw metadataError;
 
+      // Update farm_name on all existing listings
       await supabase
         .from('livestock')
         .update({ farm_name: profile.farm_name })
         .eq('user_id', user.id);
 
+      // ✅ FIXED - no window.location.reload(), useMemo keeps profile strength live
       setMessage({ type: 'success', text: 'Profile updated successfully!' });
-      setTimeout(() => window.location.reload(), 1500);
+      setTimeout(() => setMessage({ type: '', text: '' }), 3000);
 
     } catch (err) {
       console.error('Save error:', err);
@@ -421,9 +424,10 @@ export default function Profile() {
 
   return (
     <div className="min-h-screen bg-warm-white pb-20">
+      {/* Header — ✅ FIXED back button goes to /hub not /farms */}
       <div className="bg-white border-b sticky top-0 z-30">
         <div className="max-w-2xl mx-auto px-4 py-4 flex items-center gap-4">
-          <Link to="/farms">
+          <Link to="/hub">
             <Button variant="ghost" size="icon" className="rounded-full">
               <ArrowLeft className="w-5 h-5" />
             </Button>
@@ -440,27 +444,33 @@ export default function Profile() {
       <div className="max-w-2xl mx-auto px-4 py-6">
         <Card>
           <CardContent className="p-6">
+
+            {/* Message banner */}
             {message.text && (
               <div className={`mb-6 p-3 rounded-lg flex items-center gap-2 ${message.type === 'success'
-                ? 'bg-green-100 text-green-700'
-                : 'bg-red-100 text-red-700'
+                  ? 'bg-green-100 text-green-700'
+                  : 'bg-red-100 text-red-700'
                 }`}>
                 {message.type === 'success' ? (
-                  <CheckCircle className="w-4 h-4" />
+                  <CheckCircle className="w-4 h-4 flex-shrink-0" />
                 ) : (
-                  <AlertCircle className="w-4 h-4" />
+                  <AlertCircle className="w-4 h-4 flex-shrink-0" />
                 )}
                 <span className="text-sm">{message.text}</span>
               </div>
             )}
 
-            {/* Cover Image */}
+            {/* ✅ Cover Image Upload — htmlFor="coverUpload" fixes the click target */}
             <div className="mb-6">
               <Label className="text-sm font-medium text-gray-700">Farm Cover Image</Label>
               <div className="relative mt-1 h-40 rounded-xl overflow-hidden bg-gray-100 border-2 border-dashed border-gray-300 hover:border-primary-green transition">
                 {profile.cover_image ? (
                   <>
-                    <img src={profile.cover_image} alt="Farm cover" className="w-full h-full object-cover" />
+                    <img
+                      src={profile.cover_image}
+                      alt="Farm cover"
+                      className="w-full h-full object-cover"
+                    />
                     <div className="absolute inset-0 bg-black/0 hover:bg-black/20 transition-all flex items-center justify-center opacity-0 hover:opacity-100">
                       <div className="flex gap-2">
                         <button
@@ -486,7 +496,10 @@ export default function Profile() {
                     </div>
                   </>
                 ) : (
-                  <label className="w-full h-full flex flex-col items-center justify-center cursor-pointer">
+                  <label
+                    htmlFor="coverUpload"
+                    className="w-full h-full flex flex-col items-center justify-center cursor-pointer"
+                  >
                     <Upload className="w-8 h-8 text-gray-400 mb-2" />
                     <span className="text-sm text-gray-400">Upload cover image</span>
                     <span className="text-xs text-gray-300">Recommended: 1200 x 400px</span>
@@ -509,12 +522,16 @@ export default function Profile() {
               <p className="text-xs text-gray-400 mt-1">Cover image appears on your farm storefront</p>
             </div>
 
-            {/* Logo */}
+            {/* Logo Image Upload */}
             <div className="mb-6 -mt-10 ml-4 relative z-10">
               <div className="relative w-20 h-20 rounded-full bg-white border-4 border-white shadow-md overflow-hidden group">
                 {profile.logo_image ? (
                   <>
-                    <img src={profile.logo_image} alt="Farm logo" className="w-full h-full object-cover" />
+                    <img
+                      src={profile.logo_image}
+                      alt="Farm logo"
+                      className="w-full h-full object-cover"
+                    />
                     <div className="absolute inset-0 bg-black/0 hover:bg-black/40 transition-all flex items-center justify-center opacity-0 hover:opacity-100 rounded-full">
                       <div className="flex gap-1">
                         <button
@@ -563,23 +580,7 @@ export default function Profile() {
               <p className="text-xs text-gray-400 ml-1">Logo appears on your farm card</p>
             </div>
 
-            {/* Quick Stats */}
-            <div className="grid grid-cols-3 gap-3 mt-2 mb-6">
-              <div className="bg-primary-green/5 rounded-lg p-3 text-center">
-                <p className="text-2xl font-bold text-primary-green">{stats.active_listings}</p>
-                <p className="text-xs text-gray-500">Active</p>
-              </div>
-              <div className="bg-blue-50 rounded-lg p-3 text-center">
-                <p className="text-2xl font-bold text-blue-600">{stats.total_animals}</p>
-                <p className="text-xs text-gray-500">Animals</p>
-              </div>
-              <div className="bg-amber-50 rounded-lg p-3 text-center">
-                <p className="text-2xl font-bold text-amber-600">{stats.bundles_count}</p>
-                <p className="text-xs text-gray-500">Bundles</p>
-              </div>
-            </div>
-
-            {/* Profile Strength */}
+            {/* Profile Strength — updates live as you type */}
             <div className="mb-6">
               <div className="flex items-center justify-between mb-1">
                 <span className="text-sm font-medium text-gray-700">Profile Strength</span>
@@ -619,33 +620,7 @@ export default function Profile() {
               </div>
             </div>
 
-            {/* Dashboard Button */}
-            <Link to="/Dashboard">
-              <Button className="w-full gap-2 bg-primary-green hover:bg-primary-green-dark text-white mb-6">
-                <TrendingUp className="w-4 h-4" />
-                View Full Dashboard
-              </Button>
-            </Link>
-
-            {/* ✅ Get Verified Button - Gold accent for visibility */}
-            {!profile.verified_farmer && (
-              <Link to="/GetVerified">
-                <Button className="w-full gap-2 bg-gold-accent hover:bg-gold-accent-light text-white mb-6 text-base font-semibold py-3">
-                  <Shield className="w-5 h-5" />
-                  Get Verified — Build Buyer Trust
-                </Button>
-              </Link>
-            )}
-            {profile.verified_farmer && (
-              <div className="mb-6 p-3 bg-green-50 rounded-lg border border-green-200 text-center">
-                <p className="text-sm text-green-700 flex items-center justify-center gap-2">
-                  <Shield className="w-4 h-4" />
-                  Your farm is verified ✓
-                </p>
-              </div>
-            )}
-
-            {/* Note */}
+            {/* Important Note */}
             <div className="mb-6 p-3 bg-amber-50 rounded-lg border border-amber-200">
               <p className="text-sm text-amber-800">
                 <strong>Note:</strong> Your <strong>Farm/Business Name</strong> appears on all your current and future listings.
@@ -654,6 +629,7 @@ export default function Profile() {
             </div>
 
             <div className="space-y-5">
+
               {/* Farm Name */}
               <div>
                 <Label htmlFor="farmName" className="flex items-center gap-2 text-base font-semibold">
@@ -674,7 +650,10 @@ export default function Profile() {
                 </p>
               </div>
 
-              {/* ✅ Google Maps Autocomplete - Farm Location */}
+              {/* ✅ FIXED - Farm Location with Google Maps Autocomplete
+                  - Changed defaultValue to value so saved location loads correctly
+                  - Ref attached for Places Autocomplete to bind to
+                  - Autocomplete initialises after 150ms delay in useEffect above */}
               <div>
                 <Label htmlFor="farmLocation" className="flex items-center gap-2">
                   <MapPin className="w-4 h-4 text-primary-green" />
@@ -682,13 +661,16 @@ export default function Profile() {
                 </Label>
                 <input
                   ref={locationInputRef}
+                  id="farmLocation"
                   type="text"
-                  defaultValue={profile.farm_location}
+                  value={profile.farm_location}
                   onChange={(e) => setProfile({ ...profile, farm_location: e.target.value })}
                   placeholder="Start typing your farm location..."
                   className="w-full mt-1 rounded-lg border border-gray-200 px-3 py-2 text-sm focus:border-primary-green focus:ring-1 focus:ring-primary-green outline-none"
                 />
-                <p className="text-xs text-gray-400 mt-1">Start typing and select from Google Maps suggestions</p>
+                <p className="text-xs text-gray-400 mt-1">
+                  Start typing and select from Google Maps suggestions
+                </p>
               </div>
 
               {/* Farm Bio */}
@@ -755,7 +737,7 @@ export default function Profile() {
                 />
               </div>
 
-              {/* ✅ Operating Hours */}
+              {/* Operating Hours */}
               <div className="space-y-3 pt-3 border-t">
                 <h3 className="text-sm font-semibold text-gray-700 flex items-center gap-2">
                   <Clock className="w-4 h-4 text-primary-green" />
@@ -790,7 +772,7 @@ export default function Profile() {
                 </div>
               </div>
 
-              {/* ✅ Transport */}
+              {/* Transport */}
               <div className="space-y-3 pt-3 border-t">
                 <h3 className="text-sm font-semibold text-gray-700 flex items-center gap-2">
                   <Truck className="w-4 h-4 text-primary-green" />
@@ -829,7 +811,7 @@ export default function Profile() {
                 </div>
               </div>
 
-              {/* Email */}
+              {/* Email — read only */}
               <div>
                 <Label htmlFor="email" className="flex items-center gap-2">
                   <Mail className="w-4 h-4 text-primary-green" />
@@ -846,6 +828,7 @@ export default function Profile() {
                   Email cannot be changed here. Contact support if needed.
                 </p>
               </div>
+
             </div>
 
             {/* Save Button */}
@@ -857,7 +840,7 @@ export default function Profile() {
               >
                 {saving ? (
                   <>
-                    <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></div>
+                    <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent" />
                     Saving...
                   </>
                 ) : (
@@ -869,20 +852,6 @@ export default function Profile() {
               </Button>
             </div>
 
-            {/* Logout & Delete Account */}
-            <div className="mt-4 pt-4 border-t space-y-3">
-              <Link to="/logout">
-                <Button variant="outline" className="w-full gap-2 text-red-600 border-red-200 hover:bg-red-50 hover:text-red-700">
-                  <LogOut className="w-4 h-4" />
-                  Logout
-                </Button>
-              </Link>
-              <div className="text-center">
-                <Link to="/DeleteProfile" className="text-sm text-red-400 hover:text-red-600 hover:underline">
-                  Delete Account
-                </Link>
-              </div>
-            </div>
           </CardContent>
         </Card>
       </div>

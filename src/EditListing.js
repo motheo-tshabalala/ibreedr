@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, Link, useSearchParams } from 'react-router-dom';
 import { ArrowLeft, Upload, X, Video, Save, Package, Percent, Users } from 'lucide-react';
 import { supabase } from './supabaseClient';
 import { Card, CardContent } from "./components/ui/card";
@@ -22,8 +22,8 @@ const ANIMAL_TYPES = [
 
 export default function EditListing() {
   const navigate = useNavigate();
-  const urlParams = new URLSearchParams(window.location.search);
-  const listingId = urlParams.get('id');
+  const [searchParams] = useSearchParams();
+  const listingId = searchParams.get('id');
 
   const [user, setUser] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -172,7 +172,6 @@ export default function EditListing() {
     setMessage({ type: '', text: '' });
 
     try {
-      // ✅ REMOVED total_price from updateData - DB trigger handles it
       const updateData = {
         farm_name: formData.farm_name,
         seller_name: formData.seller_name,
@@ -225,7 +224,6 @@ export default function EditListing() {
     }
   };
 
-  // Calculate price display
   const quantity = parseInt(formData.quantity) || 1;
   const pricePerHead = parseFloat(formData.price) || 0;
   const isBundle = formData.is_bundle || false;
@@ -262,7 +260,6 @@ export default function EditListing() {
       </div>
 
       <div className="max-w-4xl mx-auto px-4 py-8">
-        {/* ✅ Inline message replaces alert() */}
         {message.text && (
           <div className={`mb-4 p-3 rounded-lg text-sm ${message.type === 'success'
               ? 'bg-green-100 text-green-700'

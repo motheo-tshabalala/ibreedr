@@ -1,11 +1,12 @@
 import React, { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { supabase } from './supabaseClient';
-import { Building2, LogOut, CheckCircle, Loader2 } from 'lucide-react';
+import { Building2, CheckCircle, Loader2, LogOut } from 'lucide-react';
 import { Card, CardContent } from "./components/ui/card";
 import { Button } from "./components/ui/button";
 
 export default function Logout() {
+  const navigate = useNavigate();
   const [status, setStatus] = useState('logging out');
   const [error, setError] = useState('');
 
@@ -16,9 +17,8 @@ export default function Logout() {
         if (error) throw error;
         setStatus('success');
 
-        // Redirect after a moment
         setTimeout(() => {
-          window.location.href = '/login';
+          navigate('/login');
         }, 2000);
 
       } catch (err) {
@@ -29,19 +29,17 @@ export default function Logout() {
     };
 
     logout();
-  }, []);
+  }, [navigate]);
 
   return (
     <div className="min-h-screen bg-warm-white flex items-center justify-center p-4">
       <Card className="w-full max-w-md border-0 shadow-xl">
         <CardContent className="p-8 text-center">
-          {/* Logo */}
           <div className="flex items-center justify-center gap-2 mb-6">
             <Building2 className="w-8 h-8 text-primary-green" />
             <h1 className="text-2xl font-bold text-primary-green">iBreedr</h1>
           </div>
 
-          {/* Status */}
           {status === 'logging out' && (
             <div className="space-y-4">
               <div className="flex justify-center">
@@ -75,7 +73,7 @@ export default function Logout() {
               <h2 className="text-lg font-semibold text-red-600">Logout Failed</h2>
               <p className="text-sm text-gray-500">{error || 'Something went wrong'}</p>
               <Button
-                onClick={() => window.location.href = '/'}
+                onClick={() => navigate('/')}
                 className="bg-primary-green hover:bg-primary-green-dark text-white"
               >
                 Return to Home
@@ -83,7 +81,6 @@ export default function Logout() {
             </div>
           )}
 
-          {/* Footer */}
           <div className="mt-6 pt-4 border-t border-gray-100">
             <p className="text-xs text-gray-400">
               {status === 'logging out' && 'See you soon!'}

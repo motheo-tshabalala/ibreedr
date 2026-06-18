@@ -26,10 +26,11 @@ export default function BottomNav() {
       label: 'Chat',
       path: '/ChatList'
     },
+    // ✅ CHANGED: Profile → Me, path /hub
     {
       icon: User,
-      label: 'Profile',
-      path: '/Profile'
+      label: 'Me',
+      path: '/hub'
     },
   ];
 
@@ -41,8 +42,13 @@ export default function BottomNav() {
         <div className="max-w-md mx-auto">
           <div className="flex justify-around items-center h-16">
             {tabs.map((tab) => {
+              // ✅ CHANGED: Active state includes all seller/account pages
               const isActive = location.pathname === tab.path ||
-                (tab.path === '/MyListings' && location.pathname === '/EditListing');
+                (tab.path === '/hub' && [
+                  '/Profile', '/MyListings', '/Dashboard', '/GetVerified',
+                  '/Wishlist', '/DeleteProfile', '/EditListing', '/SellerUpload'
+                ].includes(location.pathname));
+
               const Icon = tab.icon;
 
               return (
@@ -54,14 +60,12 @@ export default function BottomNav() {
                       : 'text-gray-400 hover:text-gray-600'
                     }`}
                 >
-                  {/* Top border for active state */}
                   {isActive && (
                     <span className="absolute -top-0.5 left-1/2 -translate-x-1/2 w-8 h-0.5 bg-primary-green rounded-full" />
                   )}
 
                   <Icon className="w-5 h-5" />
 
-                  {/* Label - colored when active */}
                   <span className={`text-[10px] font-medium ${isActive ? 'text-primary-green' : ''
                     }`}>
                     {tab.label}

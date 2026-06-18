@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { Search, ChevronRight, Building2, MapPin, Calendar, Package, MessageCircle, Award } from 'lucide-react';
 import { supabase } from './supabaseClient';
 import { Card, CardContent } from "./components/ui/card";
@@ -8,16 +8,17 @@ import { Badge } from "./components/ui/Badge";
 import FarmCard from './components/FarmCard';
 
 export default function Home() {
+  const navigate = useNavigate();
   const [featuredFarms, setFeaturedFarms] = useState([]);
   const [recentListings, setRecentListings] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
+  const [message, setMessage] = useState({ type: '', text: '' });
 
   useEffect(() => {
     const loadData = async () => {
       setLoading(true);
 
-      // Load featured farms (only those with active listings)
       const { data: farms } = await supabase
         .from('profiles')
         .select(`
@@ -37,7 +38,6 @@ export default function Home() {
         setFeaturedFarms(farmsWithListings);
       }
 
-      // Load recent listings
       const { data: listings } = await supabase
         .from('livestock')
         .select(`
@@ -63,11 +63,10 @@ export default function Home() {
   const handleSearch = (e) => {
     e.preventDefault();
     if (searchQuery.trim()) {
-      window.location.href = `/search?q=${encodeURIComponent(searchQuery)}`;
+      navigate(`/search?q=${encodeURIComponent(searchQuery)}`);
     }
   };
 
-  // Near Me geolocation handler
   const handleNearMe = () => {
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
@@ -80,21 +79,25 @@ export default function Home() {
             const address = data.address;
             const province = address.state || address.province || address.region || '';
             if (province) {
-              window.location.href = `/search?province=${encodeURIComponent(province)}`;
+              navigate(`/search?province=${encodeURIComponent(province)}`);
             } else {
-              alert('Could not detect your province. Please select it manually.');
+              setMessage({ type: 'error', text: 'Could not detect your province. Please select it manually.' });
+              setTimeout(() => setMessage({ type: '', text: '' }), 3000);
             }
           } catch (error) {
             console.error('Geolocation error:', error);
-            alert('Could not detect your location. Please select a province manually.');
+            setMessage({ type: 'error', text: 'Could not detect your location. Please select a province manually.' });
+            setTimeout(() => setMessage({ type: '', text: '' }), 3000);
           }
         },
         () => {
-          alert('Please enable location services to use "Near Me"');
+          setMessage({ type: 'error', text: 'Please enable location services to use "Near Me"' });
+          setTimeout(() => setMessage({ type: '', text: '' }), 3000);
         }
       );
     } else {
-      alert('Geolocation is not supported by your browser');
+      setMessage({ type: 'error', text: 'Geolocation is not supported by your browser' });
+      setTimeout(() => setMessage({ type: '', text: '' }), 3000);
     }
   };
 
@@ -108,7 +111,15 @@ export default function Home() {
 
   return (
     <div className="min-h-screen bg-warm-white pb-20">
-      {/* Hero Section - With Background Image, No Stats */}
+      {/* Message */}
+      {message.text && (
+        <div className={`max-w-md mx-auto px-4 pt-4 ${message.type === 'error' ? 'text-red-600' : 'text-green-600'
+          }`}>
+          {message.text}
+        </div>
+      )}
+
+      {/* Hero Section */}
       <div
         className="relative bg-primary-green text-white overflow-hidden"
         style={{
@@ -125,7 +136,6 @@ export default function Home() {
             </p>
           </div>
 
-          {/* Search Bar */}
           <form onSubmit={handleSearch} className="relative">
             <Search className="absolute left-5 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
             <input
@@ -143,7 +153,6 @@ export default function Home() {
             </button>
           </form>
 
-          {/* Quick Filters with Near Me Chip */}
           <div className="flex gap-2 mt-4 overflow-x-auto pb-2">
             <Link to="/search?type=cattle">
               <span className="px-4 py-1.5 bg-white/15 backdrop-blur rounded-full text-sm whitespace-nowrap hover:bg-white/25 transition">
@@ -180,7 +189,6 @@ export default function Home() {
                 Donkeys
               </span>
             </Link>
-            {/* Near Me Chip */}
             <button
               onClick={handleNearMe}
               className="px-4 py-1.5 bg-gold-accent/20 backdrop-blur rounded-full text-sm whitespace-nowrap hover:bg-gold-accent/30 transition text-white flex items-center gap-1"
@@ -278,7 +286,6 @@ export default function Home() {
                 <Link to={`/BreedDetails?id=${animal.id}`} key={animal.id}>
                   <Card className="overflow-hidden hover:shadow-lg transition-shadow border-l-4 border-primary-green">
                     <div className="flex gap-3 p-3">
-                      {/* Image - w-24 h-24 */}
                       <div className="w-24 h-24 rounded-lg overflow-hidden bg-gray-100 flex-shrink-0">
                         {animal.images && animal.images[0] ? (
                           <img src={animal.images[0]} alt={animal.name} className="w-full h-full object-cover" />
@@ -287,11 +294,9 @@ export default function Home() {
                         )}
                       </div>
 
-                      {/* Info */}
                       <div className="flex-1 min-w-0">
                         <div className="flex justify-between items-start">
                           <div className="flex-1">
-                            {/* Farm Name */}
                             <div className="flex items-center gap-1.5">
                               <Building2 className="w-3 h-3 text-primary-green" />
                               <span className="font-semibold text-sm text-gray-900 truncate">{farmName}</span>
@@ -300,7 +305,6 @@ export default function Home() {
                               )}
                             </div>
 
-                            {/* Location */}
                             {farmLocation && (
                               <div className="flex items-center gap-1 text-xs text-gray-400 mt-0.5">
                                 <MapPin className="w-3 h-3" />
@@ -308,7 +312,6 @@ export default function Home() {
                               </div>
                             )}
 
-                            {/* Animal Details */}
                             <div className="flex items-center gap-2 mt-1">
                               <p className="text-sm font-medium text-gray-900">
                                 {animal.name || `${animal.breed_type} x${quantity}`}
@@ -326,7 +329,6 @@ export default function Home() {
                             </div>
                             <p className="text-xs text-gray-500">{animal.breed_type}</p>
 
-                            {/* Reference Number */}
                             {animal.reference_number && (
                               <p className="text-[10px] text-gray-300 mt-1">
                                 Ref: {animal.reference_number}
@@ -334,7 +336,6 @@ export default function Home() {
                             )}
                           </div>
 
-                          {/* Price */}
                           <div className="text-right flex-shrink-0 ml-2">
                             {quantity === 1 ? (
                               <p className="font-bold text-primary-green text-sm">R {Number(animal.price).toLocaleString()}</p>

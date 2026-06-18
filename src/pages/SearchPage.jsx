@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { Search, X, Filter, MapPin, ChevronDown, Bell } from 'lucide-react';
 import { supabase } from '../supabaseClient';
 import { Card, CardContent } from "../components/ui/card";
@@ -13,14 +13,15 @@ const PROVINCES = [
 
 export default function SearchPage() {
   const navigate = useNavigate();
+  const [urlSearchParams] = useSearchParams(); // ✅ ADDED - for reading URL params
   const [user, setUser] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [filters, setFilters] = useState({
     animalType: '',
     province: '',
     breed: '',
-    minPrice: '',
-    maxPrice: '',
+    minPrice: '', // ✅ ADDED
+    maxPrice: '', // ✅ ADDED
     verifiedOnly: false,
     transportAvailable: false,
     sortBy: 'newest'
@@ -33,6 +34,26 @@ export default function SearchPage() {
   const [showAlertModal, setShowAlertModal] = useState(false);
   const [alertSubmitting, setAlertSubmitting] = useState(false);
   const [message, setMessage] = useState({ type: '', text: '' });
+  const [searchTriggered, setSearchTriggered] = useState(false);
+
+  // ✅ FIXED - Read URL params on mount so Home chips work
+  useEffect(() => {
+    const type = urlSearchParams.get('type');
+    const q = urlSearchParams.get('q');
+    const province = urlSearchParams.get('province');
+
+    if (type) setFilters(prev => ({ ...prev, animalType: type }));
+    if (q) setSearchQuery(q);
+    if (province) setFilters(prev => ({ ...prev, province }));
+
+    // Auto-search if any params exist
+    if (type || q || province) {
+      setSearchTriggered(true);
+      setTimeout(() => {
+        handleSearch();
+      }, 100);
+    }
+  }, []); // Runs once on mount
 
   // Get user on mount
   useEffect(() => {
@@ -51,115 +72,140 @@ export default function SearchPage() {
     }
   }, []);
 
-  // ✅ FIXED: Load suggested searches from DB
+  // Load suggested searches from DB
   useEffect(() => {
     const loadSuggestions = async () => {
-      const { data, error } = await supabase
-        .from('livestock')
-        .select('animal_type')
-        .eq('status', 'active');
+      try {
+        const { data, error } = await supabase
+          .from('livestock')
+          .select('animal_type')
+          .eq('status', 'active');
 
-      if (error) {
-        console.error('Error loading suggestions:', error);
-        return;
-      }
+        if (error) {
+          console.error('Error loading suggestions:', error);
+          return;
+        }
 
-      if (data && data.length > 0) {
-        const counts = {};
-        data.forEach(item => {
-          if (item.animal_type) {
-            counts[item.animal_type] = (counts[item.animal_type] || 0) + 1;
-          }
-        });
+        if (data && data.length > 0) {
+          const counts = {};
+          data.forEach(item => {
+            if (item.animal_type) {
+              counts[item.animal_type] = (counts[item.animal_type] || 0) + 1;
+            }
+          });
 
-        const sorted = Object.entries(counts).sort((a, b) => b[1] - a[1]);
-        const topTypes = sorted.slice(0, 3).map(item => item[0]);
-        setSuggestedSearches(topTypes);
+          const sorted = Object.entries(counts).sort((a, b) => b[1] - a[1]);
+          const topTypes = sorted.slice(0, 3).map(item => item[0]);
+          setSuggestedSearches(topTypes);
+        }
+      } catch (error) {
+        console.error('Error in loadSuggestions:', error);
       }
     };
     loadSuggestions();
   }, []);
 
+  // Memoize active filter count
+  const activeFilterCount = useMemo(() => {
+    return [
+      filters.animalType, filters.province, filters.breed,
+      filters.minPrice, filters.maxPrice, filters.verifiedOnly ? 'verified' : null
+    ].filter(Boolean).length;
+  }, [filters]);
+
+  // Memoize hasActiveFilters
+  const hasActiveFilters = useMemo(() => {
+    return searchQuery || filters.animalType || filters.province ||
+      filters.breed || filters.minPrice || filters.maxPrice || filters.verifiedOnly;
+  }, [searchQuery, filters]);
+
   // Handle search
-  const handleSearch = async () => {
+  const handleSearch = useCallback(async () => {
     if (!searchQuery.trim() && !filters.animalType && !filters.province) {
       return;
     }
 
     setLoading(true);
+    setSearchTriggered(true);
 
-    let query = supabase
-      .from('livestock')
-      .select(`
-        *,
-        profiles!user_id (
-          farm_name,
-          full_name,
-          verified_farmer,
-          farm_location
-        )
-      `)
-      .eq('status', 'active');
-
-    if (searchQuery.trim()) {
-      query = query.or(
-        `name.ilike.%${searchQuery}%,` +
-        `breed_type.ilike.%${searchQuery}%,` +
-        `profiles.farm_name.ilike.%${searchQuery}%`
-      );
-    }
-
-    if (filters.animalType) {
-      query = query.eq('animal_type', filters.animalType);
-    }
-
-    if (filters.province) {
-      query = query.ilike('location', `%${filters.province}%`);
-    }
-
-    if (filters.breed) {
-      query = query.ilike('breed_type', `%${filters.breed}%`);
-    }
-
-    if (filters.minPrice) {
-      query = query.gte('price', parseFloat(filters.minPrice));
-    }
-
-    if (filters.maxPrice) {
-      query = query.lte('price', parseFloat(filters.maxPrice));
-    }
-
-    if (filters.verifiedOnly) {
-      query = query.eq('profiles.verified_farmer', true);
-    }
-
-    switch (filters.sortBy) {
-      case 'price-low':
-        query = query.order('price', { ascending: true });
-        break;
-      case 'price-high':
-        query = query.order('price', { ascending: false });
-        break;
-      default:
-        query = query.order('created_at', { ascending: false });
-    }
-
-    const { data, error } = await query;
-
-    if (error) {
-      console.error('Search error:', error);
-    } else {
-      setResults(data || []);
+    try {
+      let query = supabase
+        .from('livestock')
+        .select(`
+          *,
+          profiles!user_id (
+            farm_name,
+            full_name,
+            verified_farmer,
+            farm_location
+          )
+        `)
+        .eq('status', 'active');
 
       if (searchQuery.trim()) {
-        const newRecent = [searchQuery, ...recentSearches.filter(s => s !== searchQuery)].slice(0, 5);
-        setRecentSearches(newRecent);
-        localStorage.setItem('ibreedr_recent_searches', JSON.stringify(newRecent));
+        query = query.or(
+          `name.ilike.%${searchQuery}%,` +
+          `breed_type.ilike.%${searchQuery}%,` +
+          `profiles.farm_name.ilike.%${searchQuery}%`
+        );
       }
-    }
 
-    setLoading(false);
-  };
+      if (filters.animalType) {
+        query = query.eq('animal_type', filters.animalType);
+      }
+
+      if (filters.province) {
+        query = query.ilike('location', `%${filters.province}%`);
+      }
+
+      if (filters.breed) {
+        query = query.ilike('breed_type', `%${filters.breed}%`);
+      }
+
+      // ✅ ADDED - Price range filter
+      if (filters.minPrice) {
+        query = query.gte('price', parseFloat(filters.minPrice));
+      }
+      if (filters.maxPrice) {
+        query = query.lte('price', parseFloat(filters.maxPrice));
+      }
+
+      if (filters.verifiedOnly) {
+        query = query.eq('profiles.verified_farmer', true);
+      }
+
+      switch (filters.sortBy) {
+        case 'price-low':
+          query = query.order('price', { ascending: true });
+          break;
+        case 'price-high':
+          query = query.order('price', { ascending: false });
+          break;
+        default:
+          query = query.order('created_at', { ascending: false });
+      }
+
+      const { data, error } = await query;
+
+      if (error) {
+        console.error('Search error:', error);
+        setMessage({ type: 'error', text: 'Search failed. Please try again.' });
+      } else {
+        setResults(data || []);
+
+        if (searchQuery.trim()) {
+          const newRecent = [searchQuery, ...recentSearches.filter(s => s !== searchQuery)].slice(0, 5);
+          setRecentSearches(newRecent);
+          localStorage.setItem('ibreedr_recent_searches', JSON.stringify(newRecent));
+        }
+      }
+    } catch (error) {
+      console.error('Search error:', error);
+      setMessage({ type: 'error', text: 'Something went wrong. Please try again.' });
+    } finally {
+      setLoading(false);
+    }
+  }, [searchQuery, filters, recentSearches]);
 
   const handleKeyPress = (e) => {
     if (e.key === 'Enter') {
@@ -180,15 +226,9 @@ export default function SearchPage() {
     });
     setSearchQuery('');
     setResults([]);
+    setMessage({ type: '', text: '' });
+    setSearchTriggered(false);
   };
-
-  const hasActiveFilters = searchQuery || filters.animalType || filters.province ||
-    filters.breed || filters.minPrice || filters.maxPrice || filters.verifiedOnly;
-
-  const activeFilterCount = [
-    filters.animalType, filters.province, filters.breed,
-    filters.minPrice, filters.maxPrice, filters.verifiedOnly ? 'verified' : null
-  ].filter(Boolean).length;
 
   // Handle search alert
   const handleSetAlert = async () => {
@@ -308,6 +348,27 @@ export default function SearchPage() {
               />
             </div>
 
+            {/* ✅ ADDED - Price range filter */}
+            <div>
+              <label className="text-xs font-medium text-gray-600 mb-1 block">Price Range (R)</label>
+              <div className="flex gap-2">
+                <input
+                  type="number"
+                  placeholder="Min"
+                  value={filters.minPrice}
+                  onChange={(e) => setFilters(prev => ({ ...prev, minPrice: e.target.value }))}
+                  className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm"
+                />
+                <input
+                  type="number"
+                  placeholder="Max"
+                  value={filters.maxPrice}
+                  onChange={(e) => setFilters(prev => ({ ...prev, maxPrice: e.target.value }))}
+                  className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm"
+                />
+              </div>
+            </div>
+
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className="text-xs font-medium text-gray-600">Min Price (R)</label>
@@ -369,7 +430,7 @@ export default function SearchPage() {
       )}
 
       {/* Recent Searches */}
-      {!searchQuery && recentSearches.length > 0 && !showFilters && results.length === 0 && (
+      {!searchQuery && recentSearches.length > 0 && !showFilters && results.length === 0 && !searchTriggered && (
         <div className="max-w-md mx-auto px-4 py-4">
           <h3 className="text-sm font-medium text-gray-500 mb-2">Recent Searches</h3>
           <div className="flex flex-wrap gap-2">
@@ -471,7 +532,7 @@ export default function SearchPage() {
 
       {/* Results */}
       <div className="max-w-md mx-auto px-4">
-        {results.length === 0 && !loading && (searchQuery || filters.animalType || filters.province) && (
+        {results.length === 0 && !loading && (searchQuery || filters.animalType || filters.province) && searchTriggered && (
           <div className="text-center py-12">
             <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
               <Search className="w-8 h-8 text-gray-400" />

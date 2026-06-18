@@ -13,6 +13,8 @@ export default function MyListings() {
   const [myListings, setMyListings] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [deletingId, setDeletingId] = useState(null);
+  // ✅ ADDED - inline confirmation state
+  const [confirmDeleteId, setConfirmDeleteId] = useState(null);
   const [message, setMessage] = useState({ type: '', text: '' });
 
   useEffect(() => {
@@ -49,9 +51,17 @@ export default function MyListings() {
     setIsLoading(false);
   };
 
+  // ✅ FIXED - Inline confirmation instead of window.confirm
   const deleteListing = async (id) => {
-    if (!window.confirm('Are you sure you want to delete this?')) return;
+    // First click: show confirmation state
+    if (confirmDeleteId !== id) {
+      setConfirmDeleteId(id);
+      setTimeout(() => setConfirmDeleteId(null), 3000);
+      return;
+    }
 
+    // Second click: actually delete
+    setConfirmDeleteId(null);
     setDeletingId(id);
     setMessage({ type: '', text: '' });
 
@@ -82,6 +92,34 @@ export default function MyListings() {
     setTimeout(() => setMessage({ type: '', text: '' }), 3000);
   };
 
+  // ✅ ADDED - Duplicate listing function
+  const duplicateListing = (listing) => {
+    sessionStorage.setItem('ibreedr_duplicate_listing', JSON.stringify({
+      farm_name: listing.farm_name,
+      seller_name: listing.seller_name,
+      seller_phone: listing.seller_phone,
+      location: listing.location,
+      animal_type: listing.animal_type,
+      breed_type: listing.breed_type,
+      pure_cross: listing.pure_cross,
+      age_years: listing.age_years,
+      age_months: listing.age_months,
+      teeth_age: listing.teeth_age,
+      weight_min: listing.weight_min,
+      weight_max: listing.weight_max,
+      pregnancy_status: listing.pregnancy_status,
+      sire_used: listing.sire_used,
+      quantity: listing.quantity,
+      price: listing.price,
+      is_bundle: listing.is_bundle,
+      bundle_discount: listing.bundle_discount,
+      health_info: listing.health_info,
+      notes: listing.notes,
+      whatsapp_number: listing.whatsapp_number,
+    }));
+    navigate('/SellerUpload?duplicate=true');
+  };
+
   const displayAge = (livestock) => {
     const years = livestock?.age_years || 0;
     const months = livestock?.age_months || 0;
@@ -93,7 +131,6 @@ export default function MyListings() {
 
   const farmName = profile?.farm_name || profile?.full_name || 'My Farm';
 
-  // Calculate pricing display
   const getPriceDisplay = (listing) => {
     const quantity = listing.quantity || 1;
     const pricePerHead = listing.price || 0;
@@ -133,11 +170,10 @@ export default function MyListings() {
 
   return (
     <div className="min-h-screen bg-warm-white pb-20">
-      {/* Header */}
       <div className="bg-white border-b sticky top-0 z-30">
         <div className="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">
           <div className="flex items-center gap-4">
-            <Link to="/farms">
+            <Link to="/hub">
               <Button variant="ghost" size="icon" className="rounded-full">
                 <ArrowLeft className="w-5 h-5" />
               </Button>
@@ -161,7 +197,6 @@ export default function MyListings() {
       </div>
 
       <div className="max-w-7xl mx-auto px-4 py-6">
-        {/* Message */}
         {message.text && (
           <div className={`mb-4 p-3 rounded-lg text-sm ${message.type === 'success'
               ? 'bg-green-100 text-green-700'
@@ -224,7 +259,6 @@ export default function MyListings() {
                     )}
                   </div>
                   <CardContent className="p-4">
-                    {/* Farm name */}
                     <div className="flex items-center gap-2 text-xs text-gray-500 mb-1">
                       <Building2 className="w-3 h-3" />
                       <span>{farmName}</span>
@@ -235,7 +269,6 @@ export default function MyListings() {
                     </h3>
                     <p className="text-sm text-gray-500 mt-0.5">{listing.breed_type} • {displayAge(listing)}</p>
 
-                    {/* Price */}
                     <div className="mt-2">
                       <p className="text-lg font-bold text-primary-green">{priceInfo.display}</p>
                       {priceInfo.detail && (
@@ -251,7 +284,7 @@ export default function MyListings() {
                       )}
                     </div>
 
-                    <div className="flex gap-2 mt-4 pt-3 border-t">
+                    <div className="flex flex-wrap gap-2 mt-4 pt-3 border-t">
                       <Link to={`/EditListing?id=${listing.id}&type=individual`} className="flex-1">
                         <Button variant="outline" size="sm" className="w-full gap-1">
                           <Edit className="w-3 h-3" />
@@ -264,20 +297,47 @@ export default function MyListings() {
                           View
                         </Link>
                       </Button>
+                      {/* ✅ ADDED - Duplicate button */}
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="flex-1 text-gray-600"
+                        onClick={() => duplicateListing(listing)}
+                      >
+                        Duplicate
+                      </Button>
                       {listing.status === 'active' && (
-                        <Button variant="outline" size="sm" onClick={() => updateStatus(listing.id, 'sold')}>
-                          Mark Sold
+                        <>
+                          <Button variant="outline" size="sm" onClick={() => updateStatus(listing.id, 'sold')} className="flex-1">
+                            Mark Sold
+                          </Button>
+                          {/* ✅ ADDED - Pause button */}
+                          <Button variant="outline" size="sm" onClick={() => updateStatus(listing.id, 'inactive')} className="flex-1 text-amber-600 border-amber-200 hover:bg-amber-50">
+                            Pause
+                          </Button>
+                        </>
+                      )}
+                      {listing.status === 'inactive' && (
+                        /* ✅ ADDED - Re-activate button */
+                        <Button variant="outline" size="sm" onClick={() => updateStatus(listing.id, 'active')} className="flex-1 text-primary-green border-primary-green/30 hover:bg-primary-green/5">
+                          Re-activate
                         </Button>
                       )}
+                      {/* ✅ FIXED - Delete with inline confirmation */}
                       <Button
                         variant="outline"
                         size="icon"
-                        className="text-red-500 hover:text-red-700"
+                        className={`transition ${confirmDeleteId === listing.id
+                          ? 'text-red-600 border-red-400 bg-red-50 w-auto px-2 text-xs'
+                          : 'text-red-500 hover:text-red-700'
+                          }`}
                         onClick={() => deleteListing(listing.id)}
                         disabled={deletingId === listing.id}
                       >
                         {deletingId === listing.id ? (
                           <div className="animate-spin rounded-full h-4 w-4 border-2 border-red-500 border-t-transparent" />
+                        ) : confirmDeleteId === listing.id ? (
+                          'Confirm?'
                         ) : (
                           <Trash2 className="w-4 h-4" />
                         )}

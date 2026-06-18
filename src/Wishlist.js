@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Heart, Bell, Trash2, TrendingDown, Building2, MapPin } from 'lucide-react';
-import { Link } from 'react-router-dom';
 import { supabase } from './supabaseClient';
 import { Card, CardContent } from "./components/ui/card";
 import { Button } from "./components/ui/button";
@@ -8,10 +8,12 @@ import { Badge } from "./components/ui/Badge";
 import { Switch } from "./components/ui/switch";
 
 export default function Wishlist() {
+  const navigate = useNavigate();
   const [user, setUser] = useState(null);
   const [wishlistItems, setWishlistItems] = useState([]);
   const [listings, setListings] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [message, setMessage] = useState({ type: '', text: '' });
 
   useEffect(() => {
     const getUser = async () => {
@@ -19,11 +21,11 @@ export default function Wishlist() {
       if (user) {
         setUser(user);
       } else {
-        window.location.href = '/login';
+        navigate('/login');
       }
     };
     getUser();
-  }, []);
+  }, [navigate]);
 
   useEffect(() => {
     const loadWishlist = async () => {
@@ -39,6 +41,7 @@ export default function Wishlist() {
 
       if (wishlistError) {
         console.error('Error loading wishlist:', wishlistError);
+        setMessage({ type: 'error', text: 'Failed to load wishlist' });
       } else {
         setWishlistItems(wishlistData || []);
 
@@ -72,11 +75,12 @@ export default function Wishlist() {
       .eq('id', id);
 
     if (error) {
-      alert('Failed to remove from wishlist');
+      setMessage({ type: 'error', text: 'Failed to remove from wishlist' });
     } else {
       setWishlistItems(wishlistItems.filter(item => item.id !== id));
-      alert('Removed from wishlist');
+      setMessage({ type: 'success', text: 'Removed from wishlist' });
     }
+    setTimeout(() => setMessage({ type: '', text: '' }), 3000);
   };
 
   const updateNotification = async (id, field, value) => {
@@ -106,7 +110,7 @@ export default function Wishlist() {
   if (isLoading) {
     return (
       <div className="min-h-screen bg-warm-white flex items-center justify-center">
-        <div className="animate-spin rounded-full h-10 w-10 border-4 border-primary-green border-t-transparent"></div>
+        <div className="animate-spin rounded-full h-10 w-10 border-4 border-primary-green border-t-transparent" />
       </div>
     );
   }
@@ -130,6 +134,15 @@ export default function Wishlist() {
       </div>
 
       <div className="max-w-4xl mx-auto px-4 py-6">
+        {message.text && (
+          <div className={`mb-4 p-3 rounded-lg text-sm ${message.type === 'success'
+              ? 'bg-green-100 text-green-700'
+              : 'bg-red-100 text-red-700'
+            }`}>
+            {message.text}
+          </div>
+        )}
+
         {enrichedWishlist.length === 0 ? (
           <div className="text-center py-16">
             <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
@@ -160,7 +173,6 @@ export default function Wishlist() {
 
                 <CardContent className="p-4">
                   <div className="flex gap-4">
-                    {/* Image */}
                     <div className="w-24 h-24 rounded-lg overflow-hidden bg-gray-100 flex-shrink-0">
                       {item.livestock?.images && item.livestock.images[0] ? (
                         <img src={item.livestock.images[0]} alt={item.livestock_name} className="w-full h-full object-cover" />
@@ -171,11 +183,9 @@ export default function Wishlist() {
                       )}
                     </div>
 
-                    {/* Details */}
                     <div className="flex-1">
                       <div className="flex items-start justify-between">
                         <div>
-                          {/* Farm name - PROMINENT */}
                           <div className="flex items-center gap-2">
                             <Building2 className="w-4 h-4 text-primary-green" />
                             <span className="font-semibold text-sm">{item.farmName}</span>
@@ -215,7 +225,6 @@ export default function Wishlist() {
                     </div>
                   </div>
 
-                  {/* Settings */}
                   <div className="mt-4 pt-3 border-t flex items-center justify-between">
                     <div className="flex items-center gap-4">
                       <label className="flex items-center gap-2 cursor-pointer text-sm">

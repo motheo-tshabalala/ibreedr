@@ -252,10 +252,11 @@ export default function Auth() {
             )}
           </div>
 
-          {/* Trust Badge */}
+          {/* Trust Badge - Privacy Policy link updated */}
           <div className="mt-6 pt-4 border-t border-gray-100 text-center">
             <p className="text-xs text-gray-400">
-              By continuing, you agree to our Terms of Service and Privacy Policy
+              By continuing, you agree to our Terms of Service and{' '}
+              <Link to="/privacy" className="text-primary-green hover:underline">Privacy Policy</Link>
             </p>
             <div className="flex items-center justify-center gap-4 mt-2 text-xs text-gray-400">
               <span>🔒 Secure</span>

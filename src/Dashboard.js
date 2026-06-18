@@ -37,7 +37,7 @@ export default function Dashboard() {
         setProfile(profileData);
       }
 
-      // ✅ Use RPC for farm stats (one call instead of loading all rows)
+      // Use RPC for farm stats
       const { data: statsData, error: statsError } = await supabase
         .rpc('get_farm_stats', { p_user_id: user.id });
 
@@ -65,9 +65,7 @@ export default function Dashboard() {
   const isVerified = profile?.verified_farmer || false;
   const yearsFarming = profile?.years_farming || 0;
 
-  // ✅ StatCard now accepts raw numbers only (no pre-formatted strings)
   const StatCard = ({ title, value, icon: Icon, color, subtitle }) => {
-    // Handle value formatting safely
     const displayValue = typeof value === 'number' ? value.toLocaleString() : value || '0';
 
     return (
@@ -98,7 +96,6 @@ export default function Dashboard() {
     );
   }
 
-  // ✅ Use stats from RPC - no client-side calculation
   const totalListings = stats?.total_listings || 0;
   const activeListings = stats?.active_listings || 0;
   const soldListings = stats?.sold_listings || 0;
@@ -149,7 +146,7 @@ export default function Dashboard() {
       </div>
 
       <div className="max-w-7xl mx-auto px-4 py-6 space-y-6">
-        {/* ✅ Stats Grid - Using RPC data with raw numbers */}
+        {/* Stats Grid */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
           <StatCard
             title="Total Listings"
@@ -165,12 +162,13 @@ export default function Dashboard() {
             color="bg-blue-500"
             subtitle={`${bundleCount} bundles`}
           />
+          {/* ✅ FIXED BUG 13 - Added "R" prefix to Revenue */}
           <StatCard
             title="Revenue"
-            value={totalValue}
+            value={`R ${Number(totalValue).toLocaleString()}`}
             icon={DollarSign}
             color="bg-amber-500"
-            subtitle={`R ${soldValue.toLocaleString()} sold`}
+            subtitle={`R ${Number(soldValue).toLocaleString()} sold`}
           />
         </div>
 

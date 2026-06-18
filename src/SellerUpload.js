@@ -98,6 +98,20 @@ export default function SellerUpload() {
     loadUserAndProfile();
   }, [navigate]);
 
+  // ✅ ADDED - reads duplicate data from MyListings
+  useEffect(() => {
+    const duplicateData = sessionStorage.getItem('ibreedr_duplicate_listing');
+    if (duplicateData) {
+      try {
+        const parsed = JSON.parse(duplicateData);
+        setFormData(prev => ({ ...prev, ...parsed, images: [] }));
+        sessionStorage.removeItem('ibreedr_duplicate_listing');
+      } catch (e) {
+        console.error('Failed to parse duplicate listing data', e);
+      }
+    }
+  }, []);
+
   // Fetch price suggestion from RPC
   const fetchPriceSuggestion = useCallback(async () => {
     const animalType = formData.animal_type;
@@ -327,7 +341,10 @@ export default function SellerUpload() {
       {[1, 2, 3, 4, 5, 6, 7].map((step) => (
         <div key={step} className="flex items-center">
           <button
-            onClick={() => setCurrentStep(step)}
+            onClick={() => {
+              // ✅ FIXED - Only allow backward navigation
+              if (step < currentStep) setCurrentStep(step);
+            }}
             className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium transition-all ${currentStep === step
                 ? 'bg-primary-green text-white'
                 : step < currentStep
@@ -860,7 +877,7 @@ export default function SellerUpload() {
     <div className="min-h-screen bg-warm-white pb-20">
       <div className="bg-white border-b sticky top-0 z-30">
         <div className="max-w-2xl mx-auto px-4 py-4 flex items-center gap-4">
-          <Link to="/livestock">
+          <Link to="/hub">
             <Button variant="ghost" size="icon" className="rounded-full">
               <ArrowLeft className="w-5 h-5" />
             </Button>

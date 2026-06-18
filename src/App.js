@@ -1,6 +1,6 @@
 import './App.css';
 import React, { useState } from 'react';
-import { BrowserRouter as Router, Routes, Route, useLocation } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, useLocation, useNavigate } from 'react-router-dom';
 
 // Pages
 import Home from './Home';
@@ -9,6 +9,9 @@ import FarmsPage from './pages/FarmsPage';
 import FarmStorefront from './components/FarmStorefront';
 import LivestockGrid from './components/LivestockGrid';
 import GetVerified from './pages/GetVerified';
+import SellerHub from './pages/SellerHub';
+import PrivacyPolicy from './pages/PrivacyPolicy';
+import HelpCenter from './HelpCenter'; // ✅ ADDED
 
 // Components
 import SellerUpload from './SellerUpload';
@@ -21,30 +24,34 @@ import Logout from './Logout';
 import ChatList from './ChatList';
 import ChatRoom from './ChatRoom';
 import EditListing from './EditListing';
-import HelpCenter from './HelpCenter';
 import Profile from './Profile';
 import DeleteProfile from './DeleteProfile';
 import BottomNav from './components/BottomNav';
+
+function HelpCenterWrapper({ onClose }) {
+  const navigate = useNavigate();
+  return <HelpCenter onClose={() => { onClose(); navigate(-1); }} />;
+}
 
 function AppContent() {
   const location = useLocation();
   const [showHelpCenter, setShowHelpCenter] = useState(false);
 
-  // Pages where BottomNav should NOT show
   const hideNavPaths = ['/login', '/logout', '/DeleteProfile', '/ChatRoom'];
   const shouldShowNav = !hideNavPaths.includes(location.pathname);
 
   return (
     <div className="min-h-screen bg-warm-white">
       <Routes>
-        {/* Main Pages */}
         <Route path="/" element={<Home />} />
         <Route path="/search" element={<SearchPage />} />
         <Route path="/farms" element={<FarmsPage />} />
         <Route path="/farm/:id" element={<FarmStorefront />} />
         <Route path="/livestock" element={<LivestockGrid />} />
+        <Route path="/hub" element={<SellerHub setShowHelpCenter={setShowHelpCenter} />} />
+        <Route path="/privacy" element={<PrivacyPolicy />} />
+        <Route path="/help" element={<HelpCenter onClose={() => setShowHelpCenter(false)} />} />
 
-        {/* Marketplace */}
         <Route path="/SellerUpload" element={<SellerUpload />} />
         <Route path="/MyListings" element={<MyListings />} />
         <Route path="/Wishlist" element={<Wishlist />} />
@@ -52,14 +59,12 @@ function AppContent() {
         <Route path="/BreedDetails" element={<BreedDetails />} />
         <Route path="/EditListing" element={<EditListing />} />
 
-        {/* Auth */}
         <Route path="/login" element={<Auth />} />
         <Route path="/logout" element={<Logout />} />
         <Route path="/Profile" element={<Profile />} />
         <Route path="/DeleteProfile" element={<DeleteProfile />} />
         <Route path="/GetVerified" element={<GetVerified />} />
 
-        {/* Chat */}
         <Route path="/ChatList" element={<ChatList />} />
         <Route path="/ChatRoom" element={<ChatRoom />} />
       </Routes>

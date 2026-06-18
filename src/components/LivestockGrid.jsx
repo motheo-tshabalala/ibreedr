@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Link } from 'react-router-dom';
-import { Search, Filter, X, MapPin, ChevronDown, Grid, List } from 'lucide-react';
+import { Link, useNavigate } from 'react-router-dom';
+import { Search, Filter, X, MapPin, ChevronDown } from 'lucide-react';
 import { supabase } from '../supabaseClient';
 import { Card, CardContent } from "./ui/card";
 import { Badge } from "./ui/Badge";
@@ -8,12 +8,14 @@ import { Button } from "./ui/button";
 import LivestockCard from './LivestockCard';
 
 export default function LivestockGrid() {
+  const navigate = useNavigate();
+  const [user, setUser] = useState(null);
+  const [wishlistIds, setWishlistIds] = useState(new Set());
   const [livestock, setLivestock] = useState([]);
   const [filteredLivestock, setFilteredLivestock] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [showFilters, setShowFilters] = useState(false);
-  const [viewMode, setViewMode] = useState('grid');
   const [filters, setFilters] = useState({
     animalType: '',
     breed: '',
@@ -29,6 +31,23 @@ export default function LivestockGrid() {
     pureBreedOnly: false
   });
 
+  // Load user and wishlist
+  useEffect(() => {
+    const loadUser = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      setUser(user);
+      if (user) {
+        const { data } = await supabase
+          .from('wishlist')
+          .select('livestock_id')
+          .eq('user_id', user.id);
+        if (data) setWishlistIds(new Set(data.map(w => w.livestock_id)));
+      }
+    };
+    loadUser();
+  }, []);
+
+  // Load livestock
   useEffect(() => {
     const loadLivestock = async () => {
       setLoading(true);
@@ -59,11 +78,38 @@ export default function LivestockGrid() {
     loadLivestock();
   }, []);
 
+  // Wishlist handler
+  const handleWishlist = async (livestock) => {
+    if (!user) {
+      navigate('/login');
+      return;
+    }
+
+    const isIn = wishlistIds.has(livestock.id);
+    if (isIn) {
+      await supabase.from('wishlist').delete()
+        .eq('livestock_id', livestock.id)
+        .eq('user_id', user.id);
+      setWishlistIds(prev => {
+        const s = new Set(prev);
+        s.delete(livestock.id);
+        return s;
+      });
+    } else {
+      await supabase.from('wishlist').insert([{
+        user_id: user.id,
+        livestock_id: livestock.id,
+        livestock_name: livestock.name || livestock.breed_type,
+        original_price: livestock.price
+      }]);
+      setWishlistIds(prev => new Set([...prev, livestock.id]));
+    }
+  };
+
   // Apply filters and search
   useEffect(() => {
     let results = [...livestock];
 
-    // Search filter
     if (searchQuery.trim()) {
       const query = searchQuery.toLowerCase();
       results = results.filter(item =>
@@ -74,26 +120,22 @@ export default function LivestockGrid() {
       );
     }
 
-    // Animal type filter
     if (filters.animalType) {
       results = results.filter(item => item.animal_type === filters.animalType);
     }
 
-    // Breed filter
     if (filters.breed) {
       results = results.filter(item =>
         item.breed_type?.toLowerCase().includes(filters.breed.toLowerCase())
       );
     }
 
-    // Province filter
     if (filters.province) {
       results = results.filter(item =>
         item.location?.toLowerCase().includes(filters.province.toLowerCase())
       );
     }
 
-    // Price range
     if (filters.minPrice) {
       results = results.filter(item => item.price >= parseFloat(filters.minPrice));
     }
@@ -101,12 +143,10 @@ export default function LivestockGrid() {
       results = results.filter(item => item.price <= parseFloat(filters.maxPrice));
     }
 
-    // Verified only
     if (filters.verifiedOnly) {
       results = results.filter(item => item.profiles?.verified_farmer === true);
     }
 
-    // ✅ Age Range Filter
     if (filters.ageRange) {
       switch (filters.ageRange) {
         case 'under-1':
@@ -126,7 +166,6 @@ export default function LivestockGrid() {
       }
     }
 
-    // ✅ Weight Range Filter
     if (filters.weightRange) {
       switch (filters.weightRange) {
         case 'under-100':
@@ -146,7 +185,6 @@ export default function LivestockGrid() {
       }
     }
 
-    // ✅ Pregnancy Status Filter
     if (filters.pregnancyStatus) {
       if (filters.pregnancyStatus === 'pregnant') {
         results = results.filter(item => item.pregnancy_status === 'pregnant');
@@ -157,12 +195,10 @@ export default function LivestockGrid() {
       }
     }
 
-    // ✅ Pure Breed Only
     if (filters.pureBreedOnly) {
       results = results.filter(item => item.pure_cross === 'pure');
     }
 
-    // Sort
     switch (filters.sortBy) {
       case 'price-low':
         results.sort((a, b) => (a.price || 0) - (b.price || 0));
@@ -173,14 +209,13 @@ export default function LivestockGrid() {
       case 'oldest':
         results.sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
         break;
-      default: // newest
+      default:
         results.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
     }
 
     setFilteredLivestock(results);
   }, [searchQuery, filters, livestock]);
 
-  // Count active filters
   const activeFilterCount = [
     filters.animalType, filters.breed, filters.province,
     filters.minPrice, filters.maxPrice, filters.verifiedOnly ? 'verified' : null,
@@ -220,7 +255,6 @@ export default function LivestockGrid() {
 
   return (
     <div className="min-h-screen bg-warm-white pb-20">
-      {/* Header */}
       <div className="bg-primary-green text-white sticky top-0 z-20">
         <div className="max-w-md mx-auto px-4 py-4">
           <div className="flex items-center justify-between mb-3">
@@ -228,7 +262,6 @@ export default function LivestockGrid() {
             <span className="text-sm text-green-200">{filteredLivestock.length} animals</span>
           </div>
 
-          {/* Search Bar */}
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
             <input
@@ -240,7 +273,6 @@ export default function LivestockGrid() {
             />
           </div>
 
-          {/* Filter Toggle with Badge */}
           <button
             onClick={() => setShowFilters(!showFilters)}
             className="mt-3 flex items-center gap-2 text-sm text-green-100 hover:text-white transition"
@@ -257,7 +289,6 @@ export default function LivestockGrid() {
         </div>
       </div>
 
-      {/* Filters Panel */}
       {showFilters && (
         <div className="bg-white border-b border-gray-200 px-4 py-4">
           <div className="max-w-md mx-auto space-y-3">
@@ -310,7 +341,6 @@ export default function LivestockGrid() {
               />
             </div>
 
-            {/* ✅ Age Range Filter */}
             <div>
               <label className="text-xs font-medium text-gray-600">Age Range</label>
               <select
@@ -326,7 +356,6 @@ export default function LivestockGrid() {
               </select>
             </div>
 
-            {/* ✅ Weight Range Filter */}
             <div>
               <label className="text-xs font-medium text-gray-600">Weight Range</label>
               <select
@@ -342,7 +371,6 @@ export default function LivestockGrid() {
               </select>
             </div>
 
-            {/* ✅ Pregnancy Status Filter */}
             <div>
               <label className="text-xs font-medium text-gray-600">Pregnancy Status</label>
               <select
@@ -449,6 +477,8 @@ export default function LivestockGrid() {
               <LivestockCard
                 key={animal.id}
                 livestock={animal}
+                onWishlist={handleWishlist}
+                isInWishlist={wishlistIds.has(animal.id)}
               />
             ))}
           </div>

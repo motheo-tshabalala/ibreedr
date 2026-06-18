@@ -25,14 +25,16 @@ export default function ChatList() {
     getUser();
   }, [navigate]);
 
+  // ✅ FIXED - Realtime subscription set up after conversations load
   useEffect(() => {
     if (!user) return;
 
-    const loadConversations = async () => {
+    let subscription;
+
+    const setupChat = async () => {
       setIsLoading(true);
       setError(null);
 
-      // ✅ Destructure error from RPC call
       const { data, error } = await supabase
         .rpc('get_user_conversations', { p_user_id: user.id });
 
@@ -44,32 +46,30 @@ export default function ChatList() {
         return;
       }
 
-      setConversations(data || []);
+      const convos = data || [];
+      setConversations(convos);
       setIsLoading(false);
+
+      // ✅ FIXED - subscription set up AFTER data loads, using actual IDs
+      const ids = convos.map(c => c.id);
+      if (ids.length === 0) return;
+
+      subscription = supabase
+        .channel('chat-updates')
+        .on('postgres_changes', {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'messages',
+          filter: `conversation_id=in.(${ids.join(',')})`
+        }, () => setupChat())
+        .subscribe();
     };
 
-    loadConversations();
+    setupChat();
 
-    // ✅ Filtered subscription - only fires for user's conversations
-    const conversationIds = conversations.map(c => c.id);
-
-    if (conversationIds.length > 0) {
-      const subscription = supabase
-        .channel('chat-updates')
-        .on(
-          'postgres_changes',
-          {
-            event: 'INSERT',
-            schema: 'public',
-            table: 'messages',
-            filter: `conversation_id=in.(${conversationIds.join(',')})`
-          },
-          () => loadConversations()
-        )
-        .subscribe();
-
-      return () => subscription.unsubscribe();
-    }
+    return () => {
+      if (subscription) subscription.unsubscribe();
+    };
   }, [user]);
 
   const formatTime = (timestamp) => {
@@ -100,8 +100,7 @@ export default function ChatList() {
     <div className="min-h-screen bg-warm-white pb-20">
       <div className="bg-white border-b sticky top-0 z-30">
         <div className="max-w-2xl mx-auto px-4 py-4 flex items-center gap-4">
-          {/* ✅ Fixed back button to go to /livestock instead of /Browse */}
-          <Link to="/livestock">
+          <Link to="/hub">
             <Button variant="ghost" size="icon" className="rounded-full">
               <ArrowLeft className="w-5 h-5" />
             </Button>
@@ -124,7 +123,6 @@ export default function ChatList() {
             </div>
             <h3 className="text-lg font-semibold mb-2">No messages yet</h3>
             <p className="text-muted-foreground text-sm mb-6">Browse listings and message farms</p>
-            {/* ✅ Fixed second back button */}
             <Link to="/livestock">
               <Button className="bg-primary-green hover:bg-primary-green-dark">Browse Livestock</Button>
             </Link>

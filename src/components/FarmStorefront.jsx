@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { useParams, Link, useNavigate } from 'react-router-dom';
 import {
   ArrowLeft, MapPin, Star, Users, MessageCircle,
   CheckCircle, Phone, Mail, Calendar, Award,
@@ -17,6 +17,7 @@ import LocationMap from './LocationMap';
 
 export default function FarmStorefront() {
   const { id } = useParams();
+  const navigate = useNavigate();
   const [farm, setFarm] = useState(null);
   const [listings, setListings] = useState([]);
   const [recentReviews, setRecentReviews] = useState([]);
@@ -34,84 +35,108 @@ export default function FarmStorefront() {
 
   useEffect(() => {
     const loadFarm = async () => {
+      if (!id) return;
       setLoading(true);
 
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', id)
-        .single();
-
-      if (profile) {
-        setFarm(profile);
-
-        const { data: livestock } = await supabase
-          .from('livestock')
+      try {
+        const { data: profile, error: profileError } = await supabase
+          .from('profiles')
           .select('*')
-          .eq('user_id', id)
-          .eq('status', 'active')
-          .order('created_at', { ascending: false });
-
-        setListings(livestock || []);
-
-        // Load recent reviews
-        const { data: reviewsData } = await supabase
-          .from('reviews')
-          .select(`
-            *,
-            livestock!inner (
-              name,
-              breed_type
-            )
-          `)
-          .eq('livestock.user_id', id)
-          .order('created_at', { ascending: false })
-          .limit(3);
-
-        if (reviewsData) {
-          setRecentReviews(reviewsData);
-        }
-      }
-
-      if (user) {
-        const { data: follow } = await supabase
-          .from('farm_followers')
-          .select('*')
-          .eq('farm_id', id)
-          .eq('user_id', user.id)
+          .eq('id', id)
           .single();
 
-        setIsFollowing(!!follow);
-      }
+        if (profileError) {
+          console.error('Error loading farm:', profileError);
+          setLoading(false);
+          return;
+        }
 
-      setLoading(false);
+        if (profile) {
+          setFarm(profile);
+
+          const { data: livestock, error: livestockError } = await supabase
+            .from('livestock')
+            .select('*')
+            .eq('user_id', id)
+            .eq('status', 'active')
+            .order('created_at', { ascending: false });
+
+          if (livestockError) {
+            console.error('Error loading listings:', livestockError);
+          } else {
+            setListings(livestock || []);
+          }
+
+          // ✅ FIXED BUG 6 - Get listing IDs first, then fetch reviews
+          const { data: farmListings } = await supabase
+            .from('livestock')
+            .select('id')
+            .eq('user_id', id);
+
+          if (farmListings && farmListings.length > 0) {
+            const listingIds = farmListings.map(l => l.id);
+            const { data: reviewsData, error: reviewsError } = await supabase
+              .from('reviews')
+              .select('*, livestock(name, breed_type)')
+              .in('livestock_id', listingIds)
+              .order('created_at', { ascending: false })
+              .limit(3);
+
+            if (reviewsError) {
+              console.error('Error loading reviews:', reviewsError);
+            } else {
+              setRecentReviews(reviewsData || []);
+            }
+          }
+        }
+
+        if (user) {
+          const { data: follow } = await supabase
+            .from('farm_followers')
+            .select('*')
+            .eq('farm_id', id)
+            .eq('user_id', user.id)
+            .single();
+
+          setIsFollowing(!!follow);
+        }
+
+      } catch (error) {
+        console.error('Error loading farm data:', error);
+      } finally {
+        setLoading(false);
+      }
     };
 
-    if (id) {
-      loadFarm();
-    }
+    loadFarm();
   }, [id, user]);
 
-  const toggleFollow = async () => {
+  const toggleFollow = useCallback(async () => {
     if (!user) {
-      window.location.href = '/login';
+      navigate('/login');
       return;
     }
 
-    if (isFollowing) {
-      await supabase
-        .from('farm_followers')
-        .delete()
-        .eq('farm_id', id)
-        .eq('user_id', user.id);
-      setIsFollowing(false);
-    } else {
-      await supabase
-        .from('farm_followers')
-        .insert({ farm_id: id, user_id: user.id });
-      setIsFollowing(true);
+    try {
+      if (isFollowing) {
+        await supabase
+          .from('farm_followers')
+          .delete()
+          .eq('farm_id', id)
+          .eq('user_id', user.id);
+        setIsFollowing(false);
+      } else {
+        await supabase
+          .from('farm_followers')
+          .insert({ farm_id: id, user_id: user.id });
+        setIsFollowing(true);
+      }
+    } catch (error) {
+      console.error('Error toggling follow:', error);
     }
-  };
+  }, [user, isFollowing, id, navigate]);
+
+  const googleMapsKey = useMemo(() => process.env.REACT_APP_GOOGLE_MAPS_API_KEY || '', []);
 
   if (loading) {
     return (
@@ -132,12 +157,8 @@ export default function FarmStorefront() {
     );
   }
 
-  // Get Google Maps API key from environment
-  const googleMapsKey = process.env.REACT_APP_GOOGLE_MAPS_API_KEY || '';
-
   return (
     <div className="min-h-screen bg-warm-white pb-20">
-      {/* Cover Image */}
       <div className="relative h-48 md:h-64 bg-gray-200">
         {farm.cover_image ? (
           <img src={farm.cover_image} alt={farm.farm_name} className="w-full h-full object-cover" />
@@ -152,7 +173,6 @@ export default function FarmStorefront() {
         </Link>
       </div>
 
-      {/* Farm Info */}
       <div className="max-w-4xl mx-auto px-4 -mt-8 relative">
         <div className="bg-white rounded-2xl shadow-lg p-6">
           <div className="flex flex-col md:flex-row md:items-start gap-4">
@@ -201,7 +221,6 @@ export default function FarmStorefront() {
             </div>
           </div>
 
-          {/* Stats with Trust Signals */}
           <div className="flex flex-wrap gap-6 mt-4 pt-4 border-t border-gray-100">
             <div className="flex items-center gap-2 text-sm text-gray-600">
               <Users className="w-4 h-4" />
@@ -232,15 +251,10 @@ export default function FarmStorefront() {
                 <span>Member since {new Date(farm.created_at).getFullYear()}</span>
               </div>
             )}
-            <div className="flex items-center gap-2 text-sm text-gray-600">
-              <Clock className="w-4 h-4" />
-              <span className="font-semibold">Responds within 30 min</span>
-            </div>
           </div>
         </div>
       </div>
 
-      {/* WhatsApp Button Section */}
       <div className="max-w-4xl mx-auto px-4 py-4">
         {farm.phone && (
           <a
@@ -259,10 +273,8 @@ export default function FarmStorefront() {
         )}
       </div>
 
-      {/* About & Details + Map Section */}
       <div className="max-w-4xl mx-auto px-4 py-6">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {/* About & Bio */}
           <div className="md:col-span-2 space-y-4">
             <Card>
               <CardContent className="p-5">
@@ -278,7 +290,6 @@ export default function FarmStorefront() {
               </CardContent>
             </Card>
 
-            {/* Farm Details */}
             <Card>
               <CardContent className="p-5">
                 <h3 className="text-lg font-semibold text-gray-900 mb-3 flex items-center gap-2">
@@ -334,9 +345,7 @@ export default function FarmStorefront() {
             </Card>
           </div>
 
-          {/* Sidebar - Transport, Hours, Map */}
           <div className="space-y-4">
-            {/* Transport Information */}
             <Card>
               <CardContent className="p-5">
                 <h3 className="text-lg font-semibold text-gray-900 mb-3 flex items-center gap-2">
@@ -349,7 +358,7 @@ export default function FarmStorefront() {
                     <div>
                       <p className="text-xs text-gray-500">Responsibility</p>
                       <p className="text-sm font-medium">
-                        {farm.transport_responsibility || 'Negotiable'}
+                        {farm.transport_responsibility || 'Not specified'}
                       </p>
                     </div>
                   </div>
@@ -372,7 +381,6 @@ export default function FarmStorefront() {
               </CardContent>
             </Card>
 
-            {/* ✅ Operating Hours - NOW DISPLAYED */}
             <Card>
               <CardContent className="p-5">
                 <h3 className="text-lg font-semibold text-gray-900 mb-3 flex items-center gap-2">
@@ -401,15 +409,10 @@ export default function FarmStorefront() {
                   {!farm.operating_hours_weekdays && (
                     <p className="text-sm text-gray-400 italic">No operating hours set</p>
                   )}
-                  <div className="mt-3 pt-3 border-t border-gray-200 flex items-center gap-2 text-sm text-green-600">
-                    <Clock className="w-4 h-4" />
-                    <span>Response time: Within 30 minutes</span>
-                  </div>
                 </div>
               </CardContent>
             </Card>
 
-            {/* ✅ Google Maps Embed - Location */}
             {farm.farm_location && googleMapsKey && (
               <Card>
                 <CardContent className="p-4">
@@ -435,7 +438,6 @@ export default function FarmStorefront() {
               </Card>
             )}
 
-            {/* Fallback Location Display (no map) */}
             {farm.farm_location && !googleMapsKey && (
               <Card>
                 <CardContent className="p-4">
@@ -454,7 +456,6 @@ export default function FarmStorefront() {
         </div>
       </div>
 
-      {/* Recent Reviews */}
       {recentReviews.length > 0 && (
         <div className="max-w-4xl mx-auto px-4 py-6">
           <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
@@ -493,7 +494,6 @@ export default function FarmStorefront() {
         </div>
       )}
 
-      {/* Inventory */}
       <div className="max-w-4xl mx-auto px-4 py-6">
         <h2 className="text-xl font-bold text-gray-900 mb-4">Current Inventory</h2>
 
@@ -504,7 +504,10 @@ export default function FarmStorefront() {
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {listings.map((animal) => (
-              <LivestockCard key={animal.id} livestock={animal} />
+              <LivestockCard
+                key={`${animal.id}-${animal.updated_at || animal.created_at}`}
+                livestock={animal}
+              />
             ))}
           </div>
         )}
