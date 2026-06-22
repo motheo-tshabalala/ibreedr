@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { supabase } from './supabaseClient';
 import { Card, CardContent } from "./components/ui/card";
@@ -18,6 +18,17 @@ export default function Auth() {
   const [error, setError] = useState('');
   const [message, setMessage] = useState('');
   const [resetMode, setResetMode] = useState(false);
+
+  // ✅ FIXED - Detect email confirmation redirect and show a clear success message
+  // Supabase redirects here with ?confirmed=true after the user clicks the
+  // confirmation link in their email (see emailRedirectTo below).
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('confirmed') === 'true') {
+      setMessage('Email confirmed! You can now log in.');
+      setIsLogin(true);
+    }
+  }, []);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -47,6 +58,12 @@ export default function Auth() {
         navigate('/');
       }
     } else {
+      // ✅ FIXED - explicitly set emailRedirectTo so the confirmation link
+      // always sends the user back to the correct live domain (or localhost
+      // during local testing), instead of relying on Supabase's dashboard
+      // Site URL setting alone. window.location.origin automatically resolves
+      // to https://www.ibreedr.co.za in production and http://localhost:3000
+      // during local dev — no hardcoding needed.
       const { error } = await supabase.auth.signUp({
         email,
         password,
@@ -55,12 +72,13 @@ export default function Auth() {
             full_name: fullName,
             farm_name: farmName || fullName
           },
+          emailRedirectTo: `${window.location.origin}/login?confirmed=true`
         },
       });
       if (error) {
         setError(error.message);
       } else {
-        setMessage('Account created! Please check your email to confirm.');
+        setMessage('Account created! Check your email and click the confirmation link to activate your account.');
         setTimeout(() => setIsLogin(true), 3000);
       }
     }
@@ -252,7 +270,7 @@ export default function Auth() {
             )}
           </div>
 
-          {/* Trust Badge - Privacy Policy link updated */}
+          {/* Trust Badge */}
           <div className="mt-6 pt-4 border-t border-gray-100 text-center">
             <p className="text-xs text-gray-400">
               By continuing, you agree to our Terms of Service and{' '}
