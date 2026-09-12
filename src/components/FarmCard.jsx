@@ -38,7 +38,7 @@ export default function FarmCard({ farm }) {
 
   return (
     <Link to={`/farm/${id}`}>
-      <Card className={`overflow-hidden hover:shadow-xl transition-all duration-300 group ${verified_farmer ? 'border-b-4 border-gold-accent rounded-b-xl' : ''
+      <Card className={`overflow-hidden hover:shadow-xl active:scale-[0.98] transition-all duration-300 group ${verified_farmer ? 'border-b-4 border-gold-accent rounded-b-xl' : ''
         }`}>
         {/* Cover Image */}
         <div className="relative h-32 bg-gray-200 overflow-hidden">

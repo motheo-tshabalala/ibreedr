@@ -67,6 +67,11 @@ body {
   line-height: 1.6;
 }
 
+/* Instant tap feedback, no lingering gray flash on mobile */
+button, a, [role="button"] {
+  -webkit-tap-highlight-color: transparent;
+}
+
 /* ========================================
    SCROLLBAR
    ======================================== */
@@ -170,6 +175,12 @@ body {
   box-shadow: var(--shadow-lg);
 }
 
+/* Press feedback fires on touch-down, independent of the hover lift above */
+.card:active {
+  transform: scale(0.98);
+  transition: transform 100ms ease-out;
+}
+
 /* Button utilities */
 .btn-primary {
   background-color: var(--primary-green);
@@ -177,11 +188,15 @@ body {
   padding: 10px 24px;
   border-radius: var(--radius-md);
   font-weight: 500;
-  transition: background-color 0.2s ease;
+  transition: background-color 0.2s ease, transform 100ms ease-out;
 }
 
 .btn-primary:hover {
   background-color: var(--primary-green-dark);
+}
+
+.btn-primary:active {
+  transform: scale(0.97);
 }
 
 .btn-secondary {
@@ -190,11 +205,15 @@ body {
   padding: 10px 24px;
   border-radius: var(--radius-md);
   font-weight: 500;
-  transition: background-color 0.2s ease;
+  transition: background-color 0.2s ease, transform 100ms ease-out;
 }
 
 .btn-secondary:hover {
   background-color: var(--gold-accent-light);
+}
+
+.btn-secondary:active {
+  transform: scale(0.97);
 }
 
 .btn-outline {
@@ -204,12 +223,16 @@ body {
   padding: 10px 24px;
   border-radius: var(--radius-md);
   font-weight: 500;
-  transition: all 0.2s ease;
+  transition: all 0.2s ease, transform 100ms ease-out;
 }
 
 .btn-outline:hover {
   background: var(--primary-green);
   color: white;
+}
+
+.btn-outline:active {
+  transform: scale(0.97);
 }
 
 /* Badge utilities */
@@ -282,5 +305,56 @@ body {
 
   .grid-livestock {
     grid-template-columns: 1fr;
+  }
+}
+
+/* ========================================
+   MOTION, TRANSPARENCY & CONTRAST PREFERENCES
+   ======================================== */
+
+/* Gentle, non-vestibular equivalent: keep opacity/color feedback,
+   drop slides, springs, scaling and parallax-style motion. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+
+  html {
+    scroll-behavior: auto;
+  }
+
+  .card:hover,
+  .card:active {
+    transform: none;
+  }
+}
+
+/* Translucent chrome becomes solid instead of blurred */
+@media (prefers-reduced-transparency: reduce) {
+  .backdrop-blur {
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+    background-color: rgba(255, 255, 255, 0.98) !important;
+  }
+}
+
+/* Near-solid backgrounds with a defined, contrasting border */
+@media (prefers-contrast: more) {
+  .card,
+  .btn-primary,
+  .btn-secondary,
+  .btn-outline,
+  button,
+  a[role="button"] {
+    border: 1px solid currentColor;
+  }
+
+  *:focus-visible {
+    outline-width: 3px;
   }
 }

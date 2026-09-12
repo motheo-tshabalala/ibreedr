@@ -168,7 +168,7 @@ export default function FarmStorefront() {
           </div>
         )}
 
-        <Link to="/farms" className="absolute top-4 left-4 p-2 bg-white/90 backdrop-blur rounded-full shadow-md">
+        <Link to="/farms" className="absolute top-4 left-4 p-2 bg-white/90 backdrop-blur rounded-full shadow-md active:scale-90 transition duration-150 active:duration-100">
           <ArrowLeft className="w-5 h-5 text-gray-700" />
         </Link>
       </div>

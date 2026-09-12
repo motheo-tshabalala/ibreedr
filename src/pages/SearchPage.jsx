@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { Search, X, Filter, MapPin, ChevronDown, Bell } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { supabase } from '../supabaseClient';
 import { Card, CardContent } from "../components/ui/card";
 import { Badge } from "../components/ui/Badge";
@@ -301,8 +302,16 @@ export default function SearchPage() {
       </div>
 
       {/* Filters Panel */}
-      {showFilters && (
-        <div className="bg-white border-b border-gray-200 px-4 py-4">
+      <AnimatePresence>
+        {showFilters && (
+          <motion.div
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: 'auto' }}
+            exit={{ opacity: 0, height: 0 }}
+            transition={{ type: 'spring', bounce: 0, duration: 0.35 }}
+            className="bg-white border-b border-gray-200 overflow-hidden"
+          >
+        <div className="px-4 py-4">
           <div className="max-w-md mx-auto space-y-3">
             <div className="grid grid-cols-2 gap-3">
               <div>
@@ -420,14 +429,16 @@ export default function SearchPage() {
             {hasActiveFilters && (
               <button
                 onClick={clearFilters}
-                className="w-full py-2 text-sm text-gray-500 hover:text-gray-700 border border-gray-200 rounded-lg"
+                className="w-full py-2 text-sm text-gray-500 hover:text-gray-700 active:bg-gray-50 active:scale-[0.98] transition duration-150 active:duration-100 border border-gray-200 rounded-lg"
               >
                 Clear All Filters
               </button>
             )}
           </div>
         </div>
-      )}
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Recent Searches */}
       {!searchQuery && recentSearches.length > 0 && !showFilters && results.length === 0 && !searchTriggered && (
@@ -640,12 +651,27 @@ export default function SearchPage() {
       </div>
 
       {/* Alert Modal */}
-      {showAlertModal && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl max-w-md w-full p-6">
+      <AnimatePresence>
+        {showAlertModal && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4"
+            onClick={() => setShowAlertModal(false)}
+          >
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95, y: 12 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.95, y: 12 }}
+            transition={{ type: 'spring', bounce: 0, duration: 0.3 }}
+            onClick={(e) => e.stopPropagation()}
+            className="bg-white rounded-2xl max-w-md w-full p-6"
+          >
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-xl font-bold">Set Up Search Alert</h2>
-              <button onClick={() => setShowAlertModal(false)} className="p-1 hover:bg-gray-100 rounded-full">
+              <button onClick={() => setShowAlertModal(false)} className="p-1 hover:bg-gray-100 active:bg-gray-200 active:scale-90 transition duration-150 active:duration-100 rounded-full">
                 <X className="w-5 h-5" />
               </button>
             </div>
@@ -686,9 +712,10 @@ export default function SearchPage() {
             >
               {alertSubmitting ? 'Setting alert...' : 'Set Alert'}
             </Button>
-          </div>
-        </div>
-      )}
+          </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

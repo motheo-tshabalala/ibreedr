@@ -55,13 +55,13 @@ export default function BottomNav() {
                 <Link
                   key={tab.path}
                   to={tab.path}
-                  className={`flex flex-col items-center gap-0.5 px-2 py-1 transition-colors relative ${isActive
+                  className={`flex flex-col items-center gap-0.5 px-2 py-1 transition-colors active:scale-90 duration-150 active:duration-100 relative ${isActive
                       ? 'text-primary-green'
                       : 'text-gray-400 hover:text-gray-600'
                     }`}
                 >
                   {isActive && (
-                    <span className="absolute -top-0.5 left-1/2 -translate-x-1/2 w-8 h-0.5 bg-primary-green rounded-full" />
+                    <span className="absolute -top-0.5 left-1/2 -translate-x-1/2 w-8 h-0.5 bg-primary-green rounded-full transition-all duration-200" />
                   )}
 
                   <Icon className="w-5 h-5" />

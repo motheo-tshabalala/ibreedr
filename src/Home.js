@@ -128,7 +128,7 @@ export default function Home() {
       >
         <div className="max-w-md mx-auto px-4 py-12 md:py-16">
           <div className="text-center mb-8">
-            <h1 className="text-3xl md:text-4xl font-bold mb-3">
+            <h1 className="text-3xl md:text-4xl font-bold mb-3 tracking-tight">
               Your livestock. Your price. Your buyers.
             </h1>
             <p className="text-green-100 text-sm md:text-base max-w-sm mx-auto">
@@ -147,7 +147,7 @@ export default function Home() {
             />
             <button
               type="submit"
-              className="absolute right-2 top-1/2 -translate-y-1/2 bg-primary-green text-white px-6 py-2 rounded-lg text-sm font-medium hover:bg-primary-green-dark transition"
+              className="absolute right-2 top-1/2 -translate-y-1/2 bg-primary-green text-white px-6 py-2 rounded-lg text-sm font-medium hover:bg-primary-green-dark active:scale-95 transition duration-150 active:duration-100"
             >
               Search
             </button>
@@ -155,43 +155,43 @@ export default function Home() {
 
           <div className="flex gap-2 mt-4 overflow-x-auto pb-2 scrollbar-hide">
             <Link to="/search?type=cattle">
-              <span className="px-4 py-1.5 bg-white/15 backdrop-blur rounded-full text-sm whitespace-nowrap hover:bg-white/25 transition">
+              <span className="px-4 py-1.5 bg-white/15 backdrop-blur rounded-full text-sm whitespace-nowrap hover:bg-white/25 active:bg-white/35 active:scale-95 transition duration-150 active:duration-100">
                 Cattle
               </span>
             </Link>
             <Link to="/search?type=goats">
-              <span className="px-4 py-1.5 bg-white/15 backdrop-blur rounded-full text-sm whitespace-nowrap hover:bg-white/25 transition">
+              <span className="px-4 py-1.5 bg-white/15 backdrop-blur rounded-full text-sm whitespace-nowrap hover:bg-white/25 active:bg-white/35 active:scale-95 transition duration-150 active:duration-100">
                 Goats
               </span>
             </Link>
             <Link to="/search?type=sheep">
-              <span className="px-4 py-1.5 bg-white/15 backdrop-blur rounded-full text-sm whitespace-nowrap hover:bg-white/25 transition">
+              <span className="px-4 py-1.5 bg-white/15 backdrop-blur rounded-full text-sm whitespace-nowrap hover:bg-white/25 active:bg-white/35 active:scale-95 transition duration-150 active:duration-100">
                 Sheep
               </span>
             </Link>
             <Link to="/search?type=pigs">
-              <span className="px-4 py-1.5 bg-white/15 backdrop-blur rounded-full text-sm whitespace-nowrap hover:bg-white/25 transition">
+              <span className="px-4 py-1.5 bg-white/15 backdrop-blur rounded-full text-sm whitespace-nowrap hover:bg-white/25 active:bg-white/35 active:scale-95 transition duration-150 active:duration-100">
                 Pigs
               </span>
             </Link>
             <Link to="/search?type=poultry">
-              <span className="px-4 py-1.5 bg-white/15 backdrop-blur rounded-full text-sm whitespace-nowrap hover:bg-white/25 transition">
+              <span className="px-4 py-1.5 bg-white/15 backdrop-blur rounded-full text-sm whitespace-nowrap hover:bg-white/25 active:bg-white/35 active:scale-95 transition duration-150 active:duration-100">
                 Poultry
               </span>
             </Link>
             <Link to="/search?type=horses">
-              <span className="px-4 py-1.5 bg-white/15 backdrop-blur rounded-full text-sm whitespace-nowrap hover:bg-white/25 transition">
+              <span className="px-4 py-1.5 bg-white/15 backdrop-blur rounded-full text-sm whitespace-nowrap hover:bg-white/25 active:bg-white/35 active:scale-95 transition duration-150 active:duration-100">
                 Horses
               </span>
             </Link>
             <Link to="/search?type=donkeys">
-              <span className="px-4 py-1.5 bg-white/15 backdrop-blur rounded-full text-sm whitespace-nowrap hover:bg-white/25 transition">
+              <span className="px-4 py-1.5 bg-white/15 backdrop-blur rounded-full text-sm whitespace-nowrap hover:bg-white/25 active:bg-white/35 active:scale-95 transition duration-150 active:duration-100">
                 Donkeys
               </span>
             </Link>
             <button
               onClick={handleNearMe}
-              className="px-4 py-1.5 bg-gold-accent/20 backdrop-blur rounded-full text-sm whitespace-nowrap hover:bg-gold-accent/30 transition text-white flex items-center gap-1"
+              className="px-4 py-1.5 bg-gold-accent/20 backdrop-blur rounded-full text-sm whitespace-nowrap hover:bg-gold-accent/30 active:bg-gold-accent/40 active:scale-95 transition duration-150 active:duration-100 text-white flex items-center gap-1"
             >
               📍 Near Me
             </button>

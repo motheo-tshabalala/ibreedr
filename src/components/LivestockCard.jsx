@@ -34,7 +34,7 @@ export default function LivestockCard({ livestock, onWishlist, isInWishlist }) {
   const isVerified = livestock.profiles?.verified_farmer || false;
 
   return (
-    <Card className="overflow-hidden hover:shadow-xl transition-all duration-300 group">
+    <Card className="overflow-hidden hover:shadow-xl active:scale-[0.98] transition-all duration-300 group">
       <Link to={`/BreedDetails?id=${livestock.id}`}>
         <div className="relative h-56 bg-gray-100 overflow-hidden">
           {livestock.images && livestock.images[0] ? (
@@ -57,7 +57,7 @@ export default function LivestockCard({ livestock, onWishlist, isInWishlist }) {
 
           <button
             onClick={handleWishlistClick}
-            className="absolute top-3 right-3 p-2 bg-white/90 backdrop-blur rounded-full shadow-md hover:scale-105 transition"
+            className="absolute top-3 right-3 p-2 bg-white/90 backdrop-blur rounded-full shadow-md hover:scale-105 active:scale-90 transition duration-150 active:duration-100"
             aria-label={isInWishlist ? 'Remove from wishlist' : 'Add to wishlist'}
           >
             <Bookmark className={`w-4 h-4 ${isInWishlist ? 'fill-primary-green text-primary-green' : 'text-gray-500'}`} />
